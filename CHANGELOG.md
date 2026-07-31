@@ -4,6 +4,39 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.6.0 — 2026-07-31
+
+Der Brieftext wird bereits beim Einlesen richtig zusammengesetzt.
+
+**Behoben — die Fragmentierung entstand vor dem Export**
+- Zeilen wurden seitenweit nach Höhe sortiert. Steht neben dem
+  Anschriftenfeld ein zweiter Block — Ansprechpartner, Durchwahl, Datum, im
+  Klinikalltag die Regel —, verschränkte diese Sortierung beide Spalten Zeile
+  für Zeile ineinander. Gelesen wird jetzt blockweise in Lesereihenfolge.
+- Der rechte Satzrand wurde aus allen Zeilen der Seite geschätzt. Eine breite
+  Fusszeile mit Bankverbindung oder eine Tabelle reicht weiter nach rechts als
+  der Fliesstext; der Rand lag dadurch zu weit rechts, jede Textzeile galt als
+  freiwillig beendet und **nichts** wurde mehr zusammengefügt. Für die
+  Schätzung zählen nun ausschliesslich Zeilen der Hauptspalte, die nicht
+  tabellarisch gesetzt sind.
+- Der so ermittelte Rand galt anschliessend für alle Spalten. In einem
+  Nebenblock, der weiter rechts steht, wurde damit umgekehrt jede Zeile für
+  umbrochen gehalten und alles zusammengezogen. Zeilen ausserhalb der
+  Hauptspalte behalten ihre Umbrüche jetzt unverändert.
+
+Nachgemessen an vier Bauarten: schlicht, mit zweispaltigem Kopf, mit breiter
+Fusszeile, mit beidem. Die vorherige Fassung zerriss den Fliesstext in allen
+drei realistischen Fällen und blieb nur beim schlichten Brief heil.
+
+**Neu**
+- `tools/layout_diagnose.py` zeigt, wie ein PDF gesetzt ist — Spaltenzahl,
+  Zeilenschritt, geschätzter Satzrand und je Zeile die getroffene
+  Entscheidung, dargestellt als Balken. Die Ausgabe enthält **keinen
+  Buchstaben** des Dokuments und lässt sich deshalb weitergeben, um einem
+  Fehler nachzugehen.
+- `tests/test_formatierung.py` prüft die vier Bauarten und stellt sicher,
+  dass die Kopfspalten nicht ineinandergeraten.
+
 ## 0.5.0 — 2026-07-31
 
 Der Text wird jetzt aus der Seitengeometrie neu gesetzt.

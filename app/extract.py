@@ -115,7 +115,7 @@ def _normalisiere(text: str) -> str:
     return text.strip()
 
 
-def _seitenzeilen(seite) -> list[dict]:
+def _blockzeilen(block) -> list[dict]:
     """Alle Textzeilen einer Seite mit ihrer Lage auf dem Papier.
 
     Aus den Spannen einer Zeile wird zusätzlich abgeleitet, ob sie tabellarisch
@@ -123,28 +123,24 @@ def _seitenzeilen(seite) -> list[dict]:
     es sich um Spalten (Medikationsplan, Laborwerte) und nicht um Fliesstext.
     """
     zeilen: list[dict] = []
-    for block in seite.get_text("dict")["blocks"]:
-        if block.get("type", 0) != 0:  # Bilder überspringen
+    for zeile in block.get("lines", []):
+        spannen = [s for s in zeile.get("spans", []) if s["text"].strip()]
+        if not spannen:
             continue
-        for zeile in block.get("lines", []):
-            spannen = [s for s in zeile.get("spans", []) if s["text"].strip()]
-            if not spannen:
-                continue
-            text = "".join(s["text"] for s in zeile["spans"]).rstrip()
-            if not text.strip():
-                continue
-            x0, y0, x1, y1 = zeile["bbox"]
+        text = "".join(s["text"] for s in zeile["spans"]).rstrip()
+        if not text.strip():
+            continue
+        x0, y0, x1, y1 = zeile["bbox"]
 
-            hoehe = max((s["bbox"][3] - s["bbox"][1]) for s in spannen)
-            luecke = max(
-                (b["bbox"][0] - a["bbox"][2]
-                 for a, b in zip(spannen, spannen[1:])),
-                default=0.0,
-            )
-            zeilen.append({
-                "text": text, "x0": x0, "x1": x1, "y0": y0, "y1": y1,
-                "hoehe": hoehe, "spaltig": luecke > hoehe * 1.5,
-            })
+        hoehe = max((s["bbox"][3] - s["bbox"][1]) for s in spannen)
+        luecke = max(
+            (b["bbox"][0] - a["bbox"][2] for a, b in zip(spannen, spannen[1:])),
+            default=0.0,
+        )
+        zeilen.append({
+            "text": text, "x0": x0, "x1": x1, "y0": y0, "y1": y1,
+            "hoehe": hoehe, "spaltig": luecke > hoehe * 1.5,
+        })
     zeilen.sort(key=lambda z: (round(z["y0"], 1), z["x0"]))
     return zeilen
 
@@ -155,10 +151,35 @@ def _mittlere_zeichenbreite(zeilen: list[dict]) -> float:
     return breite / zeichen if zeichen else 5.0
 
 
-def _rechter_rand(zeilen: list[dict]) -> float:
-    """Rechte Kante des Satzspiegels, robust gegen einzelne Überhänge."""
-    kanten = sorted(z["x1"] for z in zeilen)
-    return kanten[int(len(kanten) * 0.92)] if len(kanten) > 6 else kanten[-1]
+def _hauptspalte(zeilen: list[dict], zeichenbreite: float) -> float:
+    """Linke Kante der Spalte, in der der eigentliche Brieftext steht."""
+    raster = max(zeichenbreite, 1.0)
+    linke = [round(z["x0"] / raster) for z in zeilen]
+    return max(set(linke), key=linke.count) * raster
+
+
+def _rechter_rand(zeilen: list[dict], zeichenbreite: float,
+                  haupt_x0: float) -> float:
+    """Rechte Kante der Hauptspalte.
+
+    Entscheidend ist, welche Zeilen man dafür heranzieht. Eine breite Fusszeile
+    mit Bankverbindung oder eine Tabelle reicht weiter nach rechts als der
+    Fliesstext. Nimmt man sie mit, liegt der geschätzte Rand zu weit rechts —
+    dann sieht jede Textzeile so aus, als wäre sie freiwillig zu Ende gegangen,
+    und es wird überhaupt nichts mehr zusammengefügt.
+
+    Deshalb zählen nur Zeilen, die am linken Hauptrand beginnen und nicht
+    tabellarisch gesetzt sind.
+    """
+    kandidaten = [
+        z["x1"] for z in zeilen
+        if not z["spaltig"] and abs(z["x0"] - haupt_x0) <= zeichenbreite * 2
+    ]
+    if not kandidaten:
+        kandidaten = [z["x1"] for z in zeilen]
+
+    kanten = sorted(kandidaten)
+    return kanten[int(len(kanten) * 0.95)] if len(kanten) > 8 else kanten[-1]
 
 
 def _pdf_absaetze(doc) -> str:
@@ -179,47 +200,75 @@ def _pdf_absaetze(doc) -> str:
     absaetze: list[str] = []
 
     for seite in doc:
-        zeilen = _seitenzeilen(seite)
-        if not zeilen:
+        bloecke = [b for b in seite.get_text("dict")["blocks"]
+                   if b.get("type", 0) == 0 and b.get("lines")]
+        if not bloecke:
+            continue
+        # Lesereihenfolge: erst von oben nach unten, bei gleicher Höhe von
+        # links nach rechts. Blockweise vorzugehen ist der Kern — steht neben
+        # dem Anschriftenfeld ein zweiter Block mit Durchwahl und Datum, würde
+        # eine seitenweite Sortierung nach Höhe beide Spalten Zeile für Zeile
+        # ineinander verschränken und den Text zerreissen.
+        bloecke.sort(key=lambda b: (round(b["bbox"][1], 1), b["bbox"][0]))
+
+        alle = [z for b in bloecke for z in _blockzeilen(b)]
+        if not alle:
             continue
 
-        rand = _rechter_rand(zeilen)
-        zeichenbreite = _mittlere_zeichenbreite(zeilen)
+        zeichenbreite = _mittlere_zeichenbreite(alle)
+        haupt_x0 = _hauptspalte(alle, zeichenbreite)
+        rand = _rechter_rand(alle, zeichenbreite, haupt_x0)
 
         abstaende = sorted(
-            b["y0"] - a["y0"] for a, b in zip(zeilen, zeilen[1:])
+            b["y0"] - a["y0"] for a, b in zip(alle, alle[1:])
             if 0 < b["y0"] - a["y0"] < 200
         )
         schritt = abstaende[len(abstaende) // 2] if abstaende else 14.0
 
-        laufend = zeilen[0]["text"].strip()
-        vorige = zeilen[0]
+        for block in bloecke:
+            zeilen = _blockzeilen(block)
+            if not zeilen:
+                continue
 
-        for zeile in zeilen[1:]:
-            text = zeile["text"].strip()
-            abstand = zeile["y0"] - vorige["y0"]
-            erstes_wort = text.split(" ", 1)[0]
+            laufend = zeilen[0]["text"].strip()
+            vorige = zeilen[0]
 
-            # Passte das erste Wort der Folgezeile hier noch aufs Papier?
-            platz_frei = rand - vorige["x1"]
-            passte_noch = platz_frei >= (len(erstes_wort) + 1) * zeichenbreite
+            for zeile in zeilen[1:]:
+                text = zeile["text"].strip()
+                abstand = zeile["y0"] - vorige["y0"]
+                erstes_wort = text.split(" ", 1)[0]
 
-            neuer_absatz = abstand > schritt * 1.45
-            einzug_wechsel = abs(zeile["x0"] - vorige["x0"]) > zeichenbreite * 2.5
+                # Der Satzrand gilt nur für die Hauptspalte. Ein Nebenblock —
+                # Ansprechpartner und Durchwahl neben dem Anschriftenfeld,
+                # eine Fusszeile — steht ausserhalb und reicht oft weiter nach
+                # rechts. Dort jede Zeile am fremden Rand zu messen, hiesse sie
+                # ausnahmslos für umbrochen zu halten und zusammenzuziehen.
+                in_hauptspalte = (
+                    abs(vorige["x0"] - haupt_x0) <= zeichenbreite * 4
+                    and abs(zeile["x0"] - haupt_x0) <= zeichenbreite * 4
+                )
 
-            if neuer_absatz:
-                absaetze.append(laufend)
-                laufend = text
-            elif (passte_noch or vorige["spaltig"] or zeile["spaltig"]
-                    or einzug_wechsel or _AUFZAEHLUNG.match(zeile["text"])):
-                # Umbruch war gewollt: Anschrift, Liste, Tabelle, Unterschrift
-                laufend += "\n" + text
-            else:
-                laufend += " " + text
+                # Passte das erste Wort der Folgezeile hier noch aufs Papier?
+                platz_frei = rand - vorige["x1"]
+                passte_noch = platz_frei >= (len(erstes_wort) + 1) * zeichenbreite
 
-            vorige = zeile
+                neuer_absatz = abstand > schritt * 1.45
+                einzug_wechsel = abs(zeile["x0"] - vorige["x0"]) > zeichenbreite * 2.5
 
-        absaetze.append(laufend)
+                if neuer_absatz:
+                    absaetze.append(laufend)
+                    laufend = text
+                elif (not in_hauptspalte or passte_noch
+                        or vorige["spaltig"] or zeile["spaltig"]
+                        or einzug_wechsel or _AUFZAEHLUNG.match(zeile["text"])):
+                    # Umbruch war gewollt: Anschrift, Liste, Tabelle, Unterschrift
+                    laufend += "\n" + text
+                else:
+                    laufend += " " + text
+
+                vorige = zeile
+
+            absaetze.append(laufend)
 
     return "\n\n".join(a for a in absaetze if a.strip())
 

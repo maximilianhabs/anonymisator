@@ -234,6 +234,75 @@ klinik_ersetzt = export.ersetze(klinik, [
 pruefe("][" not in klinik_ersetzt,
        "Keine zwei Platzhalter ohne Trennung aneinander")
 
+print("\n=== 6. Zweispaltiger Kopf und breite Fusszeile ===")
+
+# Beides ist im Klinikalltag die Regel und brachte die frühere Fassung zu
+# Fall: der zweispaltige Kopf, weil eine seitenweite Sortierung nach Höhe
+# beide Spalten ineinander verschränkt; die Fusszeile, weil sie weiter nach
+# rechts reicht als der Fliesstext und damit den geschätzten Satzrand
+# verschiebt — dann gilt jede Zeile als freiwillig beendet.
+KOPF_LINKS = ["Neurologische Klinik am Auwald", "", "Frau",
+              "Dr. med. Ingrid Brandner", "Bahnhofstraße 3", "94032 Passau"]
+KOPF_RECHTS = ["Ansprechpartner:", "Prof. Dr. Weißbach",
+               "Durchwahl: 0851 4409-233", "", "Passau, 14.03.2026"]
+KOERPER = ["Sehr geehrte Frau Kollegin Brandner,", ""] + [
+    "wir berichten Ihnen über unsere gemeinsame Patientin Frau Elisabeth",
+    "Hartmann, die sich vom 03.03.2026 bis zum 12.03.2026 in unserer",
+    "stationären Behandlung befand. Die Aufnahme erfolgte über die",
+    "Notaufnahme nach einem erstmaligen generalisierten Anfall.",
+]
+FUSS = [
+    "Neurologische Klinik am Auwald · Ludwigstraße 47 · 94032 Passau · "
+    "Tel. 0851 4409-233 · Fax 0851 4409-234 · info@klinik-auwald.de",
+    "Bankverbindung: Sparkasse Passau · IBAN DE89 3704 0044 0532 0130 00 · "
+    "BIC COBADEFFXXX · Steuernummer 153/815/47110",
+]
+
+
+def brief_mit(zweite_spalte: bool, fusszeile: bool) -> bytes:
+    schrift = fitz.open()
+    blatt = schrift.new_page(width=595, height=842)
+    hoehe = 70
+    for zeile in KOPF_LINKS:
+        if zeile:
+            blatt.insert_text((70, hoehe), zeile, fontname="helv", fontsize=10)
+        hoehe += 14.5
+    if zweite_spalte:
+        hoehe = 70
+        for zeile in KOPF_RECHTS:
+            if zeile:
+                blatt.insert_text((360, hoehe), zeile, fontname="helv", fontsize=9)
+            hoehe += 13
+    hoehe = 190
+    for zeile in KOERPER:
+        if zeile:
+            blatt.insert_text((70, hoehe), zeile, fontname="helv", fontsize=10)
+        hoehe += 14.5
+    if fusszeile:
+        for i, zeile in enumerate(FUSS):
+            blatt.insert_text((40, 780 + i * 12), zeile, fontname="helv", fontsize=7)
+    roh = schrift.tobytes()
+    schrift.close()
+    return roh
+
+
+for beschreibung, zweite, fuss in [
+    ("schlicht", False, False),
+    ("zweispaltiger Kopf", True, False),
+    ("breite Fusszeile", False, True),
+    ("beides zusammen", True, True),
+]:
+    ergebnis = extract.aus_pdf(brief_mit(zweite, fuss)).text
+    koerper = [a for a in ergebnis.split("\n\n") if "wir berichten" in a]
+    pruefe(len(koerper) == 1 and "\n" not in koerper[0].strip(),
+           f"Fliesstext bleibt zusammenhängend — {beschreibung}")
+
+# Die beiden Kopfspalten dürfen nicht ineinandergeraten.
+zweispaltig = extract.aus_pdf(brief_mit(True, False)).text
+pruefe("Brandner\nAnsprechpartner" not in zweispaltig
+       and "Auwald\nAnsprechpartner" not in zweispaltig,
+       "Kopfspalten wurden nicht zeilenweise verschränkt")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

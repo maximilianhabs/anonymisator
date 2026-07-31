@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.5.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.6.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 
 Lokales Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren
@@ -217,10 +217,34 @@ Verfahren, das aus der Häufigkeit langer Zeilen auf harten Umbruch schliesst,
 versagt dort und lässt den Brief zerhackt. Die Geometrie kennt die Antwort
 dagegen für jede Zeile einzeln.
 
+Zwei Eigenheiten echter Arztbriefe sind dabei entscheidend:
+
+**Gelesen wird blockweise**, nicht seitenweit nach Höhe. Steht neben dem
+Anschriftenfeld ein zweiter Block mit Ansprechpartner, Durchwahl und Datum,
+würde eine Sortierung nach Höhe beide Spalten Zeile für Zeile ineinander
+verschränken.
+
+**Der Satzrand wird aus der Hauptspalte bestimmt** und gilt auch nur dort.
+Eine breite Fusszeile mit Bankverbindung reicht weiter nach rechts als der
+Fliesstext — zählt man sie mit, liegt der Rand zu weit rechts und es wird
+überhaupt nichts mehr zusammengefügt. Umgekehrt darf der Rand der Hauptspalte
+nicht auf Nebenblöcke angewandt werden, sonst zieht es dort alles zusammen.
+
 Tabellarisch gesetzte Zeilen erkennt das Verfahren an den waagerechten Lücken
 zwischen den Textspannen und lässt sie in Ruhe — ein Medikationsplan bleibt
 zeilenweise stehen. Ebenso Anschriftenblöcke, Aufzählungen und
 Unterschriftenzeilen.
+
+### Wenn ein Brief trotzdem zerrissen ankommt
+
+```bash
+.venv/bin/python tools/layout_diagnose.py brief.pdf
+```
+
+Zeigt Spaltenzahl, Zeilenschritt, geschätzten Satzrand und für jede Zeile die
+getroffene Entscheidung — als Balken, deren Länge der Zeilenbreite entspricht.
+Die Ausgabe enthält **keinen Buchstaben** des Dokuments und lässt sich deshalb
+gefahrlos weitergeben, um einem Fehler nachzugehen.
 
 Für OCR-Ergebnisse und eingefügten Text gibt es keine Geometrie. Dort greift
 ersatzweise eine Zusammenführung nach Zeilenlänge, die nur anspringt, wenn
@@ -322,6 +346,7 @@ funktionieren, sofern Tesseract mit deutschem Sprachpaket vorliegt.
 | `app/export.py` | Ersetzung anwenden, TXT/DOCX/PDF schreiben |
 | `app/main.py` | HTTP-Endpunkte |
 | `static/` | Oberfläche (eine Seite, kein Framework) |
+| `tools/layout_diagnose.py` | zeigt den Satzspiegel eines PDFs, ohne Inhalt |
 
 ## Tests
 
