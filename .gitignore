@@ -1,0 +1,27 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.claude/
+
+# --------------------------------------------------------------------------
+# Echte Dokumente dürfen dieses Repository niemals erreichen.
+# Dieses Projekt verarbeitet Arztbriefe und Gutachten; ein versehentlich
+# eingechecktes Testdokument wäre ein Datenschutzvorfall und bliebe für immer
+# in der Commit-Historie stehen.
+# --------------------------------------------------------------------------
+*.pdf
+*.docx
+*.doc
+*.odt
+*.rtf
+*.txt
+!requirements.txt
+
+# Zuordnungstabellen enthalten Klarnamen im Klartext.
+*ZUORDNUNG*
+*_anonymisiert.*
+
+# Arbeitsordner für eigene Testdateien
+testdaten/
+scratch/

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anonymisator</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="marke">
+    <span class="punkt"></span>
+    <h1>Anonymisator</h1>
+  </div>
+  <p class="lokal">Läuft vollständig lokal &middot; keine Datei verlässt diesen Rechner</p>
+</header>
+
+<!-- ===================== Schritt 1: Eingabe ===================== -->
+<main id="ansicht-eingabe" class="huelle">
+  <div class="karten">
+
+    <section class="karte ablage" id="ablage">
+      <svg viewBox="0 0 24 24" class="symbol" aria-hidden="true">
+        <path d="M12 16V4m0 0L8 8m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+      </svg>
+      <h2>Datei hierher ziehen</h2>
+      <p>PDF (auch gescannt) oder Word&nbsp;.docx</p>
+      <button type="button" class="knopf" id="knopf-auswaehlen">Datei auswählen</button>
+      <input type="file" id="datei" accept=".pdf,.docx,.txt" hidden>
+    </section>
+
+    <section class="karte">
+      <h2>… oder Text einfügen</h2>
+      <textarea id="eingabe-text" rows="10"
+        placeholder="Arztbrief, Gutachten oder Befund hier einfügen …"></textarea>
+      <button type="button" class="knopf voll" id="knopf-text">Text analysieren</button>
+    </section>
+
+  </div>
+
+  <div class="hinweis-box">
+    <strong>Wie das Ergebnis zu lesen ist.</strong>
+    Die Erkennung kombiniert feste Regeln mit einem deutschen Sprachmodell und ist
+    bewusst großzügig eingestellt — sie markiert lieber zu viel. Vollständigkeit kann
+    sie trotzdem nicht garantieren: Namen ohne Anrede mitten im Satz, OCR-Fehler in
+    Scans oder ungewöhnliche Schreibweisen können durchrutschen.
+    <em>Der Prüfschritt vor dem Export ersetzt kein eigenes Gegenlesen.</em>
+  </div>
+</main>
+
+<!-- ===================== Ladeanzeige ===================== -->
+<div id="ansicht-laden" class="huelle mittig" hidden>
+  <div class="spinner"></div>
+  <p id="lade-text">Dokument wird gelesen …</p>
+  <p class="klein" id="lade-detail">Beim ersten Durchlauf wird das Sprachmodell geladen, das dauert einen Moment.</p>
+</div>
+
+<!-- ===================== Schritt 2: Prüfen ===================== -->
+<div id="ansicht-pruefen" class="pruef-raster" hidden>
+
+  <section class="dokument-spalte">
+    <div class="spalten-kopf">
+      <div class="umschalter" role="tablist">
+        <button type="button" class="aktiv" data-modus="original" role="tab">Erkannt</button>
+        <button type="button" data-modus="ergebnis" role="tab">Ergebnis</button>
+      </div>
+      <span class="quelle-info" id="quelle-info"></span>
+    </div>
+    <div class="hinweise" id="hinweise"></div>
+    <pre class="dokument" id="dokument"></pre>
+  </section>
+
+  <aside class="seitenleiste">
+    <div class="bilanz" id="bilanz"></div>
+
+    <div class="warnung" id="warnung" hidden></div>
+
+    <div class="werkzeug">
+      <label for="eigener-begriff">Zusätzlich ersetzen</label>
+      <div class="eingabe-zeile">
+        <input type="text" id="eigener-begriff"
+               placeholder="z. B. Spitzname, Firma, Diagnose">
+        <button type="button" class="knopf klein" id="knopf-begriff">+</button>
+      </div>
+      <p class="hilfe" id="begriff-rueckmeldung">Findet den Begriff im gesamten Text, unabhängig von Groß-/Kleinschreibung.</p>
+    </div>
+
+    <div class="gruppen" id="gruppen"></div>
+
+    <div class="export">
+      <label class="schalter">
+        <input type="checkbox" id="mit-kopfzeile" checked>
+        <span>Vermerk „Anonymisiert am …" einfügen</span>
+      </label>
+      <div class="export-knoepfe">
+        <button type="button" class="knopf haupt" data-format="pdf">PDF</button>
+        <button type="button" class="knopf haupt" data-format="docx">Word</button>
+        <button type="button" class="knopf haupt" data-format="txt">Text</button>
+      </div>
+      <button type="button" class="knopf leise" id="knopf-kopieren">Ergebnis in die Zwischenablage</button>
+      <button type="button" class="knopf leise gefahr" id="knopf-schluessel">Zuordnungstabelle herunterladen</button>
+      <button type="button" class="knopf leise" id="knopf-neu">Neues Dokument</button>
+    </div>
+  </aside>
+</div>
+
+<div class="brot" id="brot" hidden></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
