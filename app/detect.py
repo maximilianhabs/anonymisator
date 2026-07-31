@@ -51,17 +51,26 @@ KATEGORIEN: dict[str, dict] = {
     "ARZT":           {"label": "ARZT",     "stil": "zahl",   "prioritaet": 58, "farbe": "#d6409f"},
     "PERSON":         {"label": "PERSON",   "stil": "zahl",   "prioritaet": 55, "farbe": "#8e4ec6"},
     "GEBURTSDATUM":   {"label": "GEBDAT",   "stil": "zahl",   "prioritaet": 90, "farbe": "#0090ff"},
+    "SOZIALVERSNR":   {"label": "SVNR",     "stil": "zahl",   "prioritaet": 89, "farbe": "#0090ff"},
     "VERSICHERTENNR": {"label": "VERSNR",   "stil": "zahl",   "prioritaet": 88, "farbe": "#0090ff"},
+    "KONTONR":        {"label": "KONTO",    "stil": "zahl",   "prioritaet": 87, "farbe": "#0090ff"},
     "IBAN":           {"label": "IBAN",     "stil": "zahl",   "prioritaet": 86, "farbe": "#0090ff"},
+    "STEUERNR":       {"label": "STEUERNR", "stil": "zahl",   "prioritaet": 85, "farbe": "#0090ff"},
     "FALLNUMMER":     {"label": "FALLNR",   "stil": "zahl",   "prioritaet": 84, "farbe": "#0090ff"},
+    "RECHNUNGSNR":    {"label": "RECHNR",   "stil": "zahl",   "prioritaet": 83, "farbe": "#0090ff"},
     "AKTENZEICHEN":   {"label": "AZ",       "stil": "zahl",   "prioritaet": 82, "farbe": "#0090ff"},
+    "KUNDENNR":       {"label": "KUNDENNR", "stil": "zahl",   "prioritaet": 81, "farbe": "#0090ff"},
+    "AUSWEISNR":      {"label": "AUSWEIS",  "stil": "zahl",   "prioritaet": 79, "farbe": "#0090ff"},
+    "KFZ":            {"label": "KFZ",      "stil": "zahl",   "prioritaet": 77, "farbe": "#0090ff"},
+    "HANDELSREGISTER": {"label": "HR",      "stil": "zahl",   "prioritaet": 75, "farbe": "#0090ff"},
     "EMAIL":          {"label": "EMAIL",    "stil": "zahl",   "prioritaet": 80, "farbe": "#12a594"},
     "URL":            {"label": "URL",      "stil": "zahl",   "prioritaet": 78, "farbe": "#12a594"},
     "TELEFON":        {"label": "TELEFON",  "stil": "zahl",   "prioritaet": 76, "farbe": "#12a594"},
     "ADRESSE":        {"label": "ADRESSE",  "stil": "zahl",   "prioritaet": 70, "farbe": "#f76b15"},
-    "KLINIK":         {"label": "KLINIK",   "stil": "zahl",   "prioritaet": 40, "farbe": "#ffb224"},
+    "ORGANISATION":   {"label": "ORG",      "stil": "zahl",   "prioritaet": 40, "farbe": "#ffb224"},
     "ORT":            {"label": "ORT",      "stil": "zahl",   "prioritaet": 35, "farbe": "#ffb224"},
     "DATUM":          {"label": "DATUM",    "stil": "zahl",   "prioritaet": 30, "farbe": "#46a758"},
+    "BETRAG":         {"label": "BETRAG",   "stil": "zahl",   "prioritaet": 25, "farbe": "#46a758"},
     "ALTER":          {"label": "ALTER",    "stil": "zahl",   "prioritaet": 34, "farbe": "#46a758"},
     "ZEITSPANNE":     {"label": "ZEITRAUM", "stil": "zahl",   "prioritaet": 33, "farbe": "#46a758"},
     "JAHRESZAHL":     {"label": "JAHR",     "stil": "zahl",   "prioritaet": 20, "farbe": "#46a758"},
@@ -71,11 +80,16 @@ KATEGORIEN: dict[str, dict] = {
 KATEGORIE_TITEL = {
     "PATIENT": "Patient/in", "ARZT": "Behandler/in", "PERSON": "Weitere Person",
     "GEBURTSDATUM": "Geburtsdatum", "VERSICHERTENNR": "Versichertennummer",
-    "IBAN": "IBAN", "FALLNUMMER": "Fall-/Patientennummer",
+    "SOZIALVERSNR": "Sozialversicherungsnummer", "IBAN": "IBAN",
+    "KONTONR": "Kontoverbindung", "STEUERNR": "Steuernummer",
+    "FALLNUMMER": "Fall-/Patientennummer", "RECHNUNGSNR": "Rechnungs-/Belegnummer",
+    "KUNDENNR": "Kunden-/Vertragsnummer", "AUSWEISNR": "Ausweisnummer",
+    "KFZ": "Kfz-Kennzeichen", "HANDELSREGISTER": "Handelsregisternummer",
     "AKTENZEICHEN": "Aktenzeichen", "EMAIL": "E-Mail", "URL": "Web-Adresse",
-    "TELEFON": "Telefon/Fax", "ADRESSE": "Anschrift", "KLINIK": "Einrichtung",
-    "ORT": "Ort", "DATUM": "Datum", "ALTER": "Altersangabe",
-    "ZEITSPANNE": "Zeitraum", "JAHRESZAHL": "Jahreszahl",
+    "TELEFON": "Telefon/Fax", "ADRESSE": "Anschrift",
+    "ORGANISATION": "Einrichtung / Firma",
+    "ORT": "Ort", "DATUM": "Datum", "BETRAG": "Geldbetrag",
+    "ALTER": "Altersangabe", "ZEITSPANNE": "Zeitraum", "JAHRESZAHL": "Jahreszahl",
     "MANUELL": "Manuell ergänzt",
 }
 
@@ -157,6 +171,46 @@ REGELN: list[tuple[str, str, int]] = [
     ("AKTENZEICHEN",
      r"(?:Aktenzeichen|Az\.|Gesch\.-?\s?Z\.|Geschäftszeichen|Unser\s+Zeichen|Ihr\s+Zeichen)"
      r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9 /\-.]{3,30})", 1),
+
+    # --- Geschäftsverkehr: Rechnungen, Verträge, Behörden -------------------
+    # Der Anonymisator wird nicht nur auf Arztbriefe angewandt, sondern auch
+    # auf Gutachten, Rechnungen und Schriftverkehr. Diese Nummern sind
+    # durchweg direkte Identifikatoren und werden auf jeder Stufe ersetzt.
+    ("RECHNUNGSNR",
+     r"(?:Rechnungs(?:nummer|nr\.?)|Rechnung[ \t]*-?[ \t]*Nr\.?|Beleg(?:nummer|nr\.?)"
+     r"|Abrechnungs(?:nummer|nr\.?)|Auftrags(?:nummer|nr\.?)|Bestell(?:nummer|nr\.?)"
+     r"|Quittungs(?:nummer|nr\.?)|Gutschrift(?:snummer|s?[ \t]*-?[ \t]*Nr\.?)"
+     r"|Lieferschein(?:nummer|nr\.?)|Invoice[ \t]*(?:No\.?|Number))"
+     r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9/\-.]{2,25})", 1),
+    ("KUNDENNR",
+     r"(?:Kunden(?:nummer|nr\.?)|Kd\.-?[ \t]?Nr\.?|Mitglieds(?:nummer|nr\.?)"
+     r"|Vertrags(?:nummer|nr\.?)|Mandanten(?:nummer|nr\.?)|Debitoren(?:nummer|nr\.?)"
+     r"|Kreditoren(?:nummer|nr\.?)|Lieferanten(?:nummer|nr\.?)|Personal(?:nummer|nr\.?)"
+     r"|Mitarbeiter(?:nummer|nr\.?)|Policen(?:nummer|nr\.?)|Schaden(?:s?nummer|s?nr\.?))"
+     r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9/\-.]{2,25})", 1),
+    ("KONTONR",
+     r"(?:Konto(?:nummer|nr\.?)|Kto\.?-?[ \t]?Nr\.?|Bankleitzahl|BLZ|BIC|SWIFT(?:-Code)?)"
+     r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9 /\-.]{3,25})", 1),
+    ("STEUERNR",
+     r"(?:Steuer(?:nummer|nr\.?)|St\.-?[ \t]?Nr\.?|USt\.?-?[ \t]?IdNr\.?"
+     r"|Umsatzsteuer-?Identifikationsnummer|Steuer-?ID|Steueridentifikationsnummer)"
+     r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9 /\-.]{4,25})", 1),
+    # Deutsche USt-IdNr auch ohne Beschriftung
+    ("STEUERNR", r"\bDE[ \t]?\d{9}\b", 0),
+    ("SOZIALVERSNR",
+     r"(?:Sozialversicherungs(?:nummer|nr\.?)|SV-?[ \t]?Nr\.?|Renten(?:versicherungs)?"
+     r"(?:nummer|nr\.?)|RV-?[ \t]?Nr\.?)\s*:?\s*([0-9][0-9 ]{6,}[A-Z][0-9 ]{2,4})", 1),
+    # Format der deutschen Versicherungsnummer: 12 190367 K 123
+    ("SOZIALVERSNR", r"\b\d{2}[ ]?\d{6}[ ]?[A-Z][ ]?\d{3}\b", 0),
+    ("AUSWEISNR",
+     r"(?:Personalausweis(?:nummer|nr\.?)?|Ausweis(?:nummer|nr\.?)"
+     r"|Reisepass(?:nummer|nr\.?)?|Pass(?:nummer|nr\.?)"
+     r"|Führerschein(?:nummer|nr\.?)?)\s*:?\s*([A-Z0-9][A-Z0-9\-]{5,15})", 1),
+    ("HANDELSREGISTER",
+     r"(?:HRB|HRA|Handelsregister(?:nummer|nr\.?)?|Registernummer)"
+     r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9 /\-.]{2,20})", 1),
+    # Deutsches Kfz-Kennzeichen — in Unfallgutachten ein direkter Identifikator
+    ("KFZ", r"\b[A-ZÄÖÜ]{1,3}[-–][ ]?[A-Z]{1,2}[ ]?\d{1,4}[ ]?[EH]?\b", 0),
     ("EMAIL", r"[\w.+-]+@[\w-]+\.[\w.-]*[a-zA-Z]{2,}", 0),
     ("URL", r"(?:https?://|www\.)[^\s<>\"')\]]+", 0),
     ("TELEFON",
@@ -175,8 +229,23 @@ REGELN: list[tuple[str, str, int]] = [
     # --- Einrichtungen ------------------------------------------------------
     # Die NER erkennt Klinik- und Praxisnamen unzuverlässig; ein Briefkopf
     # ohne erkannten Absender wäre der peinlichste denkbare Fehler.
-    ("KLINIK", rf"{_EINR_VORSATZ}{{1,3}}{_EINRICHTUNG}(?:{_EINR_NACHSATZ})?", 0),
-    ("KLINIK", rf"{_EINRICHTUNG}{_EINR_NACHSATZ}", 0),
+    ("ORGANISATION", rf"{_EINR_VORSATZ}{{1,3}}{_EINRICHTUNG}(?:{_EINR_NACHSATZ})?", 0),
+    ("ORGANISATION", rf"{_EINRICHTUNG}{_EINR_NACHSATZ}", 0),
+    # Firmen erkennt man an der Rechtsform, die hinter dem Namen steht.
+    ("ORGANISATION",
+     r"(?:[A-ZÄÖÜ][\wäöüß&.\-]*[ \t]+){1,4}"
+     r"(?:GmbH(?:[ \t]?&[ \t]?Co\.?[ \t]?KGa?A?)?|AGa?|KGaA|KG|OHG|GbR|mbH|SE|"
+     r"UG(?:[ \t]?\(haftungsbeschränkt\))?|e\.[ \t]?[VvKk]\.|gGmbH|Ltd\.?|Inc\.?)"
+     r"(?![\wäöüß])", 0),
+    # Gerichte, Behörden und Kanzleien
+    ("ORGANISATION",
+     r"(?:Amts|Land|Oberlandes|Sozial|Arbeits|Verwaltungs|Finanz|Bundes|Verfassungs)"
+     r"gericht(?:[ \t]+[A-ZÄÖÜ][\wäöüß.\-]+)?", 0),
+    ("ORGANISATION",
+     rf"{_EINR_VORSATZ}{{0,3}}(?:Rechtsanwälte|Rechtsanwaltskanzlei|Kanzlei|"
+     r"Steuerberat(?:er|ung)|Notariat|Versicherung(?:s-?AG)?|Krankenkasse|"
+     r"Berufsgenossenschaft|Sparkasse|Volksbank|Raiffeisenbank|Bank)"
+     r"(?![\wäöüß])", 0),
 
     # --- Personen über Anrede/Titel (fängt, was die NER verpasst) -----------
     ("PERSON",
@@ -197,6 +266,17 @@ REGELN: list[tuple[str, str, int]] = [
      r"\d{1,3}\s*(?:Jahren|Jahre|Monaten|Monate|Wochen|Tagen|Tage)"
      r"|(?:seit|im|ab)\s+(?:dem\s+)?(?:Frühjahr|Frühling|Sommer|Herbst|Winter)"
      r"\s+(?:19|20)\d{2}", 0),
+
+    # --- Geldbeträge --------------------------------------------------------
+    # Kein Identifikator für sich, aber in Rechnungen und Gutachten der
+    # eigentliche Inhalt — und eine exakte Summe zu einem exakten Datum ist
+    # sehr wohl wiedererkennbar.
+    # Kein \b hinter dem Währungszeichen: "€" ist kein Wortzeichen, dort kann
+    # eine Wortgrenze nie greifen — das Muster hätte nur bei "EUR" gezogen.
+    ("BETRAG",
+     r"(?:€|EUR|CHF|USD|\$)\s?\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})?(?![\d,.])"
+     r"|\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})?\s?(?:€|EUR|Euro|CHF|USD)"
+     r"(?![A-Za-zÄÖÜäöüß])", 0),
 
     # --- Datum zuletzt: generischer als Geburtsdatum ------------------------
     ("DATUM", _DATUM, 0),
@@ -286,7 +366,7 @@ def _regex_funde(text: str) -> Iterable[Fund]:
 def _ner_funde(text: str) -> Iterable[Fund]:
     nlp = _modell()
     doc = nlp(text)
-    zuordnung = {"PER": "PERSON", "LOC": "ORT", "ORG": "KLINIK"}
+    zuordnung = {"PER": "PERSON", "LOC": "ORT", "ORG": "ORGANISATION"}
     for ent in doc.ents:
         typ = zuordnung.get(ent.label_)
         if not typ:
@@ -483,7 +563,7 @@ def _nachnamen_zusammenfuehren(gruppen: list[Gruppe]) -> list[Gruppe]:
     return uebrig
 
 
-_NACHLAUF_TYPEN = {"PERSON", "PATIENT", "ARZT", "ORT", "KLINIK"}
+_NACHLAUF_TYPEN = {"PERSON", "PATIENT", "ARZT", "ORT", "ORGANISATION"}
 
 
 def _konsistenz_nachlauf(text: str, gruppen: list[Gruppe]) -> list[Gruppe]:

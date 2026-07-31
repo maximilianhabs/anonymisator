@@ -26,6 +26,7 @@ from .detect import Gruppe
 # dekade     — Datum/Alter wird zur Lebensdekade "60–69 J."
 # verschoben — Datum um einen dokumentweit einheitlichen Versatz verschoben
 # nur_ort    — Anschrift behält Ort und Postleitzahl, verliert die Strasse
+# gerundet   — Geldbetrag auf zwei signifikante Stellen, "rund 1.200 €"
 # ersetzen   — Fund wird durch das Pseudonym ersetzt
 
 STUFEN_REIHENFOLGE = ["leicht", "standard", "streng"]
@@ -56,36 +57,44 @@ STUFEN_INFO = {
     },
 }
 
-# Direkte Identifikatoren. Sie tragen keine klinische Information und werden
-# auf jeder Stufe ersetzt — eine "leicht anonymisierte" Versichertennummer
-# ergibt keinen Sinn.
-_DIREKT = ["VERSICHERTENNR", "FALLNUMMER", "AKTENZEICHEN", "IBAN",
-           "TELEFON", "EMAIL", "MANUELL"]
+# Direkte Identifikatoren. Sie tragen keine inhaltliche Information und werden
+# auf jeder Stufe ersetzt — eine "leicht anonymisierte" Versicherten- oder
+# Kontonummer ergibt keinen Sinn. Gilt für Arztbriefe wie für Rechnungen,
+# Verträge und Gutachten gleichermassen.
+_DIREKT = [
+    "VERSICHERTENNR", "SOZIALVERSNR", "FALLNUMMER", "AKTENZEICHEN",
+    "IBAN", "KONTONR", "STEUERNR", "RECHNUNGSNR", "KUNDENNR",
+    "AUSWEISNR", "KFZ", "HANDELSREGISTER",
+    "TELEFON", "EMAIL", "MANUELL",
+]
 
 STUFEN: dict[str, dict[str, str]] = {
     "leicht": {
         "PATIENT": "initialen", "ARZT": "initialen", "PERSON": "initialen",
-        "KLINIK": "behalten", "ADRESSE": "nur_ort", "ORT": "behalten",
+        "ORGANISATION": "behalten", "ADRESSE": "nur_ort", "ORT": "behalten",
         "GEBURTSDATUM": "jahrgang", "DATUM": "behalten",
         "ALTER": "behalten", "ZEITSPANNE": "behalten", "JAHRESZAHL": "behalten",
-        "URL": "behalten",
+        "BETRAG": "behalten", "URL": "behalten",
     },
     "standard": {
         "PATIENT": "ersetzen", "ARZT": "ersetzen", "PERSON": "ersetzen",
-        "KLINIK": "ersetzen", "ADRESSE": "ersetzen", "ORT": "behalten",
+        "ORGANISATION": "ersetzen", "ADRESSE": "ersetzen", "ORT": "behalten",
         "GEBURTSDATUM": "dekade", "DATUM": "verschoben",
         # Bewusst ebenfalls vergröbert: eine ausgeschriebene Altersangabe im
         # Text würde das zur Dekade vergröberte Geburtsdatum sonst aushebeln.
         "ALTER": "dekade",
         "ZEITSPANNE": "behalten", "JAHRESZAHL": "behalten",
+        # Gerundet statt ersetzt: eine Rechnung ohne jede Grössenordnung ist
+        # wertlos, eine centgenaue Summe zu einem Datum dagegen wiedererkennbar.
+        "BETRAG": "gerundet",
         "URL": "ersetzen",
     },
     "streng": {
         "PATIENT": "ersetzen", "ARZT": "ersetzen", "PERSON": "ersetzen",
-        "KLINIK": "ersetzen", "ADRESSE": "ersetzen", "ORT": "ersetzen",
+        "ORGANISATION": "ersetzen", "ADRESSE": "ersetzen", "ORT": "ersetzen",
         "GEBURTSDATUM": "ersetzen", "DATUM": "ersetzen",
         "ALTER": "ersetzen", "ZEITSPANNE": "ersetzen", "JAHRESZAHL": "ersetzen",
-        "URL": "ersetzen",
+        "BETRAG": "ersetzen", "URL": "ersetzen",
     },
 }
 
@@ -170,6 +179,53 @@ def _alter_am(geburt: date, stichtag: date) -> int:
 
 
 # --------------------------------------------------------------------------
+# Geldbeträge
+# --------------------------------------------------------------------------
+
+_WAEHRUNG = {"€": "€", "EUR": "€", "EURO": "€", "CHF": "CHF",
+             "USD": "$", "$": "$"}
+
+
+def betrag_lesen(text: str) -> float | None:
+    """Liest einen Geldbetrag in deutscher Schreibweise.
+
+    Punkt trennt Tausender, Komma trennt Nachkommastellen — genau umgekehrt
+    zur englischen Schreibweise.
+    """
+    treffer = re.search(r"\d[\d.\s]*(?:,\d{1,2})?", text)
+    if not treffer:
+        return None
+    roh = treffer.group().replace(".", "").replace(" ", "").replace(",", ".")
+    try:
+        return float(roh)
+    except ValueError:
+        return None
+
+
+def _waehrung_aus(text: str) -> str:
+    grossbuchstaben = text.upper()
+    for zeichen, anzeige in _WAEHRUNG.items():
+        if zeichen in grossbuchstaben:
+            return anzeige
+    return "€"
+
+
+def _runden(betrag: float, waehrung: str) -> str:
+    """Rundet auf zwei signifikante Stellen.
+
+    Die Grössenordnung bleibt damit ablesbar — eine Rechnung über rund 1.200 €
+    ist noch als solche zu erkennen —, die exakte Summe als Wiedererkennungs-
+    merkmal verschwindet aber.
+    """
+    if betrag <= 0:
+        return f"0 {waehrung}"
+    stelle = len(str(int(betrag))) - 1
+    schritt = 10 ** max(0, stelle - 1)
+    gerundet = round(betrag / schritt) * schritt
+    return f"rund {gerundet:,.0f} {waehrung}".replace(",", ".")
+
+
+# --------------------------------------------------------------------------
 # Darstellungen berechnen
 # --------------------------------------------------------------------------
 
@@ -231,6 +287,11 @@ def formen_berechnen(gruppen: list[Gruppe]) -> dict:
                 zahl = re.search(r"\d{1,3}", fund.text)
                 if zahl and int(zahl.group()) <= 120:
                     formen["dekade"] = _dekade_im_satz(int(zahl.group()), fund.text)
+
+            if gruppe.typ == "BETRAG":
+                wert = betrag_lesen(fund.text)
+                if wert is not None:
+                    formen["gerundet"] = _runden(wert, _waehrung_aus(fund.text))
 
             if gruppe.typ == "ADRESSE":
                 # Nur die Form "Postleitzahl Ort" trägt keinen Strassennamen

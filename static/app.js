@@ -22,7 +22,7 @@ const Z = {
 const BUCHSTABEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 // Nur hier lag die Rollen-Heuristik erfahrungsgemäß daneben; bei E-Mail oder
 // IBAN gibt es nichts umzustellen.
-const UMSTELLBAR = new Set(['PATIENT', 'ARZT', 'PERSON', 'KLINIK', 'ORT', 'ADRESSE', 'MANUELL']);
+const UMSTELLBAR = new Set(['PATIENT', 'ARZT', 'PERSON', 'ORGANISATION', 'ORT', 'ADRESSE', 'MANUELL']);
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

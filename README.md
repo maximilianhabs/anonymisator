@@ -1,8 +1,13 @@
 # Anonymisator
 
-Lokales Werkzeug, das Arztbriefe, Gutachten und Befunde von personenbeziehbaren
-Angaben befreit. Läuft im Browser, aber vollständig auf dem eigenen Rechner —
-kein Upload, kein Cloud-Dienst, keine Netzverbindung nötig.
+Lokales Werkzeug, das Dokumente von personenbeziehbaren Angaben befreit.
+Läuft im Browser, aber vollständig auf dem eigenen Rechner — kein Upload,
+kein Cloud-Dienst, keine Netzverbindung nötig.
+
+Der Schwerpunkt liegt auf medizinischen Unterlagen — Arztbriefe, Befunde,
+Gutachten. Rechnungen, Verträge und Behördenschreiben werden ebenso
+abgedeckt: Rechnungs- und Kundennummern, Kontoverbindungen, Steuernummern,
+Kfz-Kennzeichen und Geldbeträge sind eigene Kategorien.
 
 ```bash
 ./start.sh
@@ -29,18 +34,26 @@ sichtbar, ohne neue Analyse.
 | Kategorie | Leicht | Standard | Streng |
 |---|---|---|---|
 | Patient/in, Behandler/in | `E. H.` | `[PATIENT_A]` | `[PATIENT_A]` |
-| Einrichtung, Praxis | bleibt | `[KLINIK_1]` | `[KLINIK_1]` |
+| Einrichtung, Firma | bleibt | `[ORG_1]` | `[ORG_1]` |
 | Anschrift | Ort bleibt, Strasse raus | `[ADRESSE_1]` | `[ADRESSE_1]` |
 | Ort | bleibt | bleibt | `[ORT_1]` |
 | Geburtsdatum | `Jahrgang 1958` | `60–69 J.` | `[GEBDAT_1]` |
 | Datum | bleibt | einheitlich verschoben | `[DATUM_1]` |
 | Altersangabe im Text | bleibt | `60–69-jährige` | `[ALTER_1]` |
 | Jahreszahl, Zeitraum | bleibt | bleibt | `[JAHR_1]`, `[ZEITRAUM_1]` |
-| Vers.-Nr., Fall-Nr., Az., IBAN, Telefon, E-Mail | ersetzt | ersetzt | ersetzt |
+| Geldbetrag | `2.108,68 €` | `rund 2.100 €` | `[BETRAG_1]` |
+| Alle Kennnummern | ersetzt | ersetzt | ersetzt |
 
-Die letzte Zeile ist auf allen Stufen starr. Eine Versichertennummer trägt
-keine klinische Information und identifiziert direkt — sie „leicht" zu
-anonymisieren ergäbe keinen Sinn.
+Die letzte Zeile ist auf allen Stufen starr und umfasst Versicherten-,
+Sozialversicherungs-, Fall-, Rechnungs-, Kunden-, Konto-, Steuer-, Ausweis-
+und Handelsregisternummer sowie Aktenzeichen, IBAN, Kfz-Kennzeichen, Telefon
+und E-Mail. Diese Angaben identifizieren unmittelbar und tragen keinerlei
+inhaltliche Information — sie „leicht" zu anonymisieren ergäbe keinen Sinn.
+
+Geldbeträge sind der Gegenfall: Sie identifizieren nicht für sich, sind aber
+in einer Rechnung der eigentliche Inhalt. In der Standardstufe werden sie
+deshalb auf zwei signifikante Stellen gerundet — die Grössenordnung bleibt
+ablesbar, die centgenaue Summe als Wiedererkennungsmerkmal verschwindet.
 
 **Leicht ist keine Anonymisierung.** Initialen, Geburtsjahr, Einrichtung und
 Behandlungszeitraum lassen zusammen regelmässig einen Rückschluss auf die
@@ -70,7 +83,7 @@ zusammenführen — was gewollt ist, aber verhindert, dass man einen Verlauf
 | Patient/in | Elisabeth Hartmann | `[PATIENT_A]` |
 | Behandler/in | Prof. Dr. Weißbach | `[ARZT_1]` |
 | Weitere Person | Angehörige, Betreuer | `[PERSON_1]` |
-| Einrichtung | Neurologische Klinik am Auwald | `[KLINIK_1]` |
+| Einrichtung / Firma | Klinik am Auwald, Metallbau GmbH, Amtsgericht Passau | `[ORG_1]` |
 | Anschrift | Ludwigstraße 47, 94032 Passau | `[ADRESSE_1]` |
 | Ort | Passau | `[ORT_1]` |
 | Geburtsdatum | geb. 22.07.1958 | `[GEBDAT_1]` |
@@ -81,6 +94,23 @@ zusammenführen — was gewollt ist, aber verhindert, dass man einen Verlauf
 | Zeitraum | seit 3 Jahren | `[ZEITRAUM_1]` |
 | Jahreszahl | seit 1994 | `[JAHR_1]` |
 | Aktenzeichen, IBAN, Telefon, E-Mail, URL | | |
+
+Aus dem Geschäfts- und Behördenverkehr zusätzlich:
+
+| Kategorie | Beispiel | Pseudonym |
+|---|---|---|
+| Rechnungs-/Belegnummer | Rechnungsnr. RE-2026-00842 | `[RECHNR_1]` |
+| Kunden-/Vertragsnummer | Kundennummer KD-2026-4711 | `[KUNDENNR_1]` |
+| Kontoverbindung | Kontonummer, BLZ, BIC | `[KONTO_1]` |
+| Steuernummer | USt-IdNr. DE123456789 | `[STEUERNR_1]` |
+| Sozialversicherungsnummer | 12 190367 K 123 | `[SVNR_1]` |
+| Ausweisnummer | Personalausweis, Reisepass | `[AUSWEIS_1]` |
+| Kfz-Kennzeichen | PA-XY 1234 | `[KFZ_1]` |
+| Handelsregisternummer | HRB 12345 | `[HR_1]` |
+| Geldbetrag | 2.108,68 € | `[BETRAG_1]` |
+
+Auch Abrechnungs-, Auftrags-, Beleg-, Policen-, Schadens-, Personal- und
+Mitgliedsnummern fallen unter die entsprechenden Kategorien.
 
 Pseudonyme sind über das ganze Dokument konsistent: derselbe Name bekommt
 überall dasselbe Kürzel, auch in Schreibvarianten. „Hartmann", „Elisabeth
@@ -216,6 +246,14 @@ sauber bleibt.
 Prüft, dass der Satzspiegel den Weg durch das Programm übersteht: Absätze
 bleiben erhalten, Anschriftenblöcke und Aufzählungen behalten ihre Zeilen,
 und das Ersetzen verändert die Zeilenstruktur nicht.
+
+```bash
+.venv/bin/python tests/test_dokumenttypen.py
+```
+
+Prüft eine Rechnung und ein Unfallgutachten: Kennnummern müssen auf jeder
+Stufe verschwinden, Geldbeträge stufengerecht behandelt werden, Firmen und
+Gerichte als Organisation erkannt sein.
 
 ```bash
 .venv/bin/python tests/test_e2e.py

@@ -1,5 +1,44 @@
 # Änderungen
 
+## 0.4.0 — 2026-07-31
+
+Über die Medizin hinaus: Rechnungen, Verträge, Behördenschreiben.
+
+**Neue Kategorien**
+- Rechnungs- und Belegnummer (auch Abrechnungs-, Auftrags-, Bestell-,
+  Quittungs-, Gutschrift- und Lieferscheinnummer)
+- Kunden- und Vertragsnummer (auch Mitglieds-, Mandanten-, Debitoren-,
+  Kreditoren-, Lieferanten-, Personal-, Policen- und Schadensnummer)
+- Kontoverbindung: Kontonummer, Bankleitzahl, BIC
+- Steuernummer, USt-IdNr. und Steuer-ID, letztere auch ohne Beschriftung
+- Sozial- und Rentenversicherungsnummer, auch im blossen Zahlenformat
+- Ausweisnummer: Personalausweis, Reisepass, Führerschein
+- Kfz-Kennzeichen — in Unfallgutachten ein direkter Identifikator
+- Handelsregisternummer
+- Geldbeträge in Euro, Franken und Dollar
+
+Alle Kennnummern werden wie die übrigen direkten Identifikatoren auf jeder
+Stufe ersetzt. Geldbeträge folgen dagegen dem Stufenprinzip: centgenau in
+der leichten Stufe, auf zwei signifikante Stellen gerundet in der
+Standardstufe („rund 2.100 €"), vollständig ersetzt in der strengen.
+
+**Geändert**
+- Die Kategorie `KLINIK` heisst jetzt `ORGANISATION` und trägt das Kürzel
+  `[ORG_1]` statt `[KLINIK_1]`. Eine „Musterfirma GmbH" oder ein Amtsgericht
+  als Klinik auszuweisen war schlicht falsch.
+- Firmen werden an ihrer Rechtsform erkannt (GmbH, AG, KG, OHG, GbR, UG,
+  e. V., Ltd.), dazu Gerichte, Kanzleien, Steuerberatungen, Versicherungen,
+  Krankenkassen, Berufsgenossenschaften und Banken.
+
+**Behoben**
+- Beträge mit Eurozeichen wurden nicht erkannt. Hinter `€` stand eine
+  Wortgrenze `\b`, die dort nie greifen kann, weil `€` kein Wortzeichen ist —
+  das Muster zog nur bei ausgeschriebenem „EUR".
+
+**Neu**
+- `tests/test_dokumenttypen.py` prüft eine Rechnung und ein Unfallgutachten
+  über alle drei Stufen.
+
 ## 0.3.0 — 2026-07-31
 
 Der Satzspiegel überlebt jetzt den Weg durch das Programm.
