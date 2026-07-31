@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "Wenn Sie diese Software verwenden, zitieren Sie sie bitte wie folgt."
+title: "Anonymisator — lokale De-Identifikation deutschsprachiger Dokumente"
+abstract: >-
+  Werkzeug zur Entfernung personenbeziehbarer Angaben aus deutschsprachigen
+  Arztbriefen, Gutachten, Rechnungen und Schriftverkehr. Die Erkennung
+  kombiniert regelbasierte Muster mit einem statistischen Modell zur
+  Eigennamenerkennung (spaCy de_core_news_lg). Drei wählbare Stufen steuern,
+  ob ein Fund erhalten, auf Initialen gekürzt, vergröbert, zeitlich
+  verschoben oder durch ein Pseudonym ersetzt wird. Die Verarbeitung erfolgt
+  ausschliesslich lokal; der Dienst bindet nur an 127.0.0.1 und speichert
+  keine Dokumentinhalte. Ein manueller Prüfschritt vor dem Export ist
+  verpflichtender Bestandteil des Ablaufs, da keine automatische Erkennung
+  Vollständigkeit garantieren kann.
+type: software
+authors:
+  - family-names: Habs
+    given-names: Maximilian
+    # ORCID kann hier ergänzt werden:
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/maximilianhabs/anonymisator"
+version: "0.4.0"
+date-released: "2026-07-31"
+license: Apache-2.0
+keywords:
+  - de-identification
+  - anonymisierung
+  - pseudonymisierung
+  - named entity recognition
+  - natural language processing
+  - german
+  - clinical documents
+  - medical records
+  - data protection
+  - GDPR
+  - DSGVO
+  - privacy

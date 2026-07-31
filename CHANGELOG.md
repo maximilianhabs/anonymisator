@@ -1,6 +1,12 @@
 # Änderungen
 
+Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
+Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
+zwischen Nebenversionen ändern.
+
 ## 0.4.0 — 2026-07-31
+
+Erster getaggter Release.
 
 Über die Medizin hinaus: Rechnungen, Verträge, Behördenschreiben.
 
@@ -38,6 +44,22 @@ Standardstufe („rund 2.100 €"), vollständig ersetzt in der strengen.
 **Neu**
 - `tests/test_dokumenttypen.py` prüft eine Rechnung und ein Unfallgutachten
   über alle drei Stufen.
+
+**Projektunterlagen**
+- Lizenz Apache-2.0 (`LICENSE`), Fremdlizenzen in `NOTICE`. Bemerkenswert:
+  PyMuPDF steht unter der AGPL-3.0 — für den lokalen Einsatz entsteht daraus
+  keine Pflicht, für einen veränderten Netzwerkdienst schon.
+- `CITATION.cff` für die maschinenlesbare Zitation; ORCID nachtragbar.
+- README um Zielgruppe, Schnellstart, durchgerechnetes Beispiel,
+  Haftungsausschluss, Kontakt und Entstehungshinweis ergänzt.
+- Neuer Abschnitt „Wie belastbar ist die Erkennung?": Trefferquote und
+  Fehlalarmrate sind **nicht gemessen**. Das steht jetzt ausdrücklich da,
+  statt es offenzulassen.
+- Reproduzierbarkeit: getestete Umgebung dokumentiert (Python 3.13.3,
+  spaCy 3.8.14, Modell 3.8.0, Tesseract 5.5.2). Das Sprachmodell ist in
+  `requirements.txt` mit fester Version verzeichnet und wird mitinstalliert —
+  der bisherige separate `spacy download` liess die Version offen.
+- `pydantic` und `requests` waren vorausgesetzt, aber nicht aufgeführt.
 
 ## 0.3.0 — 2026-07-31
 

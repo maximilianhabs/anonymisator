@@ -1,9 +1,24 @@
+# Getestet mit Python 3.13.3 auf macOS 26.5 (Apple Silicon).
+# Alle Versionen sind festgeschrieben, damit ein späterer Aufbau dieselben
+# Ergebnisse liefert — die Erkennungsleistung hängt unmittelbar an der
+# Version des Sprachmodells.
+
 fastapi==0.141.1
-pillow==12.3.0
+uvicorn==0.52.0
+python-multipart==0.0.32
+pydantic==2.13.4
+
 pymupdf==1.28.0
 pytesseract==0.3.13
+pillow==12.3.0
 python-docx==1.2.0
-python-multipart==0.0.32
 reportlab==5.0.0
+
 spacy==3.8.14
-uvicorn==0.52.0
+# Das deutsche Sprachmodell wird nicht über PyPI verteilt und deshalb direkt
+# von der Modell-Veröffentlichung bezogen. Ohne diese Zeile müsste es separat
+# über "python -m spacy download" geholt werden, wobei die Version offenbliebe.
+de_core_news_lg @ https://github.com/explosion/spacy-models/releases/download/de_core_news_lg-3.8.0/de_core_news_lg-3.8.0-py3-none-any.whl
+
+# Nur für tests/test_e2e.py, das gegen den laufenden Dienst prüft.
+requests==2.34.2

@@ -1,20 +1,93 @@
 # Anonymisator
 
-Lokales Werkzeug, das Dokumente von personenbeziehbaren Angaben befreit.
-Läuft im Browser, aber vollständig auf dem eigenen Rechner — kein Upload,
-kein Cloud-Dienst, keine Netzverbindung nötig.
+[![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-0.4.0-informational.svg)](CHANGELOG.md)
+[![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
+
+Lokales Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren
+Angaben befreit. Läuft im Browser, aber vollständig auf dem eigenen Rechner —
+kein Upload, kein Cloud-Dienst, keine Netzverbindung nötig.
 
 Der Schwerpunkt liegt auf medizinischen Unterlagen — Arztbriefe, Befunde,
 Gutachten. Rechnungen, Verträge und Behördenschreiben werden ebenso
 abgedeckt: Rechnungs- und Kundennummern, Kontoverbindungen, Steuernummern,
 Kfz-Kennzeichen und Geldbeträge sind eigene Kategorien.
 
+## Für wen
+
+Für Ärztinnen und Ärzte, Gutachterinnen und Gutachter sowie Forschende, die
+einzelne Dokumente für **Lehre, Fallvorstellung, Supervision oder eine
+Publikation** von Personenbezug befreien müssen und dabei nichts aus der Hand
+geben wollen. Der typische Fall ist ein einzelner Arztbrief, der morgen in
+einer Fortbildung gezeigt werden soll.
+
+Ausdrücklich **nicht** gedacht als:
+
+- Verfahren zur Freigabe grosser Datenbestände für die Sekundärforschung —
+  dafür fehlt jede statistische Absicherung gegen Re-Identifikation
+- unbeaufsichtigte Stapelverarbeitung; der manuelle Prüfschritt ist
+  Bestandteil des Verfahrens, nicht optionaler Komfort
+- Medizinprodukt oder zertifiziertes Werkzeug im Sinne der MDR
+
+## Schnellstart
+
 ```bash
+git clone https://github.com/maximilianhabs/anonymisator.git
+cd anonymisator
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ./start.sh
 ```
 
 Öffnet <http://127.0.0.1:5302>. Der Server bindet ausschliesslich an
 `127.0.0.1` und ist im Netzwerk nicht erreichbar.
+
+## Beispiel
+
+Eingang — ein frei erfundener Arztbrief:
+
+```
+Neurologische Klinik am Auwald
+Ludwigstraße 47, 94032 Passau
+
+Sehr geehrte Frau Kollegin Brandner,
+
+wir berichten über Ihre Patientin Frau Elisabeth Hartmann,
+geb. 22.07.1958, wohnhaft Rosenweg 12, 94469 Deggendorf,
+Versichertennummer M123456789. Die 67-jährige Patientin befand
+sich vom 03.03.2026 bis 12.03.2026 in unserer stationären
+Behandlung. Das MRT zeigte eine Läsion im linken Temporallappen.
+
+Mit freundlichen Grüßen
+Prof. Dr. med. Konrad Weißbach
+```
+
+Ausgang, Stufe **Standard** (Datumsversatz in diesem Lauf +187 Tage):
+
+```
+[ORG_1]
+[ADRESSE_1], [ADRESSE_2]
+
+Sehr geehrte Frau Kollegin [ARZT_1],
+
+wir berichten über Ihre Patientin Frau [PATIENT_A], 60–69 J., wohnhaft
+[ADRESSE_3], [ADRESSE_4], Versichertennummer [VERSNR_1]. Die 60–69-jährige
+Patientin befand sich vom 06.09.2026 bis 15.09.2026 in unserer stationären
+Behandlung. Das MRT zeigte eine Läsion im linken Temporallappen.
+
+Mit freundlichen Grüßen
+Prof. Dr. med. [ARZT_2]
+```
+
+Drei Dinge sind hier wesentlich. Die Behandlungsdaten sind verschoben, aber
+die **neun Tage Aufenthaltsdauer bleiben erhalten**. Der medizinische Inhalt —
+„Läsion im linken Temporallappen" — steht unangetastet da; ein Befund mit
+geschwärzter Anatomie wäre wertlos. Und die harten Zeilenumbrüche der Vorlage
+sind zu durchgehenden Absätzen zusammengefügt, damit sich das Ergebnis ohne
+Nacharbeit weiterverwenden lässt (siehe [Satzspiegel](#satzspiegel)).
+
+Der Versatz wird bei jedem Durchlauf neu gezogen; dieselbe Datei zweimal
+anonymisiert ergibt verschiedene Datumsangaben.
 
 ## Ablauf
 
@@ -195,8 +268,11 @@ Einmalig:
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m spacy download de_core_news_lg
 ```
+
+Das deutsche Sprachmodell ist in `requirements.txt` mit fester Version
+verzeichnet und wird dabei mitinstalliert — ein getrennter
+`spacy download`-Aufruf ist nicht nötig und liesse die Version offen.
 
 Für OCR gescannter PDFs zusätzlich Tesseract mit deutschem Sprachpaket:
 
@@ -205,6 +281,22 @@ brew install tesseract tesseract-lang
 ```
 
 Ohne Tesseract funktioniert alles ausser gescannten PDFs.
+
+### Getestete Umgebung
+
+Die Erkennungsleistung hängt unmittelbar an der Version des Sprachmodells.
+Alle Angaben im README beziehen sich auf diesen Stand:
+
+| Komponente | Version |
+|---|---|
+| Python | 3.13.3 |
+| spaCy | 3.8.14 |
+| Sprachmodell `de_core_news_lg` | 3.8.0 |
+| Tesseract OCR | 5.5.2, Sprachpaket `deu` |
+| Betriebssystem | macOS 26.5, Apple Silicon |
+
+Andere Plattformen sind nicht geprüft. Linux sollte unverändert
+funktionieren, sofern Tesseract mit deutschem Sprachpaket vorliegt.
 
 ## Aufbau
 
@@ -263,3 +355,66 @@ Läuft gegen den gestarteten Server: PDF mit Textlayer, DOCX mit Kopfzeile,
 gescanntes PDF über OCR, dann alle drei Exportformate. Der entscheidende
 Test steht am Ende — er öffnet die fertigen Exportdateien inklusive
 Metadaten und prüft, ob irgendwo noch ein Klarname steht.
+
+Alle in Quelltext und Tests verwendeten Namen, Anschriften, Geburtsdaten,
+Aktenzeichen sowie Rechnungs-, Konto- und Versicherungsnummern sind **frei
+erfunden**. Es wurden zu keinem Zeitpunkt echte Personen-, Patienten- oder
+Geschäftsdaten verarbeitet oder in dieses Repository aufgenommen.
+
+## Wie belastbar ist die Erkennung?
+
+Ehrlich gesagt: nicht beziffert. Es gibt bislang **keine Messung von
+Trefferquote und Fehlalarmrate** an einem annotierten Prüfsatz. Die Beurteilung
+beruht darauf, dass die Testdokumente nach jeder Änderung durchgelesen werden.
+
+Was das heisst: Die Aussage „findet Namen, Anschriften und Kennnummern" ist
+belegt in dem Sinne, dass es an den mitgelieferten Beispielen nachweislich
+funktioniert. Eine Aussage wie „findet 98 Prozent aller Personennamen" wird
+hier bewusst **nicht** getroffen, weil sie nicht gemessen wurde. Eine solche
+Messung steht im [Backlog](BACKLOG.md).
+
+Wer das Werkzeug in einem Zusammenhang einsetzt, in dem eine belastbare Zahl
+gebraucht wird — etwa als Verfahrensschritt in einem Datenschutzkonzept —,
+muss diese Messung für den eigenen Dokumentenbestand selbst durchführen.
+
+## Haftung
+
+Das Werkzeug wird ohne Gewähr bereitgestellt (siehe [LICENSE](LICENSE),
+Abschnitte 7 und 8). Es ist **kein Medizinprodukt** und nicht nach MDR
+zertifiziert.
+
+Die Verantwortung dafür, dass ein Dokument tatsächlich frei von
+Personenbezug ist, bleibt bei der Person, die es weitergibt. Der Prüfschritt
+vor dem Export unterstützt diese Prüfung, er ersetzt sie nicht.
+
+## Zitieren
+
+Falls diese Software in einer Veröffentlichung verwendet wird, liegt eine
+maschinenlesbare Zitationsangabe als [CITATION.cff](CITATION.cff) bei.
+GitHub zeigt daraus rechts auf der Projektseite ein fertiges Zitat an.
+
+## Lizenz
+
+Apache License 2.0, siehe [LICENSE](LICENSE). Die Lizenzen der verwendeten
+Fremdbibliotheken sind in [NOTICE](NOTICE) aufgeführt — beachtenswert ist
+dort der Hinweis zu PyMuPDF, das unter der AGPL-3.0 steht.
+
+## Mitwirkung und Kontakt
+
+Betreut von [@maximilianhabs](https://github.com/maximilianhabs). Fragen,
+Fehlermeldungen und Vorschläge bitte über die
+[Issues](https://github.com/maximilianhabs/anonymisator/issues) des
+Projekts.
+
+**Bitte niemals echte Dokumente, Textausschnitte oder Bildschirmfotos mit
+Personenbezug an ein Issue anhängen.** Zur Beschreibung eines Fehlers genügt
+ein nachgebautes Beispiel mit erfundenen Daten.
+
+Offene Punkte und bewusst abgelehnte Vorschläge stehen im
+[Backlog](BACKLOG.md).
+
+## Entstehung
+
+Entwickelt mit Unterstützung von Claude (Anthropic); die Beiträge sind in
+der Commit-Historie als solche gekennzeichnet. Konzept, fachliche
+Entscheidungen und Prüfung liegen beim Autor.

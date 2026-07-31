@@ -1,0 +1,38 @@
+Anonymisator
+Copyright 2026 Maximilian Habs
+
+Lizenziert unter der Apache License, Version 2.0. Der Lizenztext liegt in
+der Datei LICENSE.
+
+Dieses Werk nutzt folgende Komponenten Dritter, die unter ihren jeweils
+eigenen Lizenzen stehen:
+
+  PyMuPDF 1.28.0 — GNU AGPL 3.0 oder Artifex Commercial License
+      https://pymupdf.readthedocs.io — Artifex Software
+  spaCy 3.8.14 und Sprachmodell de_core_news_lg 3.8.0 — MIT
+      https://spacy.io — Explosion AI
+  Tesseract OCR 5.5.2 — Apache-2.0
+      https://github.com/tesseract-ocr/tesseract
+  FastAPI 0.141.1 — MIT
+  Starlette 1.3.1, Uvicorn 0.52.0 — BSD-3-Clause
+  pydantic 2.13.4, python-docx 1.2.0 — MIT
+  ReportLab 5.0.0 — BSD
+  Pillow 12.3.0 — MIT-CMU
+  pytesseract 0.3.13 — Apache-2.0
+
+Hinweis zu PyMuPDF: Die Bibliothek ist doppelt lizenziert und wird hier
+unter der AGPL-3.0 genutzt. Dieses Repository enthält keinen Quelltext von
+PyMuPDF, sondern bezieht die Bibliothek als Abhängigkeit — der eigene
+Quelltext bleibt davon unberührt unter Apache-2.0.
+
+Wer den Anonymisator jedoch verändert und als über ein Netzwerk erreichbaren
+Dienst betreibt, löst Abschnitt 13 der AGPL aus und muss den Quelltext des
+so betriebenen Dienstes offenlegen. Für den vorgesehenen Einsatz — lokal auf
+dem eigenen Rechner, gebunden an 127.0.0.1, ohne Weitergabe — entsteht keine
+zusätzliche Pflicht.
+
+Alle im Quelltext und in den Tests verwendeten Namen, Anschriften,
+Geburtsdaten, Aktenzeichen, Rechnungs-, Konto- und Versicherungsnummern
+sowie Kfz-Kennzeichen sind frei erfunden. Es wurden zu keinem Zeitpunkt
+echte Personen-, Patienten- oder Geschäftsdaten verarbeitet oder in dieses
+Repository aufgenommen.
