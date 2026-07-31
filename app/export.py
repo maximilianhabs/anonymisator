@@ -31,17 +31,31 @@ def ersetze(text: str, ersetzungen: list[dict]) -> str:
     return text
 
 
-def _kopfzeile() -> str:
-    return (f"Anonymisiert am {datetime.now():%d.%m.%Y} "
-            "— automatisch erkannt und manuell geprüft.")
+# Die Stufe gehört in den Vermerk: wer das Dokument später in die Hand nimmt,
+# muss erkennen können, ob er ein anonymisiertes oder ein pseudonymisiertes
+# Dokument vor sich hat. "Leicht" bleibt personenbezogen.
+_VERMERK = {
+    "leicht": "Pseudonymisiert (Stufe leicht) am {datum} — enthält weiterhin "
+              "Personenbezug, vertraulich behandeln.",
+    "standard": "Anonymisiert (Stufe Standard) am {datum} — automatisch "
+                "erkannt und manuell geprüft.",
+    "streng": "Anonymisiert (Stufe streng, ohne Zeitbezug) am {datum} — "
+              "automatisch erkannt und manuell geprüft.",
+}
 
 
-def als_txt(text: str, mit_kopfzeile: bool = True) -> bytes:
-    inhalt = f"{_kopfzeile()}\n{'-' * 70}\n\n{text}\n" if mit_kopfzeile else text
+def _kopfzeile(stufe: str = "standard") -> str:
+    vorlage = _VERMERK.get(stufe, _VERMERK["standard"])
+    return vorlage.format(datum=f"{datetime.now():%d.%m.%Y}")
+
+
+def als_txt(text: str, mit_kopfzeile: bool = True, stufe: str = "standard") -> bytes:
+    inhalt = (f"{_kopfzeile(stufe)}\n{'-' * 70}\n\n{text}\n"
+              if mit_kopfzeile else text)
     return inhalt.encode("utf-8")
 
 
-def als_docx(text: str, mit_kopfzeile: bool = True) -> bytes:
+def als_docx(text: str, mit_kopfzeile: bool = True, stufe: str = "standard") -> bytes:
     dokument = Document()
 
     stil = dokument.styles["Normal"]
@@ -49,7 +63,7 @@ def als_docx(text: str, mit_kopfzeile: bool = True) -> bytes:
     stil.font.size = Pt(11)
 
     if mit_kopfzeile:
-        kopf = dokument.add_paragraph(_kopfzeile())
+        kopf = dokument.add_paragraph(_kopfzeile(stufe))
         kopf.runs[0].font.size = Pt(8)
         kopf.runs[0].font.italic = True
 
@@ -73,7 +87,7 @@ def als_docx(text: str, mit_kopfzeile: bool = True) -> bytes:
     return puffer.getvalue()
 
 
-def als_pdf(text: str, mit_kopfzeile: bool = True) -> bytes:
+def als_pdf(text: str, mit_kopfzeile: bool = True, stufe: str = "standard") -> bytes:
     puffer = io.BytesIO()
     doc = SimpleDocTemplate(
         puffer, pagesize=A4,
@@ -93,7 +107,7 @@ def als_pdf(text: str, mit_kopfzeile: bool = True) -> bytes:
 
     fluss = []
     if mit_kopfzeile:
-        fluss.append(Paragraph(html.escape(_kopfzeile()), notiz))
+        fluss.append(Paragraph(html.escape(_kopfzeile(stufe)), notiz))
 
     for block in text.split("\n\n"):
         if not block.strip():

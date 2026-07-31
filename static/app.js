@@ -10,6 +10,10 @@ const Z = {
   text: '',
   gruppen: [],
   kategorien: {},
+  stufen: {},
+  stufenInfo: {},
+  stufenReihenfolge: [],
+  stufe: 'standard',
   modus: 'original',
   dateiname: 'dokument',
   naechsteId: 0,
@@ -90,6 +94,9 @@ function uebernehmen(daten) {
   Z.text = daten.text;
   Z.gruppen = daten.gruppen;
   Z.kategorien = daten.kategorien;
+  Z.stufen = daten.stufen;
+  Z.stufenInfo = daten.stufen_info;
+  Z.stufenReihenfolge = daten.stufen_reihenfolge;
   Z.naechsteId = daten.gruppen.length;
   Z.modus = 'original';
 
@@ -111,10 +118,35 @@ function uebernehmen(daten) {
 
 // -------------------------------------------------------------- Pseudonyme
 
+// Welche Behandlung erfährt diese Kategorie auf der gewählten Stufe?
+function behandlung(typ) {
+  return (Z.stufen[Z.stufe] || {})[typ] || 'ersetzen';
+}
+
+/**
+ * Wodurch wird diese Fundstelle ersetzt? null heisst: sie bleibt stehen.
+ *
+ * Gruppenweite Behandlungen (Initialen, Pseudonym) gelten für alle Stellen
+ * gleich. Datumsabhängige Formen unterscheiden sich je Fundstelle und kommen
+ * vorberechnet vom Server.
+ */
+function ersatzFuer(gruppe, fund) {
+  if (!gruppe.aktiv) return null;
+  const art = behandlung(gruppe.typ);
+  if (art === 'behalten') return null;
+  if (art === 'initialen') return gruppe.initialen || gruppe.label;
+  if (art === 'ersetzen') return gruppe.label;
+  return (fund.formen && fund.formen[art]) || gruppe.label;
+}
+
+function wirdErsetzt(gruppe) {
+  return gruppe.aktiv && behandlung(gruppe.typ) !== 'behalten';
+}
+
 function labelsVergeben() {
   const zaehler = {};
   const aktive = Z.gruppen
-    .filter((g) => g.aktiv)
+    .filter(wirdErsetzt)
     .sort((a, b) => (a.funde[0]?.start ?? 0) - (b.funde[0]?.start ?? 0));
 
   for (const gruppe of aktive) {
@@ -131,35 +163,42 @@ function labelsVergeben() {
     }
     gruppe.label = `[${kat.label}_${suffix}]`;
   }
-  Z.gruppen.filter((g) => !g.aktiv).forEach((g) => { g.label = ''; });
+  Z.gruppen.filter((g) => !wirdErsetzt(g)).forEach((g) => { g.label = ''; });
 }
 
 // --------------------------------------------------------------- Zeichnen
 
-function alleFunde(nurAktive) {
+function alleFunde(nurErsetzte) {
   const liste = [];
   for (const gruppe of Z.gruppen) {
-    if (nurAktive && !gruppe.aktiv) continue;
+    const ersetzt = wirdErsetzt(gruppe);
+    if (nurErsetzte && !ersetzt) continue;
     for (const fund of gruppe.funde) {
-      liste.push({ ...fund, gid: gruppe.id, typ: gruppe.typ, aktiv: gruppe.aktiv, label: gruppe.label });
+      liste.push({
+        ...fund, gid: gruppe.id, typ: gruppe.typ,
+        ersetzt, ersatz: ersatzFuer(gruppe, fund),
+      });
     }
   }
   return liste.sort((a, b) => a.start - b.start);
 }
 
 function zeichneDokument() {
-  const nurAktive = Z.modus === 'ergebnis';
+  const nurErsetzte = Z.modus === 'ergebnis';
   let html = '';
   let pos = 0;
 
-  for (const fund of alleFunde(nurAktive)) {
+  for (const fund of alleFunde(nurErsetzte)) {
     if (fund.start < pos) continue; // Überlappung — sollte nicht vorkommen
     html += esc(Z.text.slice(pos, fund.start));
     if (Z.modus === 'ergebnis') {
-      html += `<mark class="ers" style="--c:${farbe(fund.typ)}">${esc(fund.label)}</mark>`;
+      html += `<mark class="ers" style="--c:${farbe(fund.typ)}">${esc(fund.ersatz)}</mark>`;
     } else {
-      html += `<mark class="tr${fund.aktiv ? '' : ' aus'}" data-g="${fund.gid}" `
-        + `style="--c:${farbe(fund.typ)}" title="${esc(Z.kategorien[fund.typ].titel)}"`
+      // Gestrichelt heisst: erkannt, aber auf dieser Stufe nicht ersetzt —
+      // entweder abgewählt oder von der Stufe auf "behalten" gesetzt.
+      const titel = `${Z.kategorien[fund.typ].titel}${fund.ersetzt ? ` → ${fund.ersatz}` : ' — bleibt stehen'}`;
+      html += `<mark class="tr${fund.ersetzt ? '' : ' aus'}" data-g="${fund.gid}" `
+        + `style="--c:${farbe(fund.typ)}" title="${esc(titel)}"`
         + `>${esc(Z.text.slice(fund.start, fund.ende))}</mark>`;
     }
     pos = fund.ende;
@@ -168,12 +207,46 @@ function zeichneDokument() {
   $('dokument').innerHTML = html;
 }
 
+function zeichneStufen() {
+  const behaelter = $('stufen-knoepfe');
+  behaelter.innerHTML = '';
+
+  for (const name of Z.stufenReihenfolge) {
+    const info = Z.stufenInfo[name];
+    const knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = name === Z.stufe ? 'aktiv' : '';
+    // Der sichtbare Text steckt in zwei Kindelementen; ohne aria-label bleibt
+    // der Knopf für Vorlesesoftware namenlos.
+    knopf.setAttribute('aria-label', `${info.titel} — ${info.untertitel}. ${info.zweck}`);
+    knopf.setAttribute('aria-pressed', String(name === Z.stufe));
+    knopf.title = info.zweck;
+    knopf.innerHTML = `<strong>${esc(info.titel)}</strong>`
+      + `<span>${esc(info.untertitel)}</span>`;
+    knopf.onclick = () => {
+      Z.stufe = name;
+      labelsVergeben();
+      zeichneAlles();
+    };
+    behaelter.appendChild(knopf);
+  }
+
+  const info = Z.stufenInfo[Z.stufe] || {};
+  $('stufen-zweck').textContent = info.zweck || '';
+
+  const warnung = $('stufen-warnung');
+  warnung.hidden = !info.warnung;
+  if (info.warnung) warnung.textContent = info.warnung;
+}
+
 function zeichneBilanz() {
-  const aktive = Z.gruppen.filter((g) => g.aktiv);
-  const stellen = aktive.reduce((summe, g) => summe + g.funde.length, 0);
+  const ersetzte = Z.gruppen.filter(wirdErsetzt);
+  const stellen = ersetzte.reduce((summe, g) => summe + g.funde.length, 0);
+  const stehen = Z.gruppen.length - ersetzte.length;
   $('bilanz').innerHTML =
     `<b>${stellen}</b> Textstellen werden ersetzt<br>`
-    + `<span class="klein">${aktive.length} von ${Z.gruppen.length} Gruppen aktiv</span>`;
+    + `<span class="klein">${ersetzte.length} von ${Z.gruppen.length} Gruppen`
+    + `${stehen ? ` · ${stehen} bleiben stehen` : ''}</span>`;
 
   const personen = Z.gruppen.filter((g) => ['PATIENT', 'ARZT', 'PERSON'].includes(g.typ));
   const warnung = $('warnung');
@@ -227,9 +300,19 @@ function zeichneSeitenleiste() {
   }
 }
 
+// Wie die Ersetzung in der Seitenleiste angekündigt wird.
+const BEHANDLUNG_ZUSATZ = {
+  verschoben: ' (verschoben)',
+  dekade: '',
+  jahrgang: '',
+  nur_ort: '',
+  initialen: '',
+  ersetzen: '',
+};
+
 function zeileFuer(gruppe) {
   const zeile = document.createElement('div');
-  zeile.className = 'zeile' + (gruppe.aktiv ? '' : ' inaktiv');
+  zeile.className = 'zeile' + (wirdErsetzt(gruppe) ? '' : ' inaktiv');
 
   const haken = document.createElement('input');
   haken.type = 'checkbox';
@@ -259,7 +342,16 @@ function zeileFuer(gruppe) {
   const label = document.createElement('span');
   label.className = 'marke-label';
   label.style.gridColumn = '2 / 4';
-  label.textContent = gruppe.aktiv ? `→ ${gruppe.label}` : '→ bleibt im Text';
+  const art = behandlung(gruppe.typ);
+  if (!gruppe.aktiv) {
+    label.textContent = '→ abgewählt, bleibt im Text';
+  } else if (art === 'behalten') {
+    label.textContent = '→ bleibt unverändert';
+    label.classList.add('bleibt');
+  } else {
+    label.textContent = `→ ${ersatzFuer(gruppe, gruppe.funde[0])}`
+      + (BEHANDLUNG_ZUSATZ[art] || '');
+  }
   zeile.appendChild(label);
 
   if (UMSTELLBAR.has(gruppe.typ)) {
@@ -298,6 +390,7 @@ function zeigeFundstelle(gruppe) {
 }
 
 function zeichneAlles() {
+  zeichneStufen();
   zeichneDokument();
   zeichneSeitenleiste();
   zeichneBilanz();
@@ -357,9 +450,10 @@ async function begriffHinzufuegen() {
 function ersetzungen() {
   const liste = [];
   for (const gruppe of Z.gruppen) {
-    if (!gruppe.aktiv) continue;
     for (const fund of gruppe.funde) {
-      liste.push({ start: fund.start, ende: fund.ende, label: gruppe.label });
+      const ersatz = ersatzFuer(gruppe, fund);
+      if (ersatz === null) continue;
+      liste.push({ start: fund.start, ende: fund.ende, label: ersatz });
     }
   }
   return liste;
@@ -387,6 +481,7 @@ async function exportieren(format) {
         format,
         dateiname: Z.dateiname,
         mit_kopfzeile: $('mit-kopfzeile').checked,
+        stufe: Z.stufe,
       }),
     });
     if (!antwort.ok) throw new Error(`Export fehlgeschlagen (${antwort.status})`);
@@ -411,7 +506,7 @@ async function exportieren(format) {
 }
 
 function schluesselHerunterladen() {
-  const aktive = Z.gruppen.filter((g) => g.aktiv);
+  const aktive = Z.gruppen.filter(wirdErsetzt);
   if (!aktive.length) { brot('Nichts zu exportieren.', true); return; }
 
   const bestaetigt = confirm(
@@ -421,14 +516,16 @@ function schluesselHerunterladen() {
     + 'Trotzdem herunterladen?');
   if (!bestaetigt) return;
 
-  const zeilen = [['Pseudonym', 'Kategorie', 'Klartext', 'Weitere Schreibweisen', 'Fundstellen']];
-  for (const gruppe of aktive.sort((a, b) => a.label.localeCompare(b.label))) {
+  const zeilen = [['Ersetzt durch', 'Kategorie', 'Klartext',
+                   'Weitere Schreibweisen', 'Fundstellen', 'Stufe']];
+  for (const gruppe of aktive.sort((a, b) => a.anzeige.localeCompare(b.anzeige))) {
     zeilen.push([
-      gruppe.label,
+      ersatzFuer(gruppe, gruppe.funde[0]),
       Z.kategorien[gruppe.typ].titel,
       gruppe.anzeige,
       gruppe.varianten.filter((v) => v !== gruppe.anzeige).join(' | '),
       String(gruppe.funde.length),
+      Z.stufenInfo[Z.stufe].titel,
     ]);
   }
   const csv = '﻿' + zeilen

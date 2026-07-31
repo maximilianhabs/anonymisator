@@ -20,6 +20,49 @@ kein Upload, kein Cloud-Dienst, keine Netzverbindung nötig.
    wird sie ab- oder wieder angewählt. Die Kategorie lässt sich korrigieren.
 3. **Exportieren** — als PDF, Word oder Text. Immer ohne Metadaten.
 
+## Stufen
+
+Die Stufe ändert nicht, **was** gefunden wird, sondern **was damit geschieht**.
+Die Erkennung läuft immer auf voller Schärfe; der Wechsel ist deshalb sofort
+sichtbar, ohne neue Analyse.
+
+| Kategorie | Leicht | Standard | Streng |
+|---|---|---|---|
+| Patient/in, Behandler/in | `E. H.` | `[PATIENT_A]` | `[PATIENT_A]` |
+| Einrichtung, Praxis | bleibt | `[KLINIK_1]` | `[KLINIK_1]` |
+| Anschrift | Ort bleibt, Strasse raus | `[ADRESSE_1]` | `[ADRESSE_1]` |
+| Ort | bleibt | bleibt | `[ORT_1]` |
+| Geburtsdatum | `Jahrgang 1958` | `60–69 J.` | `[GEBDAT_1]` |
+| Datum | bleibt | einheitlich verschoben | `[DATUM_1]` |
+| Altersangabe im Text | bleibt | `60–69-jährige` | `[ALTER_1]` |
+| Jahreszahl, Zeitraum | bleibt | bleibt | `[JAHR_1]`, `[ZEITRAUM_1]` |
+| Vers.-Nr., Fall-Nr., Az., IBAN, Telefon, E-Mail | ersetzt | ersetzt | ersetzt |
+
+Die letzte Zeile ist auf allen Stufen starr. Eine Versichertennummer trägt
+keine klinische Information und identifiziert direkt — sie „leicht" zu
+anonymisieren ergäbe keinen Sinn.
+
+**Leicht ist keine Anonymisierung.** Initialen, Geburtsjahr, Einrichtung und
+Behandlungszeitraum lassen zusammen regelmässig einen Rückschluss auf die
+Person zu. Das Ergebnis bleibt im Sinne der DSGVO ein personenbezogenes Datum.
+Für die interne Fallbesprechung ist das der richtige Weg — nur muss beim
+Empfänger ankommen, was er in der Hand hält. Der Exportvermerk sagt es
+deshalb ausdrücklich.
+
+### Datumsverschiebung
+
+In der Standardstufe werden alle Datumsangaben um denselben, je Dokument neu
+gewürfelten Versatz verschoben (120 bis 400 Tage, in beide Richtungen). Die
+absoluten Daten verschwinden, **die Abstände bleiben exakt erhalten**: aus
+einem Aufenthalt vom 03.03. bis 12.03. wird einer vom 06.11. bis 15.11. —
+dieselben neun Tage. Für Verlauf, Latenz und Aufenthaltsdauer bleibt das
+Dokument damit auswertbar.
+
+Der Versatz wird bei jeder Analyse neu gezogen. Zwei Dokumente derselben
+Person, getrennt anonymisiert, lassen sich deshalb nicht über die Daten
+zusammenführen — was gewollt ist, aber verhindert, dass man einen Verlauf
+über mehrere Briefe hinweg rekonstruiert.
+
 ## Was erkannt wird
 
 | Kategorie | Beispiel | Pseudonym |
@@ -34,6 +77,9 @@ kein Upload, kein Cloud-Dienst, keine Netzverbindung nötig.
 | Datum | 14.03.2026 | `[DATUM_1]` |
 | Versichertennummer | M123456789 | `[VERSNR_1]` |
 | Fall-/Patientennummer | 2026-KA-88213 | `[FALLNR_1]` |
+| Altersangabe | 67-jährige Patientin | `[ALTER_1]` |
+| Zeitraum | seit 3 Jahren | `[ZEITRAUM_1]` |
+| Jahreszahl | seit 1994 | `[JAHR_1]` |
 | Aktenzeichen, IBAN, Telefon, E-Mail, URL | | |
 
 Pseudonyme sind über das ganze Dokument konsistent: derselbe Name bekommt
@@ -113,6 +159,7 @@ Ohne Tesseract funktioniert alles ausser gescannten PDFs.
 |---|---|
 | `app/extract.py` | Text aus PDF, DOCX, OCR |
 | `app/detect.py` | Erkennung: Regex-Regeln + spaCy-NER, Gruppierung, Pseudonyme |
+| `app/stufen.py` | Stufenmatrix, Datumsverschiebung, Initialen, Altersdekaden |
 | `app/export.py` | Ersetzung anwenden, TXT/DOCX/PDF schreiben |
 | `app/main.py` | HTTP-Endpunkte |
 | `static/` | Oberfläche (eine Seite, kein Framework) |
@@ -125,6 +172,19 @@ Ohne Tesseract funktioniert alles ausser gescannten PDFs.
 
 Zeigt an einem erfundenen Arztbrief, was erkannt wird und wie das Ergebnis
 aussieht. Nach jeder Änderung an den Erkennungsregeln durchsehen.
+
+```bash
+.venv/bin/python tests/test_e2e.py
+```
+
+```bash
+.venv/bin/python tests/test_stufen.py
+```
+
+Stellt denselben Brief in allen drei Stufen nebeneinander. Nach jeder
+Änderung an der Stufenmatrix durchlesen — die Frage ist nicht, ob Zahlen
+stimmen, sondern ob der Text für seinen Zweck noch taugt und sprachlich
+sauber bleibt.
 
 ```bash
 .venv/bin/python tests/test_e2e.py

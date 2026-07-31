@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import detect, export, extract
+from . import detect, export, extract, stufen
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
 
@@ -49,6 +49,7 @@ class ExportEingabe(BaseModel):
     format: str
     dateiname: str = "dokument"
     mit_kopfzeile: bool = True
+    stufe: str = "standard"
 
 
 # --------------------------------------------------------------------------
@@ -61,10 +62,12 @@ def _gruppe_als_dict(gruppe: detect.Gruppe) -> dict:
         "typ": gruppe.typ,
         "anzeige": gruppe.anzeige,
         "label": gruppe.label,
+        "initialen": gruppe.initialen,
         "aktiv": gruppe.aktiv,
         "varianten": gruppe.varianten,
         "funde": [{"start": f.start, "ende": f.end, "text": f.text,
-                   "quelle": f.quelle} for f in gruppe.funde],
+                   "quelle": f.quelle, "formen": f.formen}
+                  for f in gruppe.funde],
     }
 
 
@@ -76,7 +79,12 @@ def _antwort(auszug: extract.Extraktion) -> dict:
             "Textlayer kann das an sehr schlechter Bildqualität liegen.",
         )
     gruppen = detect.analysiere(auszug.text)
+    zeitbezug = stufen.formen_berechnen(gruppen)
     return {
+        "stufen": stufen.STUFEN,
+        "stufen_info": stufen.STUFEN_INFO,
+        "stufen_reihenfolge": stufen.STUFEN_REIHENFOLGE,
+        "zeitbezug": zeitbezug,
         "text": auszug.text,
         "quelle": auszug.quelle,
         "seiten": auszug.seiten,
@@ -141,7 +149,7 @@ async def exportieren(eingabe: ExportEingabe):
     )
 
     erzeuger, mimetyp, endung = export.FORMATE[eingabe.format]
-    daten = erzeuger(ergebnis, eingabe.mit_kopfzeile)
+    daten = erzeuger(ergebnis, eingabe.mit_kopfzeile, eingabe.stufe)
 
     # Der übergebene Dateiname landet im Content-Disposition-Header und wird
     # deshalb auf harmlose Zeichen reduziert.

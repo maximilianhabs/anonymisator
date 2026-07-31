@@ -214,6 +214,26 @@ mark.ers {
 }
 @media (max-width: 1000px) { .seitenleiste { border-left: none; border-top: 1px solid var(--rand); } }
 
+/* ------------------------------------------------------------ Stufenwahl */
+.stufenwahl { padding: 13px 18px 12px; border-bottom: 1px solid var(--rand); }
+.stufen-knoepfe {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;
+  background: var(--bg); padding: 3px; border-radius: 8px;
+}
+.stufen-knoepfe button {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  font: inherit; padding: 7px 4px; cursor: pointer;
+  border: none; background: none; border-radius: 6px;
+  color: var(--gedaempft); line-height: 1.25;
+}
+.stufen-knoepfe button strong { font-size: 12.5px; font-weight: 600; }
+.stufen-knoepfe button span { font-size: 10px; opacity: .85; }
+.stufen-knoepfe button:hover { color: var(--text); }
+.stufen-knoepfe button.aktiv {
+  background: var(--flaeche); color: var(--text); box-shadow: var(--schatten);
+}
+.stufen-zweck { margin: 9px 2px 0; font-size: 11.5px; color: var(--gedaempft); }
+
 .bilanz {
   padding: 14px 18px; border-bottom: 1px solid var(--rand);
   font-size: 13px; line-height: 1.5;
@@ -224,6 +244,12 @@ mark.ers {
   margin: 12px 18px 0; padding: 10px 12px;
   background: var(--warn-bg); border: 1px solid var(--warn-rand);
   border-radius: 7px; font-size: 12.5px;
+}
+/* Für die leichte Stufe: die Aussage "bleibt personenbezogen" darf nicht
+   wie eine beiläufige Randnotiz aussehen. */
+.warnung.stark {
+  margin: 12px 18px; border-left: 3px solid var(--gefahr);
+  line-height: 1.5;
 }
 
 .werkzeug { padding: 14px 18px; border-bottom: 1px solid var(--rand); }
@@ -279,6 +305,7 @@ mark.ers {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .zeile.inaktiv .name, .zeile.inaktiv .marke-label { opacity: .42; }
+.zeile .marke-label.bleibt { color: var(--gedaempft); }
 .zeile select {
   grid-column: 2 / 4; font: inherit; font-size: 11.5px;
   padding: 2px 4px; margin-top: 2px;

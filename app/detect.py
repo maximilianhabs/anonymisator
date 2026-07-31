@@ -62,6 +62,9 @@ KATEGORIEN: dict[str, dict] = {
     "KLINIK":         {"label": "KLINIK",   "stil": "zahl",   "prioritaet": 40, "farbe": "#ffb224"},
     "ORT":            {"label": "ORT",      "stil": "zahl",   "prioritaet": 35, "farbe": "#ffb224"},
     "DATUM":          {"label": "DATUM",    "stil": "zahl",   "prioritaet": 30, "farbe": "#46a758"},
+    "ALTER":          {"label": "ALTER",    "stil": "zahl",   "prioritaet": 34, "farbe": "#46a758"},
+    "ZEITSPANNE":     {"label": "ZEITRAUM", "stil": "zahl",   "prioritaet": 33, "farbe": "#46a758"},
+    "JAHRESZAHL":     {"label": "JAHR",     "stil": "zahl",   "prioritaet": 20, "farbe": "#46a758"},
     "MANUELL":        {"label": "GESCHWÄRZT", "stil": "zahl", "prioritaet": 99, "farbe": "#000000"},
 }
 
@@ -71,7 +74,9 @@ KATEGORIE_TITEL = {
     "IBAN": "IBAN", "FALLNUMMER": "Fall-/Patientennummer",
     "AKTENZEICHEN": "Aktenzeichen", "EMAIL": "E-Mail", "URL": "Web-Adresse",
     "TELEFON": "Telefon/Fax", "ADRESSE": "Anschrift", "KLINIK": "Einrichtung",
-    "ORT": "Ort", "DATUM": "Datum", "MANUELL": "Manuell ergänzt",
+    "ORT": "Ort", "DATUM": "Datum", "ALTER": "Altersangabe",
+    "ZEITSPANNE": "Zeitraum", "JAHRESZAHL": "Jahreszahl",
+    "MANUELL": "Manuell ergänzt",
 }
 
 
@@ -82,6 +87,9 @@ class Fund:
     text: str
     typ: str
     quelle: str  # "regex:<name>" | "ner" | "manuell"
+    # Alternative Darstellungen für die schwächeren Stufen, gefüllt von
+    # stufen.py: z. B. {"jahrgang": "Jahrgang 1958", "dekade": "60–69 J."}
+    formen: dict[str, str] = field(default_factory=dict)
 
 
 # --------------------------------------------------------------------------
@@ -132,8 +140,11 @@ _EINR_NACHSATZ = (
 # (typ, pattern, gruppe) — gruppe 0 = ganzer Treffer, sonst nur die Fundstelle
 REGELN: list[tuple[str, str, int]] = [
     # --- eindeutige Formate -------------------------------------------------
+    # Der Auslöser gehört mit in den Fund: nur so lässt sich "geb. 22.07.1958"
+    # in den schwächeren Stufen zu "Jahrgang 1958" oder "60–69 J." machen,
+    # ohne dass "geb. Jahrgang 1958" oder "geb. 60–69 J." dabei herauskommt.
     ("GEBURTSDATUM",
-     rf"(?:geb\.|geboren\s+am|Geburtsdatum|Geb\.[-\s]?Dat(?:um)?\.?|GebDat|\*)\s*:?\s*({_DATUM})", 1),
+     rf"(?:geb\.|geboren\s+am|Geburtsdatum|Geb\.[-\s]?Dat(?:um)?\.?|GebDat|\*)\s*:?\s*{_DATUM}", 0),
     ("VERSICHERTENNR",
      r"(?:Versicherten(?:nummer|nr\.?)|KVNR|Vers\.-?Nr\.?|Krankenversicherten-?nummer)"
      r"\s*:?\s*([A-Z]\s?\d[\d\s]{7,12}\d)", 1),
@@ -173,8 +184,25 @@ REGELN: list[tuple[str, str, int]] = [
     ("ARZT",
      rf"(?:Dr\.|Prof\.|OA|OÄ|CA|ChA)\s*{_TITEL}((?:{_NAMENSTEIL}\s+)?{_NAMENSTEIL})", 1),
 
+    # --- Zeitangaben --------------------------------------------------------
+    # Nur für die strenge Stufe relevant, dort aber unverzichtbar: ein
+    # ersetztes Datum nützt wenig, wenn zwei Zeilen später "67-jährig" oder
+    # "seit 1994" steht und sich daraus alles zurückrechnen lässt.
+    ("ALTER",
+     r"\b\d{1,3}(?:\s?[-–]\s?|\s+)?(?:jährig\w*|jaehrig\w*)"
+     r"|\b\d{1,3}\s*(?:Jahre|J\.)\s*alt"
+     r"|(?<=Alter[:\s])\s*\d{1,3}\s*(?:Jahre|J\.?)?", 0),
+    ("ZEITSPANNE",
+     r"(?:seit|vor|über|innerhalb\s+von|nach)\s+(?:etwa\s+|ca\.\s+|rund\s+)?"
+     r"\d{1,3}\s*(?:Jahren|Jahre|Monaten|Monate|Wochen|Tagen|Tage)"
+     r"|(?:seit|im|ab)\s+(?:dem\s+)?(?:Frühjahr|Frühling|Sommer|Herbst|Winter)"
+     r"\s+(?:19|20)\d{2}", 0),
+
     # --- Datum zuletzt: generischer als Geburtsdatum ------------------------
     ("DATUM", _DATUM, 0),
+    # Nackte Jahreszahl ganz zum Schluss und mit der niedrigsten Priorität:
+    # sie darf niemals einem vollständigen Datum vorgehen.
+    ("JAHRESZAHL", r"\b(?:19|20)\d{2}\b", 0),
 ]
 
 _KOMPILIERT = [(typ, re.compile(muster), gruppe) for typ, muster, gruppe in REGELN]
@@ -374,6 +402,7 @@ class Gruppe:
     schluessel: str
     funde: list[Fund] = field(default_factory=list)
     label: str = ""
+    initialen: str = ""
     aktiv: bool = True
 
     @property

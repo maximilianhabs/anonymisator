@@ -1,0 +1,264 @@
+"""Anonymisierungsstufen: was mit einem Fund geschieht, nicht ob er gefunden wird.
+
+Die Erkennung läuft immer auf voller Schärfe. Erst hier entscheidet sich pro
+Kategorie und Stufe, welche Behandlung ein Fund erfährt — behalten, auf
+Initialen kürzen, vergröbern, verschieben oder ersetzen.
+
+Weil alle Darstellungen vorab berechnet und mitgeliefert werden, kostet ein
+Stufenwechsel in der Oberfläche keine neue Analyse: es wird nur eine andere
+Spalte gelesen.
+"""
+
+from __future__ import annotations
+
+import random
+import re
+from datetime import date, timedelta
+
+from .detect import Gruppe
+
+# --------------------------------------------------------------------------
+# Behandlungen
+# --------------------------------------------------------------------------
+# behalten   — Fund bleibt unverändert im Text
+# initialen  — "Elisabeth Hartmann" wird zu "E. H."
+# jahrgang   — Datum wird zu "Jahrgang 1958"
+# dekade     — Datum/Alter wird zur Lebensdekade "60–69 J."
+# verschoben — Datum um einen dokumentweit einheitlichen Versatz verschoben
+# nur_ort    — Anschrift behält Ort und Postleitzahl, verliert die Strasse
+# ersetzen   — Fund wird durch das Pseudonym ersetzt
+
+STUFEN_REIHENFOLGE = ["leicht", "standard", "streng"]
+
+STUFEN_INFO = {
+    "leicht": {
+        "titel": "Leicht",
+        "untertitel": "Pseudonymisiert",
+        "zweck": "Interne Fallbesprechung, Übergabe im Haus.",
+        "warnung": (
+            "Dies ist keine Anonymisierung. Initialen, Geburtsjahr, "
+            "Einrichtung und Behandlungszeitraum lassen zusammen regelmässig "
+            "einen Rückschluss auf die Person zu. Das Ergebnis bleibt ein "
+            "personenbezogenes Datum und ist entsprechend zu behandeln."
+        ),
+    },
+    "standard": {
+        "titel": "Standard",
+        "untertitel": "Anonymisiert",
+        "zweck": "Lehre, Fallvorstellung, Weitergabe ausser Haus.",
+        "warnung": None,
+    },
+    "streng": {
+        "titel": "Streng",
+        "untertitel": "Anonymisiert, ohne Zeitbezug",
+        "zweck": "Publikation, öffentliche Beispiele.",
+        "warnung": None,
+    },
+}
+
+# Direkte Identifikatoren. Sie tragen keine klinische Information und werden
+# auf jeder Stufe ersetzt — eine "leicht anonymisierte" Versichertennummer
+# ergibt keinen Sinn.
+_DIREKT = ["VERSICHERTENNR", "FALLNUMMER", "AKTENZEICHEN", "IBAN",
+           "TELEFON", "EMAIL", "MANUELL"]
+
+STUFEN: dict[str, dict[str, str]] = {
+    "leicht": {
+        "PATIENT": "initialen", "ARZT": "initialen", "PERSON": "initialen",
+        "KLINIK": "behalten", "ADRESSE": "nur_ort", "ORT": "behalten",
+        "GEBURTSDATUM": "jahrgang", "DATUM": "behalten",
+        "ALTER": "behalten", "ZEITSPANNE": "behalten", "JAHRESZAHL": "behalten",
+        "URL": "behalten",
+    },
+    "standard": {
+        "PATIENT": "ersetzen", "ARZT": "ersetzen", "PERSON": "ersetzen",
+        "KLINIK": "ersetzen", "ADRESSE": "ersetzen", "ORT": "behalten",
+        "GEBURTSDATUM": "dekade", "DATUM": "verschoben",
+        # Bewusst ebenfalls vergröbert: eine ausgeschriebene Altersangabe im
+        # Text würde das zur Dekade vergröberte Geburtsdatum sonst aushebeln.
+        "ALTER": "dekade",
+        "ZEITSPANNE": "behalten", "JAHRESZAHL": "behalten",
+        "URL": "ersetzen",
+    },
+    "streng": {
+        "PATIENT": "ersetzen", "ARZT": "ersetzen", "PERSON": "ersetzen",
+        "KLINIK": "ersetzen", "ADRESSE": "ersetzen", "ORT": "ersetzen",
+        "GEBURTSDATUM": "ersetzen", "DATUM": "ersetzen",
+        "ALTER": "ersetzen", "ZEITSPANNE": "ersetzen", "JAHRESZAHL": "ersetzen",
+        "URL": "ersetzen",
+    },
+}
+
+for _stufe in STUFEN.values():
+    for _kategorie in _DIREKT:
+        _stufe[_kategorie] = "ersetzen"
+
+
+# --------------------------------------------------------------------------
+# Datum lesen und schreiben
+# --------------------------------------------------------------------------
+
+_MONATE = {
+    "januar": 1, "februar": 2, "märz": 3, "maerz": 3, "april": 4, "mai": 5,
+    "juni": 6, "juli": 7, "august": 8, "september": 9, "oktober": 10,
+    "november": 11, "dezember": 12,
+}
+
+
+def datum_lesen(text: str) -> date | None:
+    """Liest die im deutschen Schriftverkehr üblichen Datumsformate.
+
+    Sucht im Text statt ihn vollständig abzugleichen, weil ein Geburtsdatum
+    als "geb. 22.07.1958" gefunden wird — mitsamt Auslöser.
+    """
+    wert = text.strip()
+
+    treffer = re.search(r"(\d{1,2})\.\s?(\d{1,2})\.\s?(\d{2,4})\b", wert)
+    if treffer:
+        tag, monat, jahr = (int(g) for g in treffer.groups())
+        if jahr < 100:
+            # Zweistellige Jahre: 30 als Grenze, damit Geburtsjahre wie 58
+            # ins letzte Jahrhundert fallen und nicht in die Zukunft.
+            jahr += 2000 if jahr <= 30 else 1900
+        return _sicher(jahr, monat, tag)
+
+    treffer = re.search(r"(\d{1,2})\.\s?([A-Za-zÄÖÜäöüß]+)\s+(\d{4})\b", wert)
+    if treffer and treffer.group(2).lower() in _MONATE:
+        return _sicher(int(treffer.group(3)), _MONATE[treffer.group(2).lower()],
+                       int(treffer.group(1)))
+
+    treffer = re.search(r"(\d{4})-(\d{2})-(\d{2})\b", wert)
+    if treffer:
+        return _sicher(*(int(g) for g in treffer.groups()))
+
+    return None
+
+
+def _sicher(jahr: int, monat: int, tag: int) -> date | None:
+    try:
+        return date(jahr, monat, tag)
+    except ValueError:
+        return None
+
+
+def _dekade_grenzen(alter: int) -> tuple[int, int]:
+    beginn = max(0, alter // 10 * 10)
+    return beginn, beginn + 9
+
+
+def _dekade(alter: int) -> str:
+    von, bis = _dekade_grenzen(alter)
+    return f"{von}–{bis} J."
+
+
+def _dekade_im_satz(alter: int, original: str) -> str:
+    """Vergröbert eine Altersangabe, ohne den Satzbau zu zerstören.
+
+    Aus "67-jährige" wird "60–69-jährige", nicht "60–69 J." — sonst steht
+    "Die 60–69 J. Patientin" im Befund.
+    """
+    von, bis = _dekade_grenzen(alter)
+    endung = re.search(r"j[äa]hrig(\w*)", original, re.I)
+    if endung:
+        return f"{von}–{bis}-jährig{endung.group(1)}"
+    return f"{von}–{bis} J."
+
+
+def _alter_am(geburt: date, stichtag: date) -> int:
+    vorher = (stichtag.month, stichtag.day) < (geburt.month, geburt.day)
+    return stichtag.year - geburt.year - (1 if vorher else 0)
+
+
+# --------------------------------------------------------------------------
+# Darstellungen berechnen
+# --------------------------------------------------------------------------
+
+def _initialen(name: str) -> str:
+    """'Elisabeth Hartmann' wird zu 'E. H.'.
+
+    Titel stehen nicht im Fund selbst — die Regeln erfassen nur den Namen —
+    und bleiben deshalb von allein im Text stehen: aus
+    "Prof. Dr. med. Konrad Weissbach" wird "Prof. Dr. med. K. W.".
+    """
+    teile = [t for t in re.split(r"[\s]+", name.strip()) if t]
+    buchstaben = [t[0].upper() for t in teile if t[:1].isalpha()]
+    return " ".join(f"{b}." for b in buchstaben) if buchstaben else ""
+
+
+def _bezugsdatum(gruppen: list[Gruppe]) -> date | None:
+    """Spätestes Datum im Dokument — üblicherweise das Briefdatum.
+
+    Dient als Stichtag für die Altersberechnung. Ohne Bezug wäre 'heute' die
+    Alternative, was bei alten Dokumenten das Alter systematisch überschätzt.
+    """
+    gefunden = [
+        gelesen
+        for gruppe in gruppen if gruppe.typ in ("DATUM", "GEBURTSDATUM")
+        for fund in gruppe.funde
+        if (gelesen := datum_lesen(fund.text)) is not None
+    ]
+    return max(gefunden) if gefunden else None
+
+
+def formen_berechnen(gruppen: list[Gruppe]) -> dict:
+    """Füllt je Fund die alternativen Darstellungen und je Gruppe die Initialen.
+
+    Der Datumsversatz gilt dokumentweit einheitlich. Genau darin liegt der
+    Wert: absolute Daten verschwinden, die Abstände zwischen ihnen bleiben
+    exakt erhalten. Aufenthaltsdauer und Verlauf bleiben damit lesbar.
+    """
+    versatz_tage = random.choice([-1, 1]) * random.randint(120, 400)
+    versatz = timedelta(days=versatz_tage)
+    stichtag = _bezugsdatum(gruppen)
+
+    for gruppe in gruppen:
+        if gruppe.typ in ("PATIENT", "ARZT", "PERSON"):
+            gruppe.initialen = _initialen(gruppe.anzeige)
+
+        for fund in gruppe.funde:
+            formen: dict[str, str] = {}
+
+            gelesen = datum_lesen(fund.text)
+            if gelesen is not None:
+                formen["jahrgang"] = f"Jahrgang {gelesen.year}"
+                formen["verschoben"] = (gelesen + versatz).strftime("%d.%m.%Y")
+                if stichtag is not None:
+                    alter = _alter_am(gelesen, stichtag)
+                    if 0 <= alter <= 120:
+                        formen["dekade"] = _dekade(alter)
+
+            if gruppe.typ == "ALTER":
+                zahl = re.search(r"\d{1,3}", fund.text)
+                if zahl and int(zahl.group()) <= 120:
+                    formen["dekade"] = _dekade_im_satz(int(zahl.group()), fund.text)
+
+            if gruppe.typ == "ADRESSE":
+                # Nur die Form "Postleitzahl Ort" trägt keinen Strassennamen
+                # und darf in der leichten Stufe stehen bleiben.
+                if re.fullmatch(r"\d{5}\s+.+", fund.text.strip()):
+                    formen["nur_ort"] = fund.text.strip()
+
+            fund.formen = formen
+
+    _initialen_entdoppeln(gruppen)
+
+    return {
+        "versatz_tage": versatz_tage,
+        "bezugsdatum": stichtag.isoformat() if stichtag else None,
+    }
+
+
+def _initialen_entdoppeln(gruppen: list[Gruppe]) -> None:
+    """Sorgt dafür, dass zwei Personen nie dieselben Initialen tragen.
+
+    'Hans Meier' und 'Helga Meier' würden sonst beide zu 'H. M.' — und damit
+    im Text ununterscheidbar.
+    """
+    vergeben: dict[str, int] = {}
+    for gruppe in sorted(gruppen, key=lambda g: g.funde[0].start if g.funde else 0):
+        if not gruppe.initialen:
+            continue
+        anzahl = vergeben.get(gruppe.initialen, 0)
+        vergeben[gruppe.initialen] = anzahl + 1
+        if anzahl:
+            gruppe.initialen = f"{gruppe.initialen} {anzahl + 1}"
