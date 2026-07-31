@@ -160,6 +160,80 @@ lange = [z for z in zeilen_von(txt) if len(z) > 150]
 pruefe(len(lange) >= 3,
        f"TXT liefert durchgehende Absätze zum Kopieren ({len(lange)} lange Zeilen)")
 
+print("\n=== 5. Kliniksoftware-Bauart: Zeile für Zeile gesetzt ===")
+
+# Der Fall, an dem die frühere Fassung scheiterte. Kliniksoftware setzt
+# Arztbriefe nicht als Fliesstext, sondern platziert jede Zeile einzeln.
+# Zusammen mit Medikationsplan und Diagnosenliste überwiegen die kurzen
+# Zeilen — eine Zusammenführung nach Zeichenlänge greift dort nicht mehr.
+KLINIK_ZEILEN = [
+    "Neurologische Klinik am Auwald", "Ludwigstraße 47 · 94032 Passau", "",
+    "Frau", "Dr. med. Ingrid Brandner", "Bahnhofstraße 3", "94032 Passau", "",
+    "Patientin: Elisabeth Hartmann, geb. 22.07.1958",
+    "Fallnummer: 2026-KA-88213", "",
+    "Sehr geehrte Frau Kollegin Brandner,", "",
+    "wir berichten Ihnen über unsere gemeinsame Patientin Frau Elisabeth",
+    "Hartmann, die sich vom 03.03.2026 bis zum 12.03.2026 in unserer",
+    "stationären Behandlung befand. Die Aufnahme erfolgte über die",
+    "Notaufnahme nach einem erstmaligen generalisierten Anfall.", "",
+    "Diagnosen:", "1. Fokale Epilepsie", "2. Arterielle Hypertonie", "",
+    "Medikation bei Entlassung:", "Ramipril 5 mg 1-0-0",
+    "Levetiracetam 500 mg 1-0-1", "",
+    "Mit freundlichen Grüßen", "Prof. Dr. med. Konrad Weißbach",
+]
+
+doc = fitz.open()
+blatt = doc.new_page(width=595, height=842)
+hoehe = 70
+for zeile in KLINIK_ZEILEN:
+    if zeile:
+        blatt.insert_text((70, hoehe), zeile, fontname="helv", fontsize=10)
+    hoehe += 14.5
+klinik_pdf = doc.tobytes()
+doc.close()
+
+klinik = extract.aus_pdf(klinik_pdf).text
+klinik_absaetze = [a for a in klinik.split("\n\n") if a.strip()]
+
+fliess_absatz = [a for a in klinik_absaetze if "wir berichten" in a]
+pruefe(len(fliess_absatz) == 1 and "\n" not in fliess_absatz[0].strip(),
+       "Fliesstext ist eine durchgehende Zeile, trotz vieler Kurzzeilen ringsum")
+
+kopf = [a for a in klinik_absaetze if a.startswith("Neurologische")]
+pruefe(kopf and kopf[0].count("\n") == 1, "Briefkopf behält seine zwei Zeilen")
+
+anschrift = [a for a in klinik_absaetze if a.startswith("Frau\n")]
+pruefe(anschrift and anschrift[0].count("\n") == 3,
+       "Empfängeranschrift behält alle vier Zeilen")
+
+medikation = [a for a in klinik_absaetze if "Ramipril" in a]
+pruefe(medikation and medikation[0].count("\n") == 2,
+       "Medikationsplan bleibt zeilenweise")
+
+pruefe("Ramipril 5 mg 1-0-0" in klinik and "Levetiracetam 500 mg 1-0-1" in klinik,
+       "Wirkstoffzeilen sind unversehrt")
+
+# Wirkstoffe sind keine Organisationen — sonst steht "[ORG_2] mg 1-0-0"
+# im fertigen Brief.
+klinik_gruppen = detect.analysiere(klinik)
+wirkstoff_treffer = [
+    f.text for g in klinik_gruppen for f in g.funde
+    if "Ramipril" in f.text or "Levetiracetam" in f.text
+]
+pruefe(not wirkstoff_treffer,
+       f"Wirkstoffnamen werden nicht als Entität erkannt{f' — {wirkstoff_treffer}' if wirkstoff_treffer else ''}")
+
+# Anschriftenzeilen dürfen beim Ersetzen nicht verschmelzen: ein Muster mit
+# \s am Ende verschluckt sonst den Zeilenumbruch gleich mit.
+stufen.formen_berechnen(klinik_gruppen)
+klinik_ersetzt = export.ersetze(klinik, [
+    {"start": f.start, "ende": f.end, "label": g.label}
+    for g in klinik_gruppen for f in g.funde
+    if stufen.STUFEN["streng"].get(g.typ, "ersetzen") != "behalten"
+])
+pruefe("][" not in klinik_ersetzt,
+       "Keine zwei Platzhalter ohne Trennung aneinander")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

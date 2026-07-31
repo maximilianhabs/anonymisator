@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.4.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.5.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 
 Lokales Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren
@@ -201,16 +201,30 @@ Klumpen ohne Absätze, in dem zugleich jede Zeile hart umbrochen ist — und
 beim Export erneut umbricht, diesmal an anderer Stelle. Das Ergebnis sind
 Flatterzeilen und einzelne Wörter auf eigener Zeile.
 
-Deshalb zwei Schritte beim Einlesen:
+Der Text wird deshalb aus der **Geometrie der Seite** neu gesetzt, nicht aus
+den ausgelesenen Zeichen geraten:
 
-1. Gelesen wird über die **Layoutblöcke** des PDFs. Bei Fliesstext entspricht
-   ein Block einem Absatz — damit sind die Absatzgrenzen zurück.
-2. Innerhalb eines Blocks werden Zeilen, die **bis an den Satzrand reichen**,
-   wieder zusammengefügt. Eine kürzere Zeile beendet den Absatz.
+1. **Absatzgrenze** — der senkrechte Abstand zur Vorzeile. Ist er deutlich
+   grösser als der übliche Zeilenabstand, beginnt ein neuer Absatz.
+2. **Weicher Umbruch** — hätte das erste Wort der Folgezeile am Ende der
+   aktuellen Zeile noch aufs Papier gepasst? Wenn nein, wurde hier
+   umbrochen und beide Zeilen gehören zusammen. Wenn ja, endete der Absatz.
 
-Anschriftenblöcke, Unterschriftenzeilen, Überschriften und Aufzählungen
-bestehen aus kurzen Zeilen und bleiben dadurch von allein unangetastet. Wirkt
-ein Text gar nicht hart umbrochen, greift die Zusammenführung nicht.
+Der zweite Test ist der entscheidende, und er kommt bewusst ohne Zeichen­zählen
+aus. Ein Arztbrief besteht überwiegend aus **kurzen** Zeilen — Briefkopf,
+Anschrift, Datenblock, Diagnosenliste, Medikationsplan, Unterschrift. Ein
+Verfahren, das aus der Häufigkeit langer Zeilen auf harten Umbruch schliesst,
+versagt dort und lässt den Brief zerhackt. Die Geometrie kennt die Antwort
+dagegen für jede Zeile einzeln.
+
+Tabellarisch gesetzte Zeilen erkennt das Verfahren an den waagerechten Lücken
+zwischen den Textspannen und lässt sie in Ruhe — ein Medikationsplan bleibt
+zeilenweise stehen. Ebenso Anschriftenblöcke, Aufzählungen und
+Unterschriftenzeilen.
+
+Für OCR-Ergebnisse und eingefügten Text gibt es keine Geometrie. Dort greift
+ersatzweise eine Zusammenführung nach Zeilenlänge, die nur anspringt, wenn
+der Text tatsächlich hart umbrochen aussieht.
 
 Das Ergebnis lässt sich direkt in andere Werkzeuge kopieren, ohne dass man
 Umbrüche von Hand entfernen muss. Nebenbei erkennt das Sprachmodell besser,

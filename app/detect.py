@@ -163,7 +163,7 @@ REGELN: list[tuple[str, str, int]] = [
      r"(?:Versicherten(?:nummer|nr\.?)|KVNR|Vers\.-?Nr\.?|Krankenversicherten-?nummer)"
      r"\s*:?\s*([A-Z]\s?\d[\d\s]{7,12}\d)", 1),
     ("VERSICHERTENNR", r"\b[A-Z]\d{9}\b", 0),
-    ("IBAN", r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,3})?\b", 0),
+    ("IBAN", r"\b[A-Z]{2}\d{2}(?:[ \t]?[A-Z0-9]{4}){3,7}(?:[ \t]?[A-Z0-9]{1,3})?\b", 0),
     ("FALLNUMMER",
      r"(?:Fall(?:nummer|nr\.?)|Fall-\s?Nr\.?|Aufnahme(?:nummer|nr\.?)|Aufnahme-\s?Nr\.?"
      r"|Patienten(?:nummer|nr\.?)|Pat\.-?\s?Nr\.?|PID|Vorgangs(?:nummer|nr\.?))"
@@ -216,15 +216,18 @@ REGELN: list[tuple[str, str, int]] = [
     ("TELEFON",
      r"(?:Tel\.?|Telefon|Fon|Fax|Telefax|Mobil|Handy|Mobiltelefon|Durchwahl|Piep(?:er)?)"
      r"\s*:?\s*([+(]?[\d][\d\s/()\-]{5,25}\d)", 1),
-    ("TELEFON", r"\+49[\s\-/]?\(?\d{1,5}\)?[\s\-/]?\d[\d\s\-/]{4,}\d", 0),
-    ("TELEFON", r"\b0\d{2,4}[\s\-/]\d{2,}[\d\s\-/]{2,}\d\b", 0),
+    # Durchgehend [ \t] statt \s: eine Telefonnummer endet an der Zeilengrenze.
+    # Mit \s greift das Muster über den Umbruch und verschluckt ihn beim
+    # Ersetzen — im Ergebnis kleben dann zwei Platzhalter aneinander.
+    ("TELEFON", r"\+49[ \t\-/]?\(?\d{1,5}\)?[ \t\-/]?\d[\d \t\-/]{4,}\d", 0),
+    ("TELEFON", r"\b0\d{2,4}[ \t\-/]\d{2,}[\d \t\-/]{2,}\d\b", 0),
 
     # --- Anschriften --------------------------------------------------------
     ("ADRESSE",
      r"\b[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ.\-]*(?:straße|strasse|str\.|weg|allee|platz|gasse"
-     r"|ring|damm|ufer|chaussee|steig|hof|berg|feld)\s+\d{1,4}\s*[a-zA-Z]?\b", 0),
-    ("ADRESSE", r"\b\d{5}\s+[A-ZÄÖÜ][a-zäöüß]+(?:[ \-][A-ZÄÖÜ][a-zäöüß]+)*", 0),
-    ("ADRESSE", r"(?:Postfach)\s*:?\s*\d[\d\s]{2,12}", 0),
+     r"|ring|damm|ufer|chaussee|steig|hof|berg|feld)[ \t]+\d{1,4}[ \t]*[a-zA-Z]?\b", 0),
+    ("ADRESSE", r"\b\d{5}[ \t]+[A-ZÄÖÜ][a-zäöüß]+(?:[ \-][A-ZÄÖÜ][a-zäöüß]+)*", 0),
+    ("ADRESSE", r"(?:Postfach)[ \t]*:?[ \t]*\d[\d \t]{2,12}", 0),
 
     # --- Einrichtungen ------------------------------------------------------
     # Die NER erkennt Klinik- und Praxisnamen unzuverlässig; ein Briefkopf
@@ -299,6 +302,37 @@ _STOPP_ANATOMIE = {
     "cuneus", "uncus", "claustrum", "capsula", "striatum", "putamen",
     "pallidum", "basalganglien", "nucleus", "corpus", "callosum", "ventrikel",
     "liquor", "dura", "arachnoidea", "hypophyse", "epiphyse", "stammganglien",
+    # Wirkstoffe und Präparate. Ohne diese Sperre wird aus der Zeile
+    # "Ramipril 5 mg 1-0-0" eines Medikationsplans eine Organisation.
+    # Die Liste ist bewusst nicht vollständig — sie deckt ab, was in
+    # neurologischen und internistischen Briefen regelmässig vorkommt.
+    "ramipril", "enalapril", "lisinopril", "candesartan", "valsartan",
+    "metoprolol", "bisoprolol", "amlodipin", "torasemid", "furosemid",
+    "hydrochlorothiazid", "spironolacton", "simvastatin", "atorvastatin",
+    "rosuvastatin", "metformin", "insulin", "pantoprazol", "omeprazol",
+    "levothyroxin", "thyroxin", "ibuprofen", "paracetamol", "metamizol",
+    "novaminsulfon", "tilidin", "tramadol", "morphin", "oxycodon",
+    "levetiracetam", "lamotrigin", "carbamazepin", "oxcarbazepin",
+    "valproat", "valproinsäure", "lacosamid", "brivaracetam", "topiramat",
+    "zonisamid", "perampanel", "phenytoin", "phenobarbital", "primidon",
+    "gabapentin", "pregabalin", "clobazam", "clonazepam", "lorazepam",
+    "diazepam", "midazolam", "levodopa", "carbidopa", "benserazid",
+    "pramipexol", "ropinirol", "rotigotin", "amantadin", "rasagilin",
+    "selegilin", "entacapon", "riluzol", "donepezil", "rivastigmin",
+    "memantin", "galantamin", "quetiapin", "risperidon", "olanzapin",
+    "aripiprazol", "haloperidol", "melperon", "pipamperon", "mirtazapin",
+    "sertralin", "citalopram", "escitalopram", "fluoxetin", "venlafaxin",
+    "duloxetin", "amitriptylin", "doxepin", "lithium", "clopidogrel",
+    "apixaban", "rivaroxaban", "edoxaban", "dabigatran", "phenprocoumon",
+    "marcumar", "heparin", "enoxaparin", "prednisolon", "dexamethason",
+    "methylprednisolon", "cortison", "azathioprin", "methotrexat",
+    "sumatriptan", "zolmitriptan", "topiramat", "flunarizin", "baclofen",
+    "tizanidin", "tolperison", "botulinumtoxin", "immunglobulin",
+    # Einheiten und Darreichungsformen — sie stehen in Medikationsplänen
+    # neben dem Wirkstoff und müssen mit als unverfänglich gelten.
+    "mg", "ml", "mmol", "mval", "mol", "kg", "µg", "mcg", "ie", "iu",
+    "tbl", "tabl", "tablette", "tabletten", "kps", "kaps", "kapsel",
+    "amp", "supp", "ret", "retard", "tropfen", "hub", "stk", "dosis",
     "neurocranium", "neurocraniums", "neurokranium", "neurokraniums",
     "viscerocranium", "cranium", "craniums", "kranium", "schädelbasis",
     "hirnschädel", "sella", "cochlea", "vestibulum", "labyrinth", "orbita",
@@ -340,11 +374,18 @@ _STOPP = _STOPP_ANATOMIE | _STOPP_MEDIZIN | _STOPP_ALLGEMEIN
 
 
 def _ist_stoppwort(wert: str) -> bool:
-    """Wahr, wenn der Treffer ausschliesslich aus unverfänglichen Wörtern besteht."""
+    """Wahr, wenn der Treffer ausschliesslich aus unverfänglichen Wörtern besteht.
+
+    Zahlenanteile bleiben ausser Betracht. Das Sprachmodell zieht in einem
+    Medikationsplan gern die Dosis mit in den Namen — "Ramipril 5" statt
+    "Ramipril" — und ohne diese Bereinigung hätte die Stoppliste dort nie
+    gegriffen.
+    """
     bereinigt = wert.strip(" .,;:-").lower()
     if bereinigt in _STOPP:
         return True
-    teile = [t for t in re.split(r"[\s\-]+", bereinigt) if t]
+    teile = [t for t in re.split(r"[\s\-]+", bereinigt)
+             if t and not any(z.isdigit() for z in t)]
     return bool(teile) and all(t in _STOPP for t in teile)
 
 

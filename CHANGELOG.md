@@ -4,6 +4,42 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.5.0 — 2026-07-31
+
+Der Text wird jetzt aus der Seitengeometrie neu gesetzt.
+
+**Behoben — die eigentliche Ursache der zerhackten Ausgabe**
+- Die Zusammenführung weich umbrochener Zeilen beruhte auf Zeichenlängen und
+  lief nur an, wenn mindestens ein Viertel aller Zeilen nahezu voll war. In
+  einem echten Arztbrief überwiegen aber die kurzen Zeilen — Briefkopf,
+  Anschrift, Datenblock, Diagnosen, Medikationsplan, Unterschrift. Damit
+  griff die Zusammenführung **überhaupt nicht**, und sämtliche harten
+  Umbrüche blieben stehen. Genau das erzeugte die stark fragmentierte,
+  auseinandergezogene Ausgabe.
+- Ersetzt durch ein geometrisches Verfahren: Absatzgrenzen aus dem
+  senkrechten Zeilenabstand, weiche Umbrüche aus der Frage, ob das erste
+  Wort der Folgezeile am Zeilenende noch gepasst hätte. Beides wird je Zeile
+  entschieden und ist damit unabhängig davon, wie viele kurze Zeilen das
+  Dokument sonst enthält.
+- Tabellarisch gesetzte Zeilen werden an den waagerechten Lücken zwischen den
+  Textspannen erkannt und bleiben unangetastet.
+
+**Behoben — dabei aufgefallen**
+- Anschriften verschluckten den Zeilenumbruch: die Regel endete auf `\s*`,
+  und `\s` schliesst `\n` ein. Im Ergebnis klebten zwei Platzhalter ohne
+  Trennung aneinander (`[ADRESSE_3][ADRESSE_2]`). Dieselbe Falle bestand bei
+  Telefonnummern, IBAN und Postfach; alle vier verwenden jetzt `[ \t]`.
+- Wirkstoffnamen galten als Organisation — aus „Ramipril 5 mg 1-0-0" wurde
+  „[ORG_2] mg 1-0-0". Die Stoppliste umfasst nun die gängigen Wirkstoffe
+  sowie Einheiten und Darreichungsformen. Zusätzlich bleiben Zahlenanteile
+  bei der Prüfung ausser Betracht: das Sprachmodell zieht die Dosis mit in
+  den Namen, weshalb die Liste bei „Ramipril 5" zuvor nicht ansprach.
+
+**Neu**
+- `tests/test_formatierung.py` prüft zusätzlich die Bauart, an der die
+  frühere Fassung scheiterte: einen zeilenweise gesetzten Arztbrief mit
+  Medikationsplan und Diagnosenliste.
+
 ## 0.4.0 — 2026-07-31
 
 Erster getaggter Release.

@@ -43,8 +43,12 @@ def _volle_breite(zeilen: list[str]) -> float:
     return laengen[int(len(laengen) * 0.9)] if len(laengen) > 9 else laengen[-1]
 
 
-def _reflow(text: str, mindestanteil: float = 0.25) -> str:
+def _reflow(text: str, mindestanteil: float = 0.15) -> str:
     """Fügt weich umbrochene Zeilen wieder zu durchgehenden Absätzen zusammen.
+
+    Nur für Quellen ohne Geometrie: OCR-Ergebnisse und eingefügten Text. Bei
+    PDFs mit Textlayer übernimmt `_pdf_absaetze` diese Aufgabe anhand der
+    tatsächlichen Zeilenkoordinaten und damit erheblich zuverlässiger.
 
     Ein PDF kennt keine Absätze, nur Zeilen. Wer diese Zeilenenden als feste
     Umbrüche übernimmt, bekommt sie beim Export erneut aufgezwungen — bei
@@ -111,25 +115,113 @@ def _normalisiere(text: str) -> str:
     return text.strip()
 
 
-def _pdf_absaetze(doc) -> str:
-    """Liest den Text absatzweise statt zeilenweise.
+def _seitenzeilen(seite) -> list[dict]:
+    """Alle Textzeilen einer Seite mit ihrer Lage auf dem Papier.
 
-    get_text("blocks") liefert die Layoutblöcke des PDFs; bei Fliesstext
-    entspricht ein Block einem Absatz. Der einfache Textmodus verliert diese
-    Grenze vollständig, weil Absatzabstände im PDF blosser Weissraum sind und
-    keinen Text erzeugen — der ganze Brief käme als ein Klumpen an, in dem
-    sich Anrede, Anamnese und Befund nicht mehr trennen lassen.
+    Aus den Spannen einer Zeile wird zusätzlich abgeleitet, ob sie tabellarisch
+    gesetzt ist: liegen zwischen den Spannen grosse waagerechte Lücken, handelt
+    es sich um Spalten (Medikationsplan, Laborwerte) und nicht um Fliesstext.
+    """
+    zeilen: list[dict] = []
+    for block in seite.get_text("dict")["blocks"]:
+        if block.get("type", 0) != 0:  # Bilder überspringen
+            continue
+        for zeile in block.get("lines", []):
+            spannen = [s for s in zeile.get("spans", []) if s["text"].strip()]
+            if not spannen:
+                continue
+            text = "".join(s["text"] for s in zeile["spans"]).rstrip()
+            if not text.strip():
+                continue
+            x0, y0, x1, y1 = zeile["bbox"]
+
+            hoehe = max((s["bbox"][3] - s["bbox"][1]) for s in spannen)
+            luecke = max(
+                (b["bbox"][0] - a["bbox"][2]
+                 for a, b in zip(spannen, spannen[1:])),
+                default=0.0,
+            )
+            zeilen.append({
+                "text": text, "x0": x0, "x1": x1, "y0": y0, "y1": y1,
+                "hoehe": hoehe, "spaltig": luecke > hoehe * 1.5,
+            })
+    zeilen.sort(key=lambda z: (round(z["y0"], 1), z["x0"]))
+    return zeilen
+
+
+def _mittlere_zeichenbreite(zeilen: list[dict]) -> float:
+    breite = sum(z["x1"] - z["x0"] for z in zeilen)
+    zeichen = sum(len(z["text"].strip()) for z in zeilen)
+    return breite / zeichen if zeichen else 5.0
+
+
+def _rechter_rand(zeilen: list[dict]) -> float:
+    """Rechte Kante des Satzspiegels, robust gegen einzelne Überhänge."""
+    kanten = sorted(z["x1"] for z in zeilen)
+    return kanten[int(len(kanten) * 0.92)] if len(kanten) > 6 else kanten[-1]
+
+
+def _pdf_absaetze(doc) -> str:
+    """Baut aus den Zeilen einer Seite wieder Absätze.
+
+    Ein PDF speichert keine Absätze, sondern Zeichen an Koordinaten. Die
+    Absatzgrenze steckt allein im senkrechten Abstand, der weiche Zeilenumbruch
+    allein in der Zeilenlänge — beides geht verloren, wenn man nur den Text
+    ausliest.
+
+    Der entscheidende Test ist, ob das erste Wort der Folgezeile am Ende der
+    aktuellen Zeile noch gepasst hätte. Passte es nicht, wurde hier umbrochen
+    und beide Zeilen gehören zusammen. Passte es, endete der Absatz. Dieser
+    Test kommt ohne Zeichenzählen aus und funktioniert deshalb auch in Briefen,
+    die überwiegend aus kurzen Zeilen bestehen — Medikationsplan, Laborwerte,
+    Diagnosenliste.
     """
     absaetze: list[str] = []
+
     for seite in doc:
-        for block in seite.get_text("blocks", sort=True):
-            # block: (x0, y0, x1, y1, text, nummer, typ) — Typ 1 sind Bilder
-            if len(block) >= 7 and block[6] != 0:
-                continue
-            inhalt = block[4].strip()
-            if inhalt:
-                absaetze.append(inhalt)
-    return "\n\n".join(absaetze)
+        zeilen = _seitenzeilen(seite)
+        if not zeilen:
+            continue
+
+        rand = _rechter_rand(zeilen)
+        zeichenbreite = _mittlere_zeichenbreite(zeilen)
+
+        abstaende = sorted(
+            b["y0"] - a["y0"] for a, b in zip(zeilen, zeilen[1:])
+            if 0 < b["y0"] - a["y0"] < 200
+        )
+        schritt = abstaende[len(abstaende) // 2] if abstaende else 14.0
+
+        laufend = zeilen[0]["text"].strip()
+        vorige = zeilen[0]
+
+        for zeile in zeilen[1:]:
+            text = zeile["text"].strip()
+            abstand = zeile["y0"] - vorige["y0"]
+            erstes_wort = text.split(" ", 1)[0]
+
+            # Passte das erste Wort der Folgezeile hier noch aufs Papier?
+            platz_frei = rand - vorige["x1"]
+            passte_noch = platz_frei >= (len(erstes_wort) + 1) * zeichenbreite
+
+            neuer_absatz = abstand > schritt * 1.45
+            einzug_wechsel = abs(zeile["x0"] - vorige["x0"]) > zeichenbreite * 2.5
+
+            if neuer_absatz:
+                absaetze.append(laufend)
+                laufend = text
+            elif (passte_noch or vorige["spaltig"] or zeile["spaltig"]
+                    or einzug_wechsel or _AUFZAEHLUNG.match(zeile["text"])):
+                # Umbruch war gewollt: Anschrift, Liste, Tabelle, Unterschrift
+                laufend += "\n" + text
+            else:
+                laufend += " " + text
+
+            vorige = zeile
+
+        absaetze.append(laufend)
+
+    return "\n\n".join(a for a in absaetze if a.strip())
 
 
 def aus_pdf(daten: bytes) -> Extraktion:
@@ -146,7 +238,9 @@ def aus_pdf(daten: bytes) -> Extraktion:
                     "PDF-Metadaten enthalten Angaben (" + ", ".join(meta_treffer)
                     + "). Sie werden beim Export nicht übernommen."
                 )
-            return Extraktion(_reflow(_normalisiere(text)),
+            # Kein _reflow: die Absätze stehen bereits, sie wurden aus der
+            # Seitengeometrie gewonnen statt aus Zeichenlängen geraten.
+            return Extraktion(_normalisiere(text),
                               "pdf-textlayer", seiten, hinweise)
 
         # Kein oder zu wenig Textlayer -> gescanntes Dokument, OCR nötig.
