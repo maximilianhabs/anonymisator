@@ -30,6 +30,64 @@ class Extraktion:
     hinweise: list[str] = field(default_factory=list)
 
 
+# Zeilenanfänge, die immer einen neuen Absatz beginnen und deshalb nie an die
+# vorherige Zeile angehängt werden dürfen.
+_AUFZAEHLUNG = re.compile(r"^\s*(?:[-–—•*·>]|\(?\d{1,2}[.)]|[a-z][.)])\s+")
+
+
+def _volle_breite(zeilen: list[str]) -> float:
+    """Typische Satzbreite des Dokuments, robust gegen einzelne Ausreisser."""
+    laengen = sorted(len(z) for z in zeilen if z.strip())
+    if len(laengen) < 3:
+        return 0.0
+    return laengen[int(len(laengen) * 0.9)] if len(laengen) > 9 else laengen[-1]
+
+
+def _reflow(text: str, mindestanteil: float = 0.25) -> str:
+    """Fügt weich umbrochene Zeilen wieder zu durchgehenden Absätzen zusammen.
+
+    Ein PDF kennt keine Absätze, nur Zeilen. Wer diese Zeilenenden als feste
+    Umbrüche übernimmt, bekommt sie beim Export erneut aufgezwungen — bei
+    anderer Satzbreite entstehen daraus Flatterzeilen und einzelne Wörter auf
+    eigener Zeile. Beim Anonymisieren verschärft sich das noch, weil ein
+    Pseudonym selten genauso lang ist wie der ersetzte Klarname.
+
+    Erkennungsmerkmal ist die Zeilenlänge: eine Zeile, die bis an den Rand
+    reicht, wurde vom Satz umbrochen und gehört mit der nächsten zusammen.
+    Eine kürzere Zeile beendet den Absatz. Anschriftenblöcke, Unterschriften
+    und Aufzählungen bestehen aus kurzen Zeilen und bleiben damit von allein
+    unangetastet.
+    """
+    zeilen = text.split("\n")
+    breite = _volle_breite(zeilen)
+    if breite < 45:
+        return text
+
+    schwelle = breite * 0.8
+    inhalt = [z for z in zeilen if z.strip()]
+    if not inhalt:
+        return text
+
+    anteil = sum(1 for z in inhalt if len(z) >= schwelle) / len(inhalt)
+    if anteil < mindestanteil:
+        # Sieht nicht nach hartem Umbruch aus, sondern nach Text, in dem jede
+        # Zeile bereits ein eigener Absatz ist. Dann nichts anfassen.
+        return text
+
+    ergebnis: list[str] = []
+    vorherige_voll = False
+    for zeile in zeilen:
+        gefuellt = bool(zeile.strip()) and len(zeile) >= schwelle
+        if (ergebnis and vorherige_voll and zeile.strip()
+                and not _AUFZAEHLUNG.match(zeile)):
+            ergebnis[-1] = f"{ergebnis[-1].rstrip()} {zeile.lstrip()}"
+        else:
+            ergebnis.append(zeile)
+        vorherige_voll = gefuellt
+
+    return "\n".join(ergebnis)
+
+
 def _normalisiere(text: str) -> str:
     """Vereinheitlicht Zeilenenden und Sonderzeichen.
 
@@ -53,12 +111,32 @@ def _normalisiere(text: str) -> str:
     return text.strip()
 
 
+def _pdf_absaetze(doc) -> str:
+    """Liest den Text absatzweise statt zeilenweise.
+
+    get_text("blocks") liefert die Layoutblöcke des PDFs; bei Fliesstext
+    entspricht ein Block einem Absatz. Der einfache Textmodus verliert diese
+    Grenze vollständig, weil Absatzabstände im PDF blosser Weissraum sind und
+    keinen Text erzeugen — der ganze Brief käme als ein Klumpen an, in dem
+    sich Anrede, Anamnese und Befund nicht mehr trennen lassen.
+    """
+    absaetze: list[str] = []
+    for seite in doc:
+        for block in seite.get_text("blocks", sort=True):
+            # block: (x0, y0, x1, y1, text, nummer, typ) — Typ 1 sind Bilder
+            if len(block) >= 7 and block[6] != 0:
+                continue
+            inhalt = block[4].strip()
+            if inhalt:
+                absaetze.append(inhalt)
+    return "\n\n".join(absaetze)
+
+
 def aus_pdf(daten: bytes) -> Extraktion:
     hinweise: list[str] = []
     with fitz.open(stream=daten, filetype="pdf") as doc:
         seiten = doc.page_count
-        teile = [seite.get_text("text") for seite in doc]
-        text = "\n\n".join(teile)
+        text = _pdf_absaetze(doc)
 
         zeichen_pro_seite = len(text.strip()) / max(seiten, 1)
         if zeichen_pro_seite >= MIN_ZEICHEN_PRO_SEITE:
@@ -68,7 +146,8 @@ def aus_pdf(daten: bytes) -> Extraktion:
                     "PDF-Metadaten enthalten Angaben (" + ", ".join(meta_treffer)
                     + "). Sie werden beim Export nicht übernommen."
                 )
-            return Extraktion(_normalisiere(text), "pdf-textlayer", seiten, hinweise)
+            return Extraktion(_reflow(_normalisiere(text)),
+                              "pdf-textlayer", seiten, hinweise)
 
         # Kein oder zu wenig Textlayer -> gescanntes Dokument, OCR nötig.
         hinweise.append(
@@ -81,7 +160,8 @@ def aus_pdf(daten: bytes) -> Extraktion:
             pix = seite.get_pixmap(dpi=OCR_DPI)
             bild = Image.open(io.BytesIO(pix.tobytes("png")))
             ocr_teile.append(pytesseract.image_to_string(bild, lang="deu"))
-        return Extraktion(_normalisiere("\n\n".join(ocr_teile)), "pdf-ocr", seiten, hinweise)
+        return Extraktion(_reflow(_normalisiere("\n\n".join(ocr_teile))),
+                          "pdf-ocr", seiten, hinweise)
 
 
 def _pdf_metadaten_pruefen(doc) -> list[str]:
@@ -150,4 +230,7 @@ def aus_upload(dateiname: str, daten: bytes) -> Extraktion:
 
 
 def aus_text(text: str) -> Extraktion:
-    return Extraktion(_normalisiere(text), "paste")
+    # Eingefügter Text stammt oft aus einem PDF-Betrachter und trägt dessen
+    # harte Zeilenumbrüche mit. _reflow greift nur, wenn der Text tatsächlich
+    # so aussieht, und lässt sauber gesetzten Text unangetastet.
+    return Extraktion(_reflow(_normalisiere(text)), "paste")

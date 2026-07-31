@@ -61,6 +61,8 @@ def als_docx(text: str, mit_kopfzeile: bool = True, stufe: str = "standard") -> 
     stil = dokument.styles["Normal"]
     stil.font.name = "Calibri"
     stil.font.size = Pt(11)
+    stil.paragraph_format.space_after = Pt(8)
+    stil.paragraph_format.line_spacing = 1.15
 
     if mit_kopfzeile:
         kopf = dokument.add_paragraph(_kopfzeile(stufe))
@@ -68,10 +70,15 @@ def als_docx(text: str, mit_kopfzeile: bool = True, stufe: str = "standard") -> 
         kopf.runs[0].font.italic = True
 
     for block in text.split("\n\n"):
+        if not block.strip():
+            continue
         absatz = dokument.add_paragraph()
-        for i, zeile in enumerate(block.split("\n")):
+        # Zeilenumbrüche innerhalb eines Absatzes sind nach dem Reflow
+        # gewollt — Anschriftenblock, Unterschriftenzeile, Aufzählung.
+        zeilen = block.split("\n")
+        for i, zeile in enumerate(zeilen):
             lauf = absatz.add_run(zeile)
-            if i < len(block.split("\n")) - 1:
+            if i < len(zeilen) - 1:
                 lauf.add_break()
 
     kern = dokument.core_properties
@@ -97,8 +104,8 @@ def als_pdf(text: str, mit_kopfzeile: bool = True, stufe: str = "standard") -> b
     )
 
     koerper = ParagraphStyle(
-        "Koerper", fontName="Helvetica", fontSize=10.5, leading=15,
-        alignment=TA_LEFT, spaceAfter=6,
+        "Koerper", fontName="Helvetica", fontSize=10.5, leading=15.5,
+        alignment=TA_LEFT, spaceAfter=9,
     )
     notiz = ParagraphStyle(
         "Notiz", fontName="Helvetica-Oblique", fontSize=7.5,
@@ -111,8 +118,9 @@ def als_pdf(text: str, mit_kopfzeile: bool = True, stufe: str = "standard") -> b
 
     for block in text.split("\n\n"):
         if not block.strip():
-            fluss.append(Spacer(1, 6))
             continue
+        # Der Absatz fliesst über die volle Satzbreite; nur die verbliebenen
+        # Umbrüche innerhalb des Blocks werden erzwungen.
         fluss.append(Paragraph(html.escape(block).replace("\n", "<br/>"), koerper))
 
     doc.build(fluss)

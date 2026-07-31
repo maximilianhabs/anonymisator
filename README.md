@@ -90,6 +90,29 @@ Medizinische Fachbegriffe bleiben stehen. „Temporallappen" ist ein Ort im
 Gehirn, kein Wohnort — ein Befund, in dem die Anatomie geschwärzt wurde, wäre
 wertlos.
 
+## Satzspiegel
+
+Ein PDF kennt keine Absätze, nur Zeilen. Absatzabstände sind dort blosser
+Weissraum und erzeugen keinen Text. Wer beides naiv übernimmt, bekommt einen
+Klumpen ohne Absätze, in dem zugleich jede Zeile hart umbrochen ist — und
+beim Export erneut umbricht, diesmal an anderer Stelle. Das Ergebnis sind
+Flatterzeilen und einzelne Wörter auf eigener Zeile.
+
+Deshalb zwei Schritte beim Einlesen:
+
+1. Gelesen wird über die **Layoutblöcke** des PDFs. Bei Fliesstext entspricht
+   ein Block einem Absatz — damit sind die Absatzgrenzen zurück.
+2. Innerhalb eines Blocks werden Zeilen, die **bis an den Satzrand reichen**,
+   wieder zusammengefügt. Eine kürzere Zeile beendet den Absatz.
+
+Anschriftenblöcke, Unterschriftenzeilen, Überschriften und Aufzählungen
+bestehen aus kurzen Zeilen und bleiben dadurch von allein unangetastet. Wirkt
+ein Text gar nicht hart umbrochen, greift die Zusammenführung nicht.
+
+Das Ergebnis lässt sich direkt in andere Werkzeuge kopieren, ohne dass man
+Umbrüche von Hand entfernen muss. Nebenbei erkennt das Sprachmodell besser,
+weil es vollständige Sätze sieht statt Zeilenfragmente.
+
 ## Grenzen — bitte lesen
 
 **Das Werkzeug garantiert keine Vollständigkeit.** Es kombiniert feste
@@ -157,7 +180,7 @@ Ohne Tesseract funktioniert alles ausser gescannten PDFs.
 
 | Datei | Aufgabe |
 |---|---|
-| `app/extract.py` | Text aus PDF, DOCX, OCR |
+| `app/extract.py` | Text aus PDF, DOCX, OCR; Absatzerkennung und Reflow |
 | `app/detect.py` | Erkennung: Regex-Regeln + spaCy-NER, Gruppierung, Pseudonyme |
 | `app/stufen.py` | Stufenmatrix, Datumsverschiebung, Initialen, Altersdekaden |
 | `app/export.py` | Ersetzung anwenden, TXT/DOCX/PDF schreiben |
@@ -185,6 +208,14 @@ Stellt denselben Brief in allen drei Stufen nebeneinander. Nach jeder
 Änderung an der Stufenmatrix durchlesen — die Frage ist nicht, ob Zahlen
 stimmen, sondern ob der Text für seinen Zweck noch taugt und sprachlich
 sauber bleibt.
+
+```bash
+.venv/bin/python tests/test_formatierung.py
+```
+
+Prüft, dass der Satzspiegel den Weg durch das Programm übersteht: Absätze
+bleiben erhalten, Anschriftenblöcke und Aufzählungen behalten ihre Zeilen,
+und das Ersetzen verändert die Zeilenstruktur nicht.
 
 ```bash
 .venv/bin/python tests/test_e2e.py

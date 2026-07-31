@@ -1,5 +1,38 @@
 # Änderungen
 
+## 0.3.0 — 2026-07-31
+
+Der Satzspiegel überlebt jetzt den Weg durch das Programm.
+
+**Behoben**
+- Absatzgrenzen gingen beim Einlesen von PDFs vollständig verloren. Absätze
+  sind im PDF blosser Weissraum und erzeugen keinen Text; der einfache
+  Textmodus lieferte deshalb einen einzigen Klumpen. Gelesen wird nun über
+  die Layoutblöcke des PDFs, die bei Fliesstext den Absätzen entsprechen.
+- Weiche Zeilenumbrüche wurden als feste übernommen und beim Export erneut
+  erzwungen. Bei anderer Satzbreite entstand daraus Flattersatz mit
+  einzelnen Wörtern auf eigener Zeile — verstärkt dadurch, dass ein
+  Pseudonym selten so lang ist wie der ersetzte Klarname. Zeilen, die bis an
+  den Rand reichen, werden jetzt wieder zu durchgehenden Absätzen
+  zusammengefügt. Anschriftenblöcke, Überschriften und Aufzählungen bestehen
+  aus kurzen Zeilen und bleiben unangetastet.
+- Die Zusammenführung greift nur, wenn der Text tatsächlich hart umbrochen
+  aussieht. Bereits sauber gesetzter Text wird nicht angefasst.
+- Anatomie-Stoppliste um Schädel- und Felsenbeinbegriffe erweitert
+  („Neurocranium" galt als Ortsname).
+
+**Nebenwirkung**
+- Die Erkennung wird durch den Reflow genauer: das Sprachmodell sieht
+  vollständige Sätze statt Zeilenfragmente. „Hippocampussklerose" wurde
+  vorher, weil allein auf einer Zeile stehend, als Personenname erkannt.
+
+**Verbessert**
+- PDF-Export mit grösserem Zeilenabstand und echtem Absatzabstand.
+- DOCX-Export mit Absatzabstand und Zeilenabstand 1,15.
+- Neuer Regressionstest `tests/test_formatierung.py`: prüft Absatzerhalt,
+  Schutz von Anschriftenblöcken und Aufzählungen, unveränderte
+  Zeilenstruktur nach dem Ersetzen und den Satzspiegel im Ziel-PDF.
+
 ## 0.2.0 — 2026-07-31
 
 Drei wählbare Anonymisierungsstufen.
