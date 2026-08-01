@@ -136,19 +136,45 @@ def _antwort(auszug: extract.Extraktion) -> dict:
 
 @app.post("/api/analysieren/datei")
 async def analysieren_datei(datei: UploadFile = File(...)):
-    daten = await datei.read()
+    """Liest die Datei, wertet sie aus und vergisst sie.
+
+    Zum Umgang mit der hochgeladenen Datei: Starlette hält Uploads bis 1 MB
+    im Arbeitsspeicher und legt alles darüber in einer temporären Datei unter
+    TMPDIR ab. Im Behälter ist TMPDIR ein tmpfs — die Datei erreicht also
+    keine Platte, sondern bleibt im Arbeitsspeicher und ist beim Neustart in
+    jedem Fall fort.
+
+    Geschlossen wird sie hier ausdrücklich, unmittelbar nach dem Lesen, statt
+    erst beim Aufräumen der Anfrage. Damit verschwindet die temporäre Datei
+    schon vor der Analyse, nicht erst nach dem Absenden der Antwort.
+    """
+    name = datei.filename or ""
+    try:
+        daten = await datei.read()
+    finally:
+        # Löscht die temporäre Datei, sofern Starlette eine angelegt hat.
+        await datei.close()
+
     if not daten:
         raise HTTPException(422, "Die Datei ist leer.")
     if len(daten) > config.MAX_UPLOAD_MB * 1024 * 1024:
+        del daten
         raise HTTPException(
             413, f"Die Datei ist grösser als {config.MAX_UPLOAD_MB} MB.")
+
     try:
-        auszug = extract.aus_upload(datei.filename or "", daten)
+        auszug = extract.aus_upload(name, daten)
     except ValueError as fehler:
         raise HTTPException(422, str(fehler)) from fehler
     except Exception as fehler:  # defekte PDFs, unlesbare DOCX
         raise HTTPException(
             422, f"Die Datei konnte nicht gelesen werden: {fehler}") from fehler
+    finally:
+        # Der Dateiinhalt wird ab hier nicht mehr gebraucht: gearbeitet wird
+        # mit dem gewonnenen Text. Die Referenz fällt sofort weg, damit die
+        # Rohbytes nicht bis zum Ende der Anfrage im Speicher stehen.
+        del daten
+
     return _antwort(auszug)
 
 

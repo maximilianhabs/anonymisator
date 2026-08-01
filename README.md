@@ -1,17 +1,41 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.10.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.11.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 
-Lokales Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren
-Angaben befreit. Läuft im Browser, aber vollständig auf dem eigenen Rechner —
-kein Upload, kein Cloud-Dienst, keine Netzverbindung nötig.
+Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren Angaben
+befreit. Bedienung im Browser, Verarbeitung ausschliesslich auf dem Rechner,
+auf dem es installiert ist — kein Cloud-Dienst, keine ausgehende Verbindung.
+
+**Nichts wird gespeichert.** Das Dokument wird gelesen, in Text umgewandelt
+und sofort verworfen: keine Datenbank, kein Upload-Verzeichnis, keine
+Sicherung, kein Protokoll des Inhalts. Näheres unter
+[Was mit dem Dokument geschieht](#was-mit-dem-dokument-geschieht).
+
+Auf dem eigenen Gerät verlässt dabei nichts den Rechner. Wird das Werkzeug
+dagegen auf einem Server betrieben, geht das Dokument sehr wohl über das
+Netz — dann schützen HTTPS und der Zugangsschutz des Reverse Proxy, und die
+Zusicherung beschränkt sich auf „wird dort nicht gespeichert".
 
 Der Schwerpunkt liegt auf medizinischen Unterlagen — Arztbriefe, Befunde,
 Gutachten. Rechnungen, Verträge und Behördenschreiben werden ebenso
 abgedeckt: Rechnungs- und Kundennummern, Kontoverbindungen, Steuernummern,
 Kfz-Kennzeichen und Geldbeträge sind eigene Kategorien.
+
+## Was mit dem Dokument geschieht
+
+| Stelle | Verweildauer |
+|---|---|
+| Hochgeladene Datei | Bis 1 MB nur im Arbeitsspeicher. Darüber legt der Dienst kurzzeitig eine temporäre Datei an — im Behälter liegt `/tmp` auf einem **tmpfs**, also ebenfalls im Arbeitsspeicher, nie auf der Platte. Sie wird **unmittelbar nach dem Lesen** geschlossen und gelöscht, noch vor der Analyse. |
+| Rohbytes im Prozess | Werden nach der Textgewinnung ausdrücklich freigegeben, nicht erst am Ende der Anfrage. |
+| Gewonnener Text | Lebt nur für die Dauer der einen Anfrage. Der Dienst ist zustandslos: keine Session, keine Datenbank, kein Upload-Verzeichnis. |
+| Prüftext im Browser | Bleibt, solange das Fenster offen ist — dort findet die Prüfung statt. „Neues Dokument" löscht ihn samt der angezeigten Markierungen. |
+| Protokoll | Zeitpunkt, Methode, Pfad, Statuscode, Dauer. **Kein Text, kein Dateiname, keine erkannte Angabe.** Uvicorns Zugriffsprotokoll ist abgeschaltet, weil es die Adresse des Aufrufers mitführen würde. |
+| Nach Neustart des Behälters | Nichts überdauert. Das einzige Volume gehört dem Reverse Proxy und enthält Zertifikate. |
+
+Beim Export wird der Originaltext erneut an den Dienst geschickt — er hält
+ihn ja nicht vor. Auch dieser Durchlauf hinterlässt nichts.
 
 ## Für wen
 

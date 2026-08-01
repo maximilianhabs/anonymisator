@@ -30,6 +30,36 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const farbe = (typ) => (Z.kategorien[typ] || {}).farbe || '#888';
 
+/**
+ * Entfernt jede Spur des bearbeiteten Dokuments aus dem Browser.
+ *
+ * Der Prüftext lebt allein hier — der Server hält nichts. Beim Wechsel zum
+ * nächsten Dokument muss er deshalb vollständig verschwinden, samt der
+ * Markierungen im angezeigten Text und dem Inhalt des Eingabefelds. Sonst
+ * stünde der vorige Brief im Klartext im Speicher, während schon der
+ * nächste bearbeitet wird.
+ */
+function zustandLoeschen() {
+  Z.text = '';
+  Z.gruppen = [];
+  Z.kategorien = {};
+  Z.dateiname = 'dokument';
+  Z.naechsteId = 0;
+  Z.geprueft = false;
+  Z.modus = 'original';
+
+  const feld = $('eingabe-text');
+  if (feld) feld.value = '';
+  const auswahl = $('datei');
+  if (auswahl) auswahl.value = '';
+
+  // Der gerenderte Text steht als HTML in der Seite und muss ebenfalls fort.
+  for (const id of ['dokument', 'gruppen', 'hinweise', 'bilanz', 'quelle-info']) {
+    const el = $(id);
+    if (el) el.innerHTML = '';
+  }
+}
+
 // ---------------------------------------------------------------- Ansichten
 
 function ansicht(name) {
@@ -693,11 +723,9 @@ function start() {
   $('knopf-schluessel').onclick = schluesselHerunterladen;
 
   $('knopf-neu').onclick = () => {
-    Z.text = '';
-    Z.gruppen = [];
-    $('eingabe-text').value = '';
-    datei.value = '';
+    zustandLoeschen();
     ansicht('eingabe');
+    brot('Dokument verworfen.');
   };
 }
 

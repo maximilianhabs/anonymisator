@@ -13,7 +13,13 @@
     <span class="punkt"></span>
     <h1>Anonymisator</h1>
   </div>
-  <p class="lokal">Läuft vollständig lokal &middot; keine Datei verlässt diesen Rechner</p>
+  <!-- Bewusst nicht mehr "läuft vollständig lokal · keine Datei verlässt
+       diesen Rechner": Das galt für den Betrieb auf dem eigenen Gerät, ist
+       hinter einer Adresse wie ano.neuro-vibe.de aber unwahr — dort geht die
+       Datei sehr wohl über das Netz. Eine Sicherheitszusage, die nicht stimmt,
+       ist schlimmer als keine. Der jetzige Text trifft auf beide Betriebs-
+       arten zu. -->
+  <p class="lokal">Einmalige Verarbeitung &middot; nichts wird gespeichert</p>
 </header>
 
 <!-- ===================== Schritt 1: Eingabe ===================== -->
@@ -28,6 +34,11 @@
       <p>PDF (auch gescannt) oder Word&nbsp;.docx</p>
       <button type="button" class="knopf" id="knopf-auswaehlen">Datei auswählen</button>
       <input type="file" id="datei" accept=".pdf,.docx,.txt" hidden>
+      <p class="einmal">
+        <strong>Einmalige Verarbeitung.</strong>
+        Die Datei wird gelesen, ausgewertet und sofort verworfen — sie wird
+        nirgends abgelegt.
+      </p>
     </section>
 
     <section class="karte">
@@ -37,6 +48,25 @@
       <button type="button" class="knopf voll" id="knopf-text">Text analysieren</button>
     </section>
 
+  </div>
+
+  <div class="datenschutz-box">
+    <strong>Was mit Ihrem Dokument geschieht</strong>
+    <ul>
+      <li><b>Kein Speichern.</b> Die Datei wird gelesen, in Text umgewandelt
+        und unmittelbar danach verworfen. Es gibt keine Datenbank, kein
+        Upload-Verzeichnis, keine Sicherung.</li>
+      <li><b>Nichts auf der Festplatte.</b> Grössere Dateien legt der Dienst
+        kurzzeitig in einem Zwischenspeicher ab, der ausschliesslich im
+        Arbeitsspeicher liegt. Nach dem Lesen wird er sofort geleert und ist
+        bei jedem Neustart in jedem Fall fort.</li>
+      <li><b>Kein Protokoll des Inhalts.</b> Festgehalten werden nur Zeitpunkt,
+        Dauer und Statuscode einer Anfrage — kein Text, kein Dateiname, kein
+        erkannter Name.</li>
+      <li><b>Nur solange dieses Fenster offen ist.</b> Der Text zum Prüfen
+        liegt in Ihrem Browser. Mit „Neues Dokument" oder dem Schliessen des
+        Fensters ist er fort.</li>
+    </ul>
   </div>
 
   <div class="hinweis-box">

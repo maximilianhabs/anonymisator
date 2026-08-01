@@ -4,6 +4,41 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.11.0 — 2026-08-01
+
+Einmalige Verarbeitung: sichtbar gemacht und nachgewiesen.
+
+**Behoben — eine Zusicherung, die nicht mehr stimmte**
+- Die Kopfzeile versprach „läuft vollständig lokal · keine Datei verlässt
+  diesen Rechner". Das galt für den Betrieb auf dem eigenen Gerät; hinter
+  einer Adresse wie `ano.neuro-vibe.de` ist es schlicht unwahr — dort geht
+  das Dokument sehr wohl über das Netz. Eine Sicherheitszusage, die nicht
+  zutrifft, ist schlimmer als keine. Jetzt: „Einmalige Verarbeitung ·
+  nichts wird gespeichert", zutreffend für beide Betriebsarten. Dieselbe
+  Richtigstellung im README.
+
+**Verarbeitung endet früher**
+- Die hochgeladene Datei wird unmittelbar nach dem Lesen geschlossen, nicht
+  erst beim Aufräumen der Anfrage. Starlette legt Uploads über 1 MB als
+  temporäre Datei ab; sie verschwindet damit schon vor der Analyse.
+- Die Rohbytes werden nach der Textgewinnung ausdrücklich freigegeben,
+  statt bis zum Ende der Anfrage im Speicher zu stehen.
+- „Neues Dokument" räumt jetzt vollständig auf — auch die gerenderten
+  Markierungen und das Eingabefeld. Vorher blieb der vorige Brief im
+  Klartext im Browser stehen, während schon der nächste bearbeitet wurde.
+
+**Sichtbar gemacht**
+- Hinweis auf der Ablagefläche: gelesen, ausgewertet, sofort verworfen.
+- Eigener Abschnitt auf der Startseite und im README, der für jede Stelle
+  angibt, wie lange etwas verweilt — Upload, Rohbytes, Text, Browser,
+  Protokoll, Neustart.
+
+**Nachgewiesen**
+- `tests/test_keine_persistenz.py` prüft mit einer eindeutigen Kennung, dass
+  weder ein kleiner noch ein 1,4 MB grosser Upload eine Datei hinterlässt,
+  dass die Kennung anschliessend nirgends im Dateisystem auffindbar ist und
+  dass die nächste Anfrage keinen Rest der vorigen enthält.
+
 ## 0.10.0 — 2026-08-01
 
 Freigabeprüfung. Zwei Sicherheitsbefunde und zwei Erkennungslücken behoben,
