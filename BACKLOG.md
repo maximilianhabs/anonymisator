@@ -4,6 +4,19 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 
 ## Naheliegend
 
+- **Einrichtungsname über den Zeilenumbruch.** Steht der Absender umbrochen
+  im Briefkopf („BEZIRKSKLINIKUM\nMAINKOFEN"), wird nur die erste Zeile
+  erfasst; der Ortsname bleibt stehen. Kein Muster greift absichtlich über
+  einen Umbruch — das hatte früher dazu geführt, dass der Umbruch beim
+  Ersetzen verschluckt wurde und zwei Platzhalter aneinanderklebten. Ein
+  Nachlauf, der die Folgezeile prüft, ohne den Umbruch in den Treffer zu
+  ziehen, wäre der Weg.
+- **Zwei Fehlalarme des Sprachmodells.** „MRT DES SCHÄDELS" und „Zentrum
+  der Läsion" kommen als Einrichtung an. Beide bestehen seit Langem und
+  sind unabhängig von der Versalregel. Gemeinsames Merkmal ist ein
+  Artikel im Wortinneren („DES", „der") — bei echten Namen steht dort
+  „am", „an der" oder „für". Eine Regel darauf ist denkbar, muss aber
+  gegen „Universität der Bundeswehr" geprüft werden.
 - **Impressum und Datenschutzerklärung.** Fehlen bisher vollständig. Sobald
   der Dienst wieder öffentlich erreichbar ist, sind beide Pflicht — das
   Impressum nach § 5 DDG, die Datenschutzerklärung nach Art. 13 DSGVO.
