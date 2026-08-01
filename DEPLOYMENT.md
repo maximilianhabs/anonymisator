@@ -248,6 +248,36 @@ Klarnamen durchsehen.
 | Bau bricht mit „no space left" ab | Plattenplatz | `docker builder prune -f` |
 | Anderer Dienst plötzlich beendet | OOM-Killer, kein Swap | `ANON_WORKERS=1`, `ANON_MAX_SEITEN` senken, Swap anlegen |
 | SSH landet auf der Storage Box | AAAA-Record im DNS | immer `ssh deploy@203.0.113.10` |
+| Caddyfile-Änderung wirkt auch nach Reload nicht | **toter Bind-Mount**: Docker bindet bei einer einzelnen Datei die Inode, ein `git pull` ersetzt sie. Der Container arbeitet dann mit einem eingefrorenen Stand. | Prüfsummen vergleichen (`docker exec … md5sum /etc/caddy/Caddyfile` gegen `md5sum ~/nz-dienstplan/Caddyfile`). Bei Abweichung Container neu starten. |
+| `docker compose restart caddy` meldet „no such service" | Der Caddy steht in `docker-compose.prod.yml`, nicht in der Standarddatei | `docker compose -f docker-compose.prod.yml restart caddy` |
+
+## Durchgeführt am 2026-08-01
+
+Alle acht Abnahmeprüfungen bestanden:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Container | `healthy`, Netz `nz-dienstplan_app`, kein Port nach aussen |
+| Benutzer | UID 10001, Wurzeldateisystem schreibgeschützt |
+| Persistenz | keine Einhängung ausser `tmpfs /tmp` |
+| Neustartverhalten | `unless-stopped` |
+| Zugangsschutz | ohne Zugangsdaten HTTP 401, `/health` frei |
+| Zertifikat | Let's Encrypt, gültig bis 30.10.2026 |
+| Erkennung | Patientin, Behandlerin, Geburtsdatum, Fallnummer korrekt |
+| Protokoll | fünf Suchbegriffe geprüft, kein Dokumentinhalt |
+| Bestehende Dienste | unverändert (307 / 307 / 200) |
+
+Speicher nach dem Start: Container 1008 MB von 1562 MB Grenze, Server
+1,3 GB verfügbar.
+
+**Zwei Funde, die nichts mit dem Anonymisator zu tun hatten:**
+
+Der Bind-Mount des Caddyfiles war seit dem 22.06. tot — jede Änderung
+seitdem lief ins Leere. Behoben durch Neustart (1 Sekunde Unterbrechung).
+
+Der laufende Caddy-Stand enthielt zwei Zeilen, die nie im Git standen:
+`header_up X-Forwarded-Proto` und `-Host` im edf-Block. Ohne sie erkennt
+Streamlit hinter dem Proxy kein HTTPS. Sie sind jetzt versioniert.
 
 ## Zurückrollen
 
