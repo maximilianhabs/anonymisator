@@ -1,0 +1,76 @@
+# Reverse Proxy vor dem Anonymisator.
+#
+# Steht in ANON_DOMAIN eine erreichbare Domain, besorgt Caddy selbsttätig ein
+# Zertifikat über Let's Encrypt und leitet HTTP auf HTTPS um. Steht dort
+# ":80", bleibt es bei HTTP — für den Betrieb im abgeschotteten Netz.
+
+{
+	# Der Standardwert hält die Anweisung syntaktisch gültig, wenn keine
+	# Adresse hinterlegt ist. Bei ANON_DOMAIN=":80" wird ohnehin kein
+	# Zertifikat angefordert und die Adresse nie verwendet.
+	email {$ANON_TLS_MAIL:zertifikat@invalid}
+
+	# Caddys eigenes Zugriffsprotokoll bleibt aus. Es enthielte Pfade und
+	# Adressen; für die Nachvollziehbarkeit genügt das strukturierte
+	# Protokoll der Anwendung, das keine Dokumentinhalte kennt.
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$ANON_DOMAIN} {
+	# ------------------------------------------------------------- Zugang
+	# Ohne Zugangsschutz kann jeder, der die Adresse kennt, Arztbriefe
+	# hochladen.
+	#
+	# Caddy kennt keine bedingten Blöcke, deshalb steht die Anweisung immer
+	# da und wird über einen Treffer gesteuert: ANON_AUTH_AKTIV=false lässt
+	# ihn nie greifen. Der voreingestellte Hash gehört zu einem zufälligen
+	# Passwort, das niemand kennt — greift der Treffer wider Erwarten doch,
+	# sperrt er zu statt auf.
+	@geschuetzt {
+		not path /health
+		expression {$ANON_AUTH_AKTIV:true}
+	}
+	basic_auth @geschuetzt {
+		{$ANON_BASIC_AUTH_USER:anonymisator} {$ANON_BASIC_AUTH_HASH:$2a$14$SHTznJiIu91f7foWLY.C9eFC.JX1uDefdjyr8KBZVqhMl6Izvkwfu}
+	}
+
+	# ------------------------------------------------------ Sicherheitskopf
+	header {
+		# Ein Werkzeug für Patientendaten gehört in kein fremdes Fenster.
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+
+		# Die Oberfläche kommt ohne fremde Quellen und ohne Netzaufrufe
+		# nach draussen aus. 'unsafe-inline' für style-src, weil einzelne
+		# Farbwerte je Kategorie im Element gesetzt werden.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+
+		# Kein Zugriff auf Geräte, die diese Anwendung nie braucht.
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+		-Server
+		-X-Powered-By
+	}
+
+	# Grosszügig bemessen: gescannte Mehrseiter erreichen leicht 50 MB.
+	# Muss über ANON_MAX_UPLOAD_MB der Anwendung liegen, sonst bricht der
+	# Proxy ab, bevor die Anwendung eine verständliche Meldung geben kann.
+	request_body {
+		max_size {$ANON_PROXY_MAX_BODY:80MB}
+	}
+
+	reverse_proxy app:8000 {
+		health_uri /health
+		health_interval 30s
+		health_timeout 5s
+	}
+
+	encode zstd gzip
+}

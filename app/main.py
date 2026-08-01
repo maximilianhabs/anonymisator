@@ -1,26 +1,53 @@
-"""Lokaler Webserver für den Anonymisator.
+"""Webserver für den Anonymisator.
 
-Bindet bewusst nur an 127.0.0.1. Der Server hält keinerlei Dokumentinhalte:
-jede Anfrage bringt ihren Text mit, die Antwort geht zurück, danach bleibt
-nichts liegen. Es gibt keine Session, kein Upload-Verzeichnis, kein Log der
+Der Dienst hält keinerlei Dokumentinhalte: jede Anfrage bringt ihren Text
+mit, die Antwort geht zurück, danach bleibt nichts liegen. Es gibt keine
+Session, kein Upload-Verzeichnis, keine Datenbank und kein Protokoll der
 Inhalte.
+
+Beim Betrieb hinter einem Reverse Proxy bindet der Dienst an 0.0.0.0 und ist
+damit im Containernetz erreichbar. Die Zugangskontrolle liegt dann beim
+Proxy — ohne sie kann jeder, der die Adresse kennt, Dokumente hochladen.
 """
 
 from __future__ import annotations
 
 import re
-from pathlib import Path
+import time
+import uuid
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import detect, export, extract, stufen
+from . import config, detect, export, extract, logging_setup, stufen
 
-STATIC = Path(__file__).resolve().parent.parent / "static"
+STATIC = config.STATIC_DIR
+_log = logging_setup.einrichten()
 
 app = FastAPI(title="Anonymisator", docs_url=None, redoc_url=None)
+
+
+@app.on_event("startup")
+async def beim_start() -> None:
+    _log.info("Dienst startet", extra={
+        "modell": config.SPACY_MODELL,
+        "ocr_sprache": config.OCR_SPRACHE,
+        "max_upload_mb": config.MAX_UPLOAD_MB,
+        "log_json": config.LOG_JSON,
+    })
+    if config.MODELL_VORLADEN:
+        # Ohne Vorladen träfe der erste Anwender die Ladezeit des Modells,
+        # und der Healthcheck meldete den Dienst als bereit, bevor er es ist.
+        beginn = time.perf_counter()
+        try:
+            detect._modell()
+            _log.info("Sprachmodell geladen", extra={
+                "dauer_ms": round((time.perf_counter() - beginn) * 1000, 1)})
+        except Exception as fehler:
+            _log.error("Sprachmodell konnte nicht geladen werden",
+                       extra={"grund": str(fehler)})
 
 
 # --------------------------------------------------------------------------
@@ -112,8 +139,9 @@ async def analysieren_datei(datei: UploadFile = File(...)):
     daten = await datei.read()
     if not daten:
         raise HTTPException(422, "Die Datei ist leer.")
-    if len(daten) > 60 * 1024 * 1024:
-        raise HTTPException(413, "Die Datei ist grösser als 60 MB.")
+    if len(daten) > config.MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(
+            413, f"Die Datei ist grösser als {config.MAX_UPLOAD_MB} MB.")
     try:
         auszug = extract.aus_upload(datei.filename or "", daten)
     except ValueError as fehler:
@@ -176,15 +204,60 @@ async def status():
     return {"modell": detect.MODELL_NAME, "bereit": modell_bereit, "fehler": fehler}
 
 
-@app.middleware("http")
-async def nicht_zwischenspeichern(anfrage, weiter):
-    """Verhindert, dass der Browser eine alte Programmversion ausliefert.
+@app.get("/health")
+async def health():
+    """Bereitschaftsprüfung für Docker und Reverse Proxy.
 
-    Bei einem lokalen Werkzeug bringt Caching nichts und kostet nur Nerven —
-    nach einem Update sonst stundenlang die alte Oberfläche.
+    Meldet erst dann gesund, wenn das Sprachmodell tatsächlich geladen ist —
+    ein Dienst, der zwar antwortet, aber keine Erkennung leisten kann, würde
+    sonst Verkehr bekommen, den er nicht bedienen kann.
     """
-    antwort = await weiter(anfrage)
+    try:
+        detect._modell()
+    except Exception as fehler:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "nicht bereit", "grund": str(fehler)},
+        )
+    return {"status": "bereit", "modell": detect.MODELL_NAME}
+
+
+@app.middleware("http")
+async def protokoll_und_kopfzeilen(anfrage: Request, weiter):
+    """Protokolliert jede Anfrage — ohne eine Spur ihres Inhalts.
+
+    Festgehalten werden Methode, Pfad, Statuscode und Dauer. Nicht der
+    Dokumenttext, nicht der Dateiname, nicht die erkannten Entitäten. Ein
+    Protokoll, das Klarnamen enthielte, höbe den Zweck der Anwendung auf.
+    """
+    kennung = uuid.uuid4().hex[:12]
+    beginn = time.perf_counter()
+    try:
+        antwort = await weiter(anfrage)
+    except Exception:
+        _log.exception("Anfrage fehlgeschlagen", extra={
+            "anfrage": kennung,
+            "methode": anfrage.method,
+            "pfad": anfrage.url.path,
+            "dauer_ms": round((time.perf_counter() - beginn) * 1000, 1),
+        })
+        raise
+
+    dauer = round((time.perf_counter() - beginn) * 1000, 1)
+    if anfrage.url.path != "/health":  # sonst flutet der Healthcheck das Log
+        _log.info("Anfrage", extra={
+            "anfrage": kennung,
+            "methode": anfrage.method,
+            "pfad": anfrage.url.path,
+            "status": antwort.status_code,
+            "dauer_ms": dauer,
+        })
+
+    # Kein Zwischenspeichern: nach einem Update sonst stundenlang die alte
+    # Oberfläche. Bei einem Werkzeug für Patientendaten kommt hinzu, dass
+    # Antworten nicht in Proxy- oder Browsercaches liegen bleiben sollen.
     antwort.headers["Cache-Control"] = "no-store, must-revalidate"
+    antwort.headers["X-Anfrage-Kennung"] = kennung
     return antwort
 
 

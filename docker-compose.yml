@@ -1,0 +1,132 @@
+# Vollständige Auslieferung. Nach dem Klonen genügt:
+#
+#     cp .env.example .env   &&   $EDITOR .env
+#     docker compose up -d
+#
+# Weitere Schritte gibt es nicht: Sprachmodell, Tesseract und alle
+# Abhängigkeiten stecken im Abbild.
+
+name: anonymisator
+
+services:
+  # ------------------------------------------------------------------ App
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: anonymisator:${ANON_VERSION:-latest}
+    restart: unless-stopped
+
+    environment:
+      ANON_PORT: "8000"
+      ANON_WORKERS: "${ANON_WORKERS:-2}"
+      ANON_MAX_UPLOAD_MB: "${ANON_MAX_UPLOAD_MB:-60}"
+      ANON_MAX_OCR_SEITEN: "${ANON_MAX_OCR_SEITEN:-50}"
+      ANON_OCR_DPI: "${ANON_OCR_DPI:-300}"
+      ANON_OCR_SPRACHE: "${ANON_OCR_SPRACHE:-deu}"
+      ANON_LOG_LEVEL: "${ANON_LOG_LEVEL:-INFO}"
+      ANON_LOG_JSON: "${ANON_LOG_JSON:-true}"
+      ANON_MODELL_VORLADEN: "true"
+
+    # Kein Port nach aussen: erreichbar ist der Dienst allein über den
+    # Reverse Proxy im gemeinsamen Netz.
+    expose:
+      - "8000"
+
+    # --- Härtung ---------------------------------------------------------
+    read_only: true
+    tmpfs:
+      # Tesseract legt beim Lesen einer Seite eine temporäre Datei an und
+      # räumt sie selbst wieder ab. Als tmpfs erreicht sie nie eine Platte
+      # und ist beim Neustart des Behälters in jedem Fall fort.
+      - /tmp:rw,noexec,nosuid,nodev,size=512m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "10001:10001"
+
+    # Ohne Grenze kann ein einzelnes grosses Dokument beim Rastern den
+    # gesamten Arbeitsspeicher des Servers belegen.
+    deploy:
+      resources:
+        limits:
+          memory: ${ANON_MEM_LIMIT:-3g}
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - intern
+
+  # --------------------------------------------------------- Reverse Proxy
+  proxy:
+    image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+
+    ports:
+      - "${ANON_HTTP_PORT:-80}:80"
+      - "${ANON_HTTPS_PORT:-443}:443"
+
+    environment:
+      # Domain für automatisches HTTPS. Steht hier eine erreichbare Domain,
+      # holt Caddy selbsttätig ein Zertifikat. Für Betrieb ohne Domain
+      # ":80" eintragen — dann bleibt es bei HTTP im lokalen Netz.
+      ANON_DOMAIN: "${ANON_DOMAIN:-:80}"
+      # Ersatzwerte gehören hierher, nicht ins Caddyfile: Caddys
+      # {$VAR:standard} greift nur bei *nicht gesetzten* Variablen, und
+      # Compose setzt jede aufgeführte Variable — notfalls leer.
+      ANON_TLS_MAIL: "${ANON_TLS_MAIL:-zertifikat@invalid}"
+      ANON_AUTH_AKTIV: "${ANON_AUTH_AKTIV:-true}"
+      ANON_BASIC_AUTH_USER: "${ANON_BASIC_AUTH_USER:-anonymisator}"
+      # Der Ersatzwert gehört zu einem zufälligen Passwort, das niemand
+      # kennt. Bleibt ANON_BASIC_AUTH_HASH leer, während der Zugangsschutz
+      # aktiv ist, sperrt der Dienst zu — nicht auf. Die Dollarzeichen sind
+      # für Compose verdoppelt.
+      ANON_BASIC_AUTH_HASH: "${ANON_BASIC_AUTH_HASH:-$$2a$$14$$SHTznJiIu91f7foWLY.C9eFC.JX1uDefdjyr8KBZVqhMl6Izvkwfu}"
+      ANON_PROXY_MAX_BODY: "${ANON_PROXY_MAX_BODY:-80MB}"
+
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # Zertifikate, müssen Neustarts überdauern
+      - caddy_config:/config
+
+    depends_on:
+      app:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - intern
+
+networks:
+  intern:
+    driver: bridge
+
+volumes:
+  # Ausschliesslich Zertifikate und Caddys eigene Einstellungen. Für
+  # Dokumentinhalte gibt es bewusst kein Volume.
+  caddy_data:
+  caddy_config:

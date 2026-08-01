@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.8.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.9.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 
 Lokales Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren
@@ -29,18 +29,82 @@ Ausdrücklich **nicht** gedacht als:
   Bestandteil des Verfahrens, nicht optionaler Komfort
 - Medizinprodukt oder zertifiziertes Werkzeug im Sinne der MDR
 
-## Schnellstart
+## Installation auf einem Server
+
+Voraussetzung ist ein Ubuntu 24.04 mit Docker und Docker Compose. Weiter
+wird nichts gebraucht — Sprachmodell, Tesseract und sämtliche
+Abhängigkeiten stecken im Abbild.
 
 ```bash
 git clone https://github.com/maximilianhabs/anonymisator.git
 cd anonymisator
+cp .env.example .env
+```
+
+**Vor dem ersten Start das Zugangspasswort setzen.** Der Dienst hat keine
+eigene Benutzerverwaltung; die Zugangskontrolle liegt beim Reverse Proxy.
+Ohne sie kann jeder, der die Adresse kennt, Arztbriefe hochladen.
+
+```bash
+docker run --rm caddy:2.10-alpine caddy hash-password
+```
+
+Den ausgegebenen Hash in `.env` unter `ANON_BASIC_AUTH_HASH` eintragen und
+dabei **jedes `$` verdoppeln** (aus `$2a$14$…` wird `$$2a$$14$$…`), sonst
+deutet Compose es als Variable. Bleibt der Hash leer, während der
+Zugangsschutz aktiv ist, sperrt der Dienst zu — nicht auf.
+
+Für Betrieb unter eigener Domain zusätzlich `ANON_DOMAIN` setzen; Caddy holt
+dann selbsttätig ein Zertifikat und leitet HTTP auf HTTPS um. Im
+abgeschotteten Praxis- oder Kliniknetz bleibt `ANON_DOMAIN=:80` stehen.
+
+```bash
+docker compose up -d
+```
+
+Das war alles. Der erste Bau dauert einige Minuten, weil das Sprachmodell
+mit ins Abbild wandert.
+
+### Betrieb
+
+```bash
+docker compose ps                  # Zustand beider Dienste
+docker compose logs -f app         # strukturiertes Protokoll
+curl -fsS http://localhost/health  # Bereitschaft
+docker compose down                # anhalten
+docker compose up -d --build       # nach git pull neu bauen
+```
+
+Der Dienst meldet sich erst dann gesund, wenn das Sprachmodell tatsächlich
+geladen ist. Der Proxy startet deshalb erst, nachdem die Anwendung bereit
+ist.
+
+### Was der Betrieb nicht tut
+
+Kein Zustand, keine Datenbank, kein Upload-Verzeichnis. Das einzige Volume
+gehört Caddy und enthält Zertifikate. Temporäre Dateien der Texterkennung
+liegen in einem `tmpfs` und erreichen nie eine Platte.
+
+Das Protokoll hält Methode, Pfad, Statuscode und Dauer fest — **keine
+Dokumentinhalte, keine Dateinamen, keine erkannten Namen**. Uvicorns
+Zugriffsprotokoll ist abgeschaltet, weil es zusätzlich die Adresse des
+Aufrufers mitführen würde.
+
+Der Anwendungsbehälter läuft als unprivilegierter Benutzer (UID 10001) mit
+schreibgeschütztem Wurzeldateisystem und ohne jede Linux-Berechtigung. Er
+braucht keine ausgehende Verbindung; ein Start mit `--network none` genügt
+für die Erkennung.
+
+## Lokal entwickeln
+
+```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ./start.sh
 ```
 
-Öffnet <http://127.0.0.1:5302>. Der Server bindet ausschliesslich an
-`127.0.0.1` und ist im Netzwerk nicht erreichbar.
+Öffnet <http://127.0.0.1:5302>, gebunden ausschliesslich an `127.0.0.1`.
+Für den Produktivbetrieb ist dieser Weg nicht gedacht.
 
 ## Beispiel
 
@@ -358,8 +422,14 @@ funktionieren, sofern Tesseract mit deutschem Sprachpaket vorliegt.
 | `app/stufen.py` | Stufenmatrix, Datumsverschiebung, Initialen, Altersdekaden |
 | `app/export.py` | Ersetzung anwenden, TXT/DOCX/PDF schreiben |
 | `app/main.py` | HTTP-Endpunkte |
+| `app/config.py` | Laufzeiteinstellungen, ausschliesslich aus der Umgebung |
+| `app/logging_setup.py` | strukturierte Protokollierung ohne Dokumentinhalte |
 | `static/` | Oberfläche (eine Seite, kein Framework) |
 | `tools/layout_diagnose.py` | zeigt den Satzspiegel eines PDFs, ohne Inhalt |
+| `Dockerfile` | zweistufiger Bau, Basisabbild über Digest festgelegt |
+| `docker-compose.yml` | Anwendung und Reverse Proxy, gehärtet |
+| `Caddyfile` | Zugangsschutz, Sicherheitskopf, HTTPS |
+| `.env.example` | sämtliche Einstellungen mit Erläuterung |
 
 ## Tests
 

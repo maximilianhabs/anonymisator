@@ -1,0 +1,35 @@
+# Kleiner Bauzusammenhang, kürzere Bauzeit — und vor allem: nichts
+# Persönliches gerät versehentlich ins Abbild.
+
+.git
+.github
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+.DS_Store
+
+# Dokumente dürfen ein Abbild nie erreichen. Sie lägen sonst dauerhaft in
+# einer Ebene, auch wenn sie später gelöscht würden.
+*.pdf
+*.docx
+*.doc
+*.odt
+*.rtf
+*.txt
+!requirements.txt
+testdaten/
+scratch/
+
+# Betriebsgeheimnisse
+.env
+*.env
+!.env.example
+
+# Wird im Abbild nicht gebraucht
+tests/
+tools/
+docs/
+*.md
+!README.md
+start.sh

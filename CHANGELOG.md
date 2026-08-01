@@ -4,6 +4,55 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.9.0 — 2026-08-01
+
+Auslieferung als Container. Ein frischer Ubuntu-24.04-Server mit Docker
+genügt; nach dem Klonen sind keine manuellen Schritte mehr nötig.
+
+**Neu**
+- Zweistufiges `Dockerfile`. Das Basisabbild ist über seinen Digest
+  festgelegt, nicht über ein bewegliches Etikett — nur so liefert derselbe
+  Bauauftrag auf jedem Server dasselbe Ergebnis. Sprachmodell und Tesseract
+  mit deutschem Sprachpaket stecken im Abbild; der Behälter startet
+  nachweislich auch mit `--network none`.
+- `docker compose up -d` startet Anwendung und Caddy als Reverse Proxy.
+  Nur der Proxy veröffentlicht Ports, die Anwendung bleibt im internen Netz.
+- Automatisches HTTPS über Let's Encrypt, sobald `ANON_DOMAIN` auf eine
+  erreichbare Domain zeigt. Ohne Domain bleibt es bei HTTP im lokalen Netz.
+- **Zugangsschutz über Basic Auth im Proxy.** Bisher band der Dienst an
+  127.0.0.1 und war per Konstruktion unerreichbar. Unter fester Adresse
+  könnte sonst jeder, der sie kennt, Arztbriefe hochladen. `/health` bleibt
+  frei, damit die Bereitschaftsprüfung funktioniert.
+- Sicherheitskopf im Proxy: CSP, X-Frame-Options, X-Content-Type-Options,
+  Referrer-Policy, Permissions-Policy, HSTS, Cross-Origin-Regeln.
+- Endpunkt `/health`, der erst dann gesund meldet, wenn das Sprachmodell
+  tatsächlich geladen ist. Docker-Healthchecks für beide Dienste; der Proxy
+  startet erst, nachdem die Anwendung bereit ist.
+- Strukturierte Protokollierung als JSON-Zeilen nach stdout. Festgehalten
+  werden Methode, Pfad, Statuscode und Dauer — **keine Dokumentinhalte,
+  keine Dateinamen, keine erkannten Namen**. Uvicorns Zugriffsprotokoll ist
+  abgeschaltet, weil es zusätzlich die Adresse des Aufrufers mitführte.
+- `app/config.py`: sämtliche Einstellungen aus Umgebungsvariablen, keine
+  Pfade und keine Grenzwerte mehr im Quelltext. Vollständig dokumentiert in
+  `.env.example`.
+- Obergrenze für die Seitenzahl bei Texterkennung. Ein Scan mit 200 Seiten
+  blockierte einen Arbeitsprozess sonst über viele Minuten.
+- CI baut das Abbild, startet den Gesamtaufbau und prüft: Nicht-Root-Konto,
+  Start ohne Netz, Sprachmodell und Tesseract im Abbild, Erreichbarkeit über
+  den Proxy, Sicherheitskopf, schreibgeschütztes Wurzeldateisystem sowie
+  dass im Protokoll kein Dokumentinhalt landet.
+
+**Härtung**
+- Anwendungsbehälter läuft als UID 10001 mit schreibgeschütztem
+  Wurzeldateisystem, ohne jede Linux-Berechtigung und mit
+  `no-new-privileges`.
+- Temporäre Dateien der Texterkennung liegen in einem `tmpfs` und erreichen
+  nie eine Platte.
+- Speichergrenze für den Anwendungsbehälter; Rastern grosser Scans belegte
+  sonst unbegrenzt Arbeitsspeicher.
+- Der Quelltext im Abbild gehört root und ist für den Dienstbenutzer nur
+  lesbar.
+
 ## 0.8.0 — 2026-07-31
 
 Deutlich weniger Fehlalarme in Befundtext.

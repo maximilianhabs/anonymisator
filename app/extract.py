@@ -13,13 +13,15 @@ import fitz  # PyMuPDF
 import pytesseract
 from PIL import Image
 
+from . import config
+
 # Unter diesem Schnitt an Zeichen pro Seite gehen wir davon aus, dass das PDF
 # keinen brauchbaren Textlayer hat und gescannt wurde.
 MIN_ZEICHEN_PRO_SEITE = 100
 
 # 300 dpi ist der übliche Kompromiss: darunter leidet die OCR-Qualität bei
 # kleinen Serifenschriften spürbar, darüber wird es nur noch langsamer.
-OCR_DPI = 300
+OCR_DPI = config.OCR_DPI
 
 
 @dataclass
@@ -341,6 +343,13 @@ def aus_pdf(daten: bytes) -> Extraktion:
                               "pdf-textlayer", seiten, hinweise)
 
         # Kein oder zu wenig Textlayer -> gescanntes Dokument, OCR nötig.
+        if seiten > config.MAX_OCR_SEITEN:
+            raise ValueError(
+                f"Das Dokument hat {seiten} Seiten ohne Textlayer; per OCR "
+                f"werden höchstens {config.MAX_OCR_SEITEN} gelesen. Bitte in "
+                "kleinere Abschnitte teilen."
+            )
+
         hinweise.append(
             f"Kein verwertbarer Textlayer ({zeichen_pro_seite:.0f} Zeichen/Seite). "
             f"{seiten} Seite(n) wurden per OCR gelesen — Lesefehler sind möglich, "
@@ -349,8 +358,12 @@ def aus_pdf(daten: bytes) -> Extraktion:
         ocr_teile = []
         for seite in doc:
             pix = seite.get_pixmap(dpi=OCR_DPI)
-            bild = Image.open(io.BytesIO(pix.tobytes("png")))
-            ocr_teile.append(pytesseract.image_to_string(bild, lang="deu"))
+            # Das Bild bleibt im Speicher; pytesseract legt daraus zwar eine
+            # temporäre Datei an, räumt sie aber selbst wieder ab. TMPDIR zeigt
+            # im Container auf ein tmpfs, das nichts auf Platte schreibt.
+            with Image.open(io.BytesIO(pix.tobytes("png"))) as bild:
+                ocr_teile.append(
+                    pytesseract.image_to_string(bild, lang=config.OCR_SPRACHE))
         return Extraktion(_reflow(_normalisiere("\n\n".join(ocr_teile))),
                           "pdf-ocr", seiten, hinweise)
 

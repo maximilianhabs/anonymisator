@@ -1,0 +1,152 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ======================================================================
+  # Erkennung und Formatierung — läuft ohne Behälter, deshalb schnell
+  # ======================================================================
+  tests:
+    name: Testsuiten
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.3"
+          cache: pip
+
+      - name: Tesseract mit deutschem Sprachpaket
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-deu
+
+      - name: Abhängigkeiten
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Erkennung, Stufen, Formatierung, Dokumenttypen, Fehlalarme
+        run: |
+          for datei in test_erkennung test_stufen test_formatierung \
+                       test_dokumenttypen test_fehlalarme; do
+            echo "── $datei"
+            python "tests/$datei.py"
+          done
+
+      - name: Durchlauf gegen den laufenden Dienst
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 5302 &
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:5302/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+          python tests/test_e2e.py
+
+  # ======================================================================
+  # Abbild bauen und tatsächlich starten
+  # ======================================================================
+  docker:
+    name: Abbild bauen und starten
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Bauen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: anonymisator:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Läuft als Nicht-Root
+        run: |
+          KENNUNG=$(docker run --rm --entrypoint id anonymisator:ci -u)
+          echo "UID im Behälter: $KENNUNG"
+          test "$KENNUNG" = "10001" || { echo "Behälter läuft als root"; exit 1; }
+
+      - name: Sprachmodell und Tesseract sind im Abbild
+        run: |
+          docker run --rm --entrypoint python anonymisator:ci -c \
+            "import spacy; nlp = spacy.load('de_core_news_lg'); \
+             print('Modell', nlp.meta['version']); \
+             assert [e.label_ for e in nlp('Frau Elisabeth Hartmann aus Passau.').ents]"
+          docker run --rm --entrypoint tesseract anonymisator:ci --list-langs | grep -qx deu
+
+      - name: Keine ausgehende Verbindung nötig
+        run: |
+          # Ohne Netz starten: gelingt das, wird zur Laufzeit nichts nachgeladen.
+          docker run --rm --network none --entrypoint python anonymisator:ci -c \
+            "import spacy; spacy.load('de_core_news_lg'); print('ohne Netz startbar')"
+
+      - name: Gesamtaufbau über docker compose
+        run: |
+          cp .env.example .env
+          # Für den Lauf ohne Domain: HTTP, kein Zugangsschutz.
+          sed -i 's/^ANON_DOMAIN=.*/ANON_DOMAIN=:80/' .env
+          sed -i 's/^ANON_HTTP_PORT=.*/ANON_HTTP_PORT=8080/' .env
+          sed -i 's/^ANON_BASIC_AUTH_USER=.*/ANON_BASIC_AUTH_USER=/' .env
+          docker compose up -d --build
+
+          echo "Warte, bis beide Dienste gesund melden …"
+          for i in $(seq 1 90); do
+            zustand=$(docker inspect --format '{{.State.Health.Status}}' \
+                      anonymisator-app-1 2>/dev/null || echo start)
+            [ "$zustand" = "healthy" ] && break
+            sleep 2
+          done
+          docker compose ps
+
+      - name: Erreichbarkeit über den Reverse Proxy
+        run: |
+          curl -fsS http://127.0.0.1:8080/health | tee /dev/stderr | grep -q bereit
+          curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/ | grep -q 200
+
+      - name: Sicherheitskopf gesetzt
+        run: |
+          kopf=$(curl -fsSI http://127.0.0.1:8080/)
+          echo "$kopf"
+          for erwartet in "x-frame-options" "x-content-type-options" \
+                          "content-security-policy" "referrer-policy"; do
+            echo "$kopf" | grep -qi "$erwartet" || { echo "fehlt: $erwartet"; exit 1; }
+          done
+
+      - name: Anonymisierung über die Schnittstelle
+        run: |
+          antwort=$(curl -fsS -X POST http://127.0.0.1:8080/api/analysieren/text \
+            -H 'Content-Type: application/json' \
+            -d '{"text":"Sehr geehrte Frau Kollegin Brandner, wir berichten über Frau Elisabeth Hartmann, geb. 22.07.1958."}')
+          echo "$antwort" | grep -q PATIENT_A || { echo "Patientin nicht erkannt"; exit 1; }
+          echo "Erkennung im Behälter erfolgreich"
+
+      - name: Wurzeldateisystem ist schreibgeschützt
+        run: |
+          docker compose exec -T app sh -c 'touch /app/probe 2>&1' && \
+            { echo "Wurzeldateisystem beschreibbar"; exit 1; } || \
+            echo "schreibgeschützt, wie vorgesehen"
+          docker compose exec -T app sh -c 'touch /tmp/probe && rm /tmp/probe' && \
+            echo "/tmp beschreibbar, wie vorgesehen"
+
+      - name: Protokoll enthält keine Dokumentinhalte
+        run: |
+          protokoll=$(docker compose logs app)
+          for begriff in Hartmann Brandner 22.07.1958 PATIENT_A; do
+            echo "$protokoll" | grep -q "$begriff" && \
+              { echo "Protokoll enthält Dokumentinhalt: $begriff"; exit 1; }
+          done
+          echo "Protokoll ist frei von Dokumentinhalten"
+
+      - name: Aufräumen
+        if: always()
+        run: docker compose down -v

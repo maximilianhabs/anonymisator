@@ -25,3 +25,4 @@ __pycache__/
 # Arbeitsordner für eigene Testdateien
 testdaten/
 scratch/
+.env

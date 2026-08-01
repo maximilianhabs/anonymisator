@@ -19,7 +19,9 @@ from typing import Iterable
 
 import spacy
 
-MODELL_NAME = "de_core_news_lg"
+from . import config
+
+MODELL_NAME = config.SPACY_MODELL
 _nlp = None
 
 
