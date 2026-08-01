@@ -4,6 +4,28 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 
 ## Naheliegend
 
+- **Impressum und Datenschutzerklärung.** Fehlen bisher vollständig. Sobald
+  der Dienst wieder öffentlich erreichbar ist, sind beide Pflicht — das
+  Impressum nach § 5 DDG, die Datenschutzerklärung nach Art. 13 DSGVO.
+  Vorlagen liegen bereits im eigenen Bestand: `neuro-praxis/app/impressum`
+  und `neuro-praxis/app/datenschutz` (elf Abschnitte), dazu
+  `eeg-navigator/app/impressum`. Die Struktur lässt sich übernehmen, die
+  Inhalte müssen vom Betreiber selbst kommen.
+
+  Drei Punkte sind hier anders als bei einer gewöhnlichen Website:
+
+  - **Die Datenschutzerklärung ist ungewöhnlich kurz** — und das ist die
+    eigentliche Aussage. Es gibt keine Speicherung, keine Konten, keine
+    Auswertung, keine Weitergabe. Der bereits ausformulierte Abschnitt „Der
+    Weg Ihrer Datei" auf der Startseite beschreibt das schon präzise und
+    kann die Grundlage bilden.
+  - **Es werden Gesundheitsdaten verarbeitet**, auch wenn nur flüchtig.
+    Damit greift Art. 9 DSGVO, nicht nur Art. 6. Das gehört benannt.
+  - **Offen und vorab zu klären:** Wenn Kolleginnen und Kollegen den Dienst
+    mit echten Patientendokumenten nutzen, stellt sich die Frage nach einem
+    Auftragsverarbeitungsvertrag. Das ist eine juristische Einschätzung, die
+    nicht aus dem Code folgt — vor einer Öffnung über den eigenen Gebrauch
+    hinaus zu klären.
 - **Anmeldung ohne Benutzernamen.** Der Zugang läuft heute über Basic Auth in
   Caddy. Auf mobilen Geräten macht das wiederholt Probleme — der Dialog
   erscheint unzuverlässig, gespeicherte Zugangsdaten greifen nicht, und die
