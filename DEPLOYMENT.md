@@ -279,6 +279,36 @@ Der laufende Caddy-Stand enthielt zwei Zeilen, die nie im Git standen:
 `header_up X-Forwarded-Proto` und `-Host` im edf-Block. Ohne sie erkennt
 Streamlit hinter dem Proxy kein HTTPS. Sie sind jetzt versioniert.
 
+## Anhalten, wenn der Speicher anderweitig gebraucht wird
+
+Der Anonymisator hält das Sprachmodell dauerhaft im Arbeitsspeicher — rund
+**950 MB von 3,7 GB**. Wer eine Weile intensiv an einer der anderen
+Anwendungen arbeitet, gewinnt durch ein Anhalten spürbar Luft.
+
+```bash
+ssh deploy@203.0.113.10 'bash ~/anonymisator/deploy/dienst.sh pause'
+ssh deploy@203.0.113.10 'bash ~/anonymisator/deploy/dienst.sh weiter'
+ssh deploy@203.0.113.10 'bash ~/anonymisator/deploy/dienst.sh status'
+```
+
+Gemessen am 2026-08-01: verfügbarer Speicher **1257 MB → 2209 MB**, also
+**+952 MB**. Die drei anderen Anwendungen liefen dabei unverändert weiter.
+
+Was dabei geschieht — und was nicht:
+
+- Der Behälter wird angehalten, **nicht entfernt**. Das Abbild bleibt, ein
+  erneuter Bau entfällt. Der Wiederanlauf dauert rund 21 Sekunden.
+- Docker merkt sich das Anhalten als ausdrücklich gewollt. Trotz
+  `restart: unless-stopped` startet der Dienst deshalb **auch nach einem
+  Neustart des Servers nicht** von selbst wieder.
+- Es geht nichts verloren — der Dienst ist zustandslos und hat keine Daten,
+  die überdauern könnten.
+- Die Caddy-Route bleibt bestehen. Wer die Adresse aufruft, erhält für die
+  Dauer der Pause einen Fehler 503.
+- Nach dem Wiederanlauf dauert es **bis zu 30 Sekunden**, bis Caddy die
+  Gegenstelle erneut prüft und wieder durchlässt. Das Skript wartet darauf
+  und meldet es.
+
 ## Zurückrollen
 
 ```bash

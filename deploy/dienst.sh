@@ -84,15 +84,32 @@ case "${1:-status}" in
       for i in $(seq 1 40); do
           if [ "$(docker inspect "$BEHAELTER" --format '{{.State.Health.Status}}' 2>/dev/null)" = "healthy" ]; then
               echo
-              gruen "Bereit nach etwa $((i * 3)) Sekunden."
+              gruen "Dienst bereit nach etwa $((i * 3)) Sekunden."
               # Das Sprachmodell wird beim Start geladen; vorher meldet der
               # Dienst bewusst "nicht bereit", damit Caddy keinen Verkehr
               # schickt, den er noch nicht bedienen kann.
-              curl -fsS --max-time 10 "http://127.0.0.1:8000/health" 2>/dev/null \
-                  || docker exec nz-dienstplan-caddy-1 \
-                       wget -qO- --timeout=5 http://anonymisator:8000/health 2>/dev/null \
-                  || true
+              docker exec nz-dienstplan-caddy-1 \
+                  wget -qO- --timeout=5 http://anonymisator:8000/health 2>/dev/null \
+                  | sed 's/^/  /' || true
               echo
+
+              # Caddy prüft seine Gegenstellen nur alle 30 Sekunden. Bis zur
+              # nächsten Prüfung antwortet die Adresse noch mit 503 — das ist
+              # kein Fehler, sondern der Takt des Reverse Proxy. Ohne diesen
+              # Hinweis sähe es nach einem misslungenen Start aus.
+              echo -n "  Warte, bis der Reverse Proxy wieder durchlässt "
+              for k in $(seq 1 14); do
+                  if docker exec nz-dienstplan-caddy-1 \
+                       wget -qO- --timeout=3 http://127.0.0.1/health >/dev/null 2>&1; then
+                      echo; gruen "  Über die Adresse erreichbar (nach $((k * 5)) s)."
+                      exit 0
+                  fi
+                  printf '.'
+                  sleep 5
+              done
+              echo
+              gelb "  Caddy meldet die Gegenstelle noch nicht als gesund."
+              echo "  Er prüft alle 30 Sekunden — in aller Regel genügt kurzes Warten."
               exit 0
           fi
           printf '.'
