@@ -57,14 +57,20 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 | Frei | 6,6 GB |
 | Docker-Baucache | 25,8 GB |
 
-Das Abbild ist rund 2,3 GB gross, der Bau braucht zusätzlich Platz für
-Zwischenschichten. **Vor dem Bau aufräumen:**
+Gemessen an den beiden Stufen des Abbilds: Bauschicht 2,39 GB,
+Laufzeitschicht 2,32 GB. Beide bestehen während des Baus gleichzeitig, die
+Spitze liegt also bei etwa **4,7 GB** — konservativ gerechnet, weil geteilte
+Basisebenen doppelt gezählt sind.
+
+**Vor dem Bau aufräumen:**
 
 ```bash
 docker builder prune -f          # gibt mehrere GB frei
-docker image prune -f            # verwaiste Abbilder
-df -h /                          # danach prüfen: mindestens 10 GB frei
+df -h /                          # danach prüfen: mindestens 7 GB frei
 ```
+
+*Erledigt am 2026-08-01: 3,5 GB freigegeben, 6,6 GB → 9,5 GB. Alle sechs
+Container liefen unverändert weiter.*
 
 ### 3 · Gebaut wird auf dem Server
 

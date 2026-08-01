@@ -17,7 +17,13 @@ DOMAIN="ano.neuro-vibe.de"
 # Bedarf laut Messung: Sprachmodell 600 MB je Arbeitsprozess, dazu
 # Verarbeitungsspielraum. Darunter wird es unzuverlässig.
 MIN_RAM_MB=1400
-MIN_PLATTE_GB=10
+
+# Gemessen an den beiden Stufen des Abbilds: Bauschicht 2,39 GB,
+# Laufzeitschicht 2,32 GB. Beide bestehen während des Baus gleichzeitig, die
+# Spitze liegt also bei etwa 4,7 GB — konservativ gerechnet, weil geteilte
+# Basisebenen doppelt gezählt sind. 7 GB lassen darüber hinaus Luft für den
+# Zwischenspeicher des Bauwerkzeugs.
+MIN_PLATTE_GB=7
 
 rot()   { printf '\033[31m✗ %s\033[0m\n' "$*"; }
 gruen() { printf '\033[32m✓ %s\033[0m\n' "$*"; }
@@ -28,15 +34,34 @@ probleme=0
 warnungen=0
 
 kopf "1 · Namensauflösung"
-ziel=$(dig +short "$DOMAIN" 2>/dev/null | tail -1)
-if [ -z "$ziel" ]; then
-    rot "$DOMAIN löst nicht auf — A-Record im Hetzner-Dashboard fehlt"
-    probleme=$((probleme + 1))
-elif [ "$ziel" != "203.0.113.10" ]; then
-    rot "$DOMAIN zeigt auf $ziel statt auf 203.0.113.10"
-    probleme=$((probleme + 1))
+# Gefragt werden öffentliche Auflöser, nicht der des Entwicklungsrechners.
+# Der hat womöglich noch die Fehlantwort von vor dem Anlegen des Eintrags
+# zwischengespeichert — und ist für Let's Encrypt ohnehin nicht massgeblich.
+treffer=0
+for aufloeser in 8.8.8.8 1.1.1.1 9.9.9.9; do
+    ziel=$(dig +short +time=3 +tries=1 "@$aufloeser" "$DOMAIN" A 2>/dev/null | tail -1)
+    if [ "$ziel" = "203.0.113.10" ]; then
+        treffer=$((treffer + 1))
+    elif [ -n "$ziel" ]; then
+        rot "$aufloeser meldet $ziel statt 203.0.113.10"
+    fi
+done
+if [ "$treffer" -eq 3 ]; then
+    gruen "$DOMAIN → 203.0.113.10 (bei allen drei Auflösern)"
+elif [ "$treffer" -gt 0 ]; then
+    gelb "erst $treffer von 3 Auflösern kennen den Eintrag — noch in Verbreitung"
+    warnungen=$((warnungen + 1))
 else
-    gruen "$DOMAIN → $ziel"
+    rot "$DOMAIN löst nirgends auf — A-Record im Hetzner-Dashboard fehlt"
+    probleme=$((probleme + 1))
+fi
+
+# Ein AAAA-Eintrag auf dieser Subdomain wäre ein Fehler: der Dienst hört nur
+# auf IPv4, und ein solcher Eintrag hat beim SSH-Zugang schon einmal auf die
+# Storage Box geleitet.
+if [ -n "$(dig +short @1.1.1.1 "$DOMAIN" AAAA 2>/dev/null)" ]; then
+    gelb "AAAA-Eintrag vorhanden — sollte für diese Subdomain nicht gesetzt sein"
+    warnungen=$((warnungen + 1))
 fi
 
 kopf "2 · Erreichbarkeit des Servers"
