@@ -1,5 +1,29 @@
 # Deployment auf neuro-vibe.de
 
+> ## Aktueller Stand: pausiert — und das bleibt vorerst so
+>
+> Der Dienst auf `ano.neuro-vibe.de` ist **absichtlich abgeschaltet**, um
+> Arbeitsspeicher für Dienstwerk frei zu halten. Das ist kein Störungsfall
+> und muss nicht behoben werden.
+>
+> Die Weiterentwicklung findet **lokal** statt. Der Server erhält erst
+> wieder einen Stand, wenn das ausdrücklich gewünscht ist — ein Deployment
+> ohne Ansage ist ausgeschlossen.
+>
+> Reaktivieren und wieder anhalten:
+>
+> ```
+> ssh deploy@203.0.113.10 'bash ~/anonymisator/deploy/dienst.sh start'
+> ssh deploy@203.0.113.10 'bash ~/anonymisator/deploy/dienst.sh stop'
+> ```
+>
+> Beim nächsten Deployment stehen zwei Änderungen aus dem Backlog an, die
+> beide diese Anleitung berühren: die **Anmeldung ohne Benutzernamen**
+> ersetzt die Basic Auth in Caddy, und die **überarbeitete Oberfläche**
+> ändert die Auslieferung der statischen Dateien. Der Abschnitt „Abnahme"
+> unten prüft heute auf `401` bei fehlender Anmeldung — dieser Punkt ist
+> danach anzupassen.
+
 Zielzustand: `ano.neuro-vibe.de` → HTTPS → bestehender Caddy → Container
 `anonymisator` → lokale De-Identifikation ohne Datenpersistenz.
 

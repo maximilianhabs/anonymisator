@@ -4,6 +4,19 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 
 ## Naheliegend
 
+- **Anmeldung ohne Benutzernamen.** Der Zugang läuft heute über Basic Auth in
+  Caddy. Auf mobilen Geräten macht das wiederholt Probleme — der Dialog
+  erscheint unzuverlässig, gespeicherte Zugangsdaten greifen nicht, und die
+  Abfrage nach einem Benutzernamen ist bei einem Dienst mit genau einem
+  Zugang ohnehin überflüssig. Gewünscht ist stattdessen eine eigene
+  Startseite, die nur nach dem Passwort fragt und dann in die Anwendung
+  führt. Beim Umbau bleibt zu beachten, dass `/health` weiterhin ohne
+  Anmeldung erreichbar sein muss und der Dienst zustandslos bleibt — eine
+  Sitzung darf nichts über den Upload festhalten.
+- **Oberfläche modernisieren.** Die Gestaltung wirkt altbacken. Betrifft
+  Typografie, Abstände, Farbwerte und die Anmutung der Bedienelemente, nicht
+  den Aufbau: der Ablauf aus Hochladen, Prüfen und Ausgeben hat sich
+  bewährt und soll erhalten bleiben.
 - **Schreibvarianten zusammenführen.** „Lisbeth" läuft als eigene Person,
   nicht als Variante von „Elisabeth Hartmann". Beide werden ersetzt, bekommen
   aber verschiedene Kürzel. Ein Knopf „mit anderer Gruppe zusammenführen" in
