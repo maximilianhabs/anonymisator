@@ -1,0 +1,256 @@
+# Deployment auf neuro-vibe.de
+
+Zielzustand: `ano.neuro-vibe.de` → HTTPS → bestehender Caddy → Container
+`anonymisator` → lokale De-Identifikation ohne Datenpersistenz.
+
+Diese Anleitung gilt für **einen Server, auf dem bereits vier Anwendungen
+laufen**. Das prägt fast jede Entscheidung darin.
+
+---
+
+## Vor dem ersten Deployment: drei Punkte müssen geklärt sein
+
+### 1 · Arbeitsspeicher — der enge Punkt
+
+Stand der Messung auf dem Server:
+
+| | |
+|---|---|
+| Gesamt | 3,7 GB |
+| Belegt | 1,5 GB (vier Anwendungen) |
+| Verfügbar | 2,2 GB |
+| Auslagerungsdatei | **keine** |
+
+Der Anonymisator hält das Sprachmodell im Speicher: rund 600 MB **je
+Arbeitsprozess**. Dazu kommt die Verarbeitung — gemessen 1,0 GB bei 100
+Seiten, 2,1 GB bei 300.
+
+Ohne Auslagerungsdatei bedeutet eine Überschreitung nicht etwa eine
+Fehlermeldung, sondern den OOM-Killer. Der trifft nicht zwingend den
+Verursacher, sondern den Prozess mit dem grössten Speicherbedarf — das kann
+die Datenbank des Dienstwerks sein.
+
+**Deshalb ist `docker-compose.server.yml` bewusst sparsam eingestellt:**
+
+| Einstellung | Wert | Grund |
+|---|---|---|
+| `ANON_WORKERS` | 1 | spart 600 MB gegenüber der Voreinstellung |
+| `ANON_MAX_SEITEN` | 80 | darüber reicht der Speicher nicht |
+| `ANON_MAX_OCR_SEITEN` | 25 | Rastern ist der teuerste Schritt |
+| `ANON_MEM_LIMIT` | 1600m | harte Grenze — schützt die anderen Dienste |
+
+Empfehlung, unabhängig von diesem Projekt: **eine Auslagerungsdatei
+anlegen.** Ein Server ohne Swap hat keinerlei Puffer.
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+### 2 · Plattenplatz — reicht knapp nicht
+
+| | |
+|---|---|
+| Gesamt | 38 GB |
+| Belegt | 30 GB (82 %) |
+| Frei | 6,6 GB |
+| Docker-Baucache | 25,8 GB |
+
+Das Abbild ist rund 2,3 GB gross, der Bau braucht zusätzlich Platz für
+Zwischenschichten. **Vor dem Bau aufräumen:**
+
+```bash
+docker builder prune -f          # gibt mehrere GB frei
+docker image prune -f            # verwaiste Abbilder
+df -h /                          # danach prüfen: mindestens 10 GB frei
+```
+
+### 3 · Gebaut wird auf dem Server
+
+Der Server ist `x86_64`, ein Entwicklungsrechner mit Apple Silicon ist
+`arm64`. Ein lokal gebautes Abbild lässt sich **nicht** übertragen. Der Bau
+läuft auf dem Server; er dauert dort mehrere Minuten und belastet den
+Rechner spürbar — nicht zur Sprechstundenzeit ausführen.
+
+---
+
+## Abweichungen von der ursprünglichen Vorgabe
+
+| Vorgabe | Umsetzung | Grund |
+|---|---|---|
+| `/opt/apps/ano-deidentifier` | `~/anonymisator` | `/opt` gehört root, `deploy` hat kein Schreibrecht. Alle drei bestehenden Anwendungen liegen unter `~`. |
+| eigener Reverse Proxy | bestehender Caddy | Ports 80/443 sind belegt; ein zweiter Proxy könnte nicht starten. |
+| Ubuntu 24.04 | Ubuntu 26.04 LTS | Server ist bereits neuer. |
+
+---
+
+## Ablauf
+
+### Schritt 1 — DNS (im Hetzner-Dashboard)
+
+| Feld | Wert |
+|---|---|
+| Name | `ano` |
+| Typ | `A` |
+| Ziel | `203.0.113.10` |
+
+Prüfen, bevor es weitergeht — Caddy fordert sonst vergeblich ein Zertifikat
+an und läuft in die Sperre von Let's Encrypt:
+
+```bash
+dig +short ano.neuro-vibe.de     # muss 203.0.113.10 liefern
+```
+
+### Schritt 2 — Repository auf den Server
+
+```bash
+ssh deploy@203.0.113.10
+git clone https://github.com/maximilianhabs/anonymisator.git ~/anonymisator
+cd ~/anonymisator
+cp .env.example .env
+```
+
+In `.env` anpassen — die Werte aus `docker-compose.server.yml` gelten als
+Vorgabe, `.env` überschreibt sie nur bei Bedarf:
+
+```
+ANON_WORKERS=1
+ANON_MAX_SEITEN=80
+ANON_MEM_LIMIT=1600m
+```
+
+`ANON_DOMAIN`, `ANON_HTTP_PORT` und die Zugangsdaten werden **nicht**
+gebraucht: In dieser Fassung gibt es keinen eigenen Caddy, die
+Zugangskontrolle liegt im zentralen Caddyfile.
+
+### Schritt 3 — Zugangspasswort
+
+```bash
+docker run --rm caddy:2.10-alpine caddy hash-password
+```
+
+Den Hash notieren. Er kommt in Schritt 4 ins Caddyfile — dort **ohne**
+Verdopplung der Dollarzeichen (das ist nur in Compose-Dateien nötig).
+
+### Schritt 4 — Caddy-Route eintragen
+
+Der Block steht vorbereitet in `deploy/Caddyfile.block`. Er wird an
+`~/nz-dienstplan/Caddyfile` angehängt — **dort und nirgends sonst**, weil
+der Caddy des Dienstwerk-Stacks genau diese eine Datei liest.
+
+```bash
+cat ~/anonymisator/deploy/Caddyfile.block >> ~/nz-dienstplan/Caddyfile
+nano ~/nz-dienstplan/Caddyfile      # HIER_DEN_BCRYPT_HASH_EINTRAGEN ersetzen
+```
+
+Änderung im Dienstwerk-Repository festhalten, sonst geht sie beim nächsten
+`git pull` dort verloren:
+
+```bash
+cd ~/nz-dienstplan
+git add Caddyfile && git commit -m "Caddy-Route für ano.neuro-vibe.de"
+git push
+```
+
+### Schritt 5 — Container starten
+
+```bash
+cd ~/anonymisator
+docker compose -f docker-compose.server.yml up -d --build
+```
+
+Der erste Bau dauert mehrere Minuten. Warten, bis der Dienst gesund meldet —
+das Sprachmodell braucht beim Start etwa 15 Sekunden:
+
+```bash
+docker compose -f docker-compose.server.yml ps
+docker logs -f anonymisator
+```
+
+### Schritt 6 — Caddy neu laden
+
+Erst **nachdem** der Container gesund ist, sonst holt Caddy ein Zertifikat
+für einen Dienst, der nicht antwortet:
+
+```bash
+docker exec nz-dienstplan-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+```
+
+Der Reload läuft ohne Unterbrechung für die anderen Anwendungen.
+
+---
+
+## Abnahme
+
+```bash
+# 1 · Container gesund und im richtigen Netz
+docker inspect anonymisator --format '{{.State.Health.Status}}'
+docker inspect anonymisator --format '{{range $n,$v := .NetworkSettings.Networks}}{{$n}} {{end}}'
+#   → muss nz-dienstplan_app enthalten
+
+# 2 · Kein Port nach aussen
+docker port anonymisator
+#   → muss leer sein
+
+# 3 · Zugangsschutz greift
+curl -s -o /dev/null -w '%{http_code}\n' https://ano.neuro-vibe.de/
+#   → 401
+curl -s -o /dev/null -w '%{http_code}\n' -u anonymisator:PASSWORT https://ano.neuro-vibe.de/
+#   → 200
+curl -s https://ano.neuro-vibe.de/health
+#   → {"status":"bereit",...}
+
+# 4 · Anonymisierung funktioniert
+curl -s -u anonymisator:PASSWORT -X POST https://ano.neuro-vibe.de/api/analysieren/text \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Frau Elisabeth Hartmann, geb. 22.07.1958."}' | grep -q PATIENT_A && echo OK
+
+# 5 · Protokoll ohne Dokumentinhalte
+docker logs anonymisator 2>&1 | grep -c -E 'Hartmann|22\.07\.1958'
+#   → 0
+
+# 6 · Keine Persistenz
+docker inspect anonymisator --format '{{range .Mounts}}{{.Type}} {{.Destination}} {{end}}'
+#   → nur tmpfs /tmp
+
+# 7 · Neustartfest
+docker inspect anonymisator --format '{{.HostConfig.RestartPolicy.Name}}'
+#   → unless-stopped
+
+# 8 · Die anderen Anwendungen laufen unverändert
+for url in https://neuro-vibe.de https://eeg.neuro-vibe.de https://edf.neuro-vibe.de; do
+  printf '%-32s %s\n' "$url" "$(curl -s -o /dev/null -w '%{http_code}' "$url")"
+done
+free -h
+```
+
+Zusätzlich von Hand im Browser: Datei hochladen, Fundstellen prüfen, in allen
+drei Formaten exportieren, die Exportdateien öffnen und auf verbliebene
+Klarnamen durchsehen.
+
+---
+
+## Wenn etwas nicht stimmt
+
+| Beobachtung | Ursache | Abhilfe |
+|---|---|---|
+| `ano.neuro-vibe.de` nicht erreichbar | Container nicht im Netz `nz-dienstplan_app` | `docker network connect nz-dienstplan_app anonymisator` |
+| Caddy meldet 502 | Container noch nicht bereit | `docker logs anonymisator`; Modell braucht ~15 s |
+| Caddyfile-Änderung wirkt nicht | Proxy nicht neu geladen | `docker exec nz-dienstplan-caddy-1 caddy reload --config /etc/caddy/Caddyfile` |
+| Container dauerhaft „unhealthy" | Healthcheck auf `localhost` statt `127.0.0.1` | in dieser Fassung bereits vermieden |
+| Bau bricht mit „no space left" ab | Plattenplatz | `docker builder prune -f` |
+| Anderer Dienst plötzlich beendet | OOM-Killer, kein Swap | `ANON_WORKERS=1`, `ANON_MAX_SEITEN` senken, Swap anlegen |
+| SSH landet auf der Storage Box | AAAA-Record im DNS | immer `ssh deploy@203.0.113.10` |
+
+## Zurückrollen
+
+```bash
+docker compose -f docker-compose.server.yml down
+# Caddy-Block aus ~/nz-dienstplan/Caddyfile entfernen, dann:
+docker exec nz-dienstplan-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+```
+
+Es bleibt nichts zurück: keine Datenbank, kein Volume, keine hochgeladene
+Datei. Das ist die Kehrseite der Zustandslosigkeit — und hier die
+erwünschte.

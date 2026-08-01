@@ -1,0 +1,94 @@
+# Fassung für neuro-vibe.de — Betrieb neben den bestehenden Anwendungen.
+#
+# Unterschiede zur mitgelieferten docker-compose.yml:
+#
+#   • KEIN eigener Caddy. Auf dem Server läuft bereits einer
+#     (nz-dienstplan-caddy-1) und belegt die Ports 80 und 443. Ein zweiter
+#     Proxy könnte nicht starten und würde im schlimmsten Fall den
+#     bestehenden verdrängen.
+#   • Das Netz `nz-dienstplan_app` ist extern und wird nicht angelegt.
+#     Container ausserhalb dieses Netzes sind für Caddy unsichtbar.
+#   • Deutlich sparsamere Grenzen: der Server hat 3,7 GB Arbeitsspeicher
+#     ohne Auslagerungsdatei und trägt bereits vier Anwendungen.
+#
+# Start:  docker compose -f docker-compose.server.yml up -d --build
+
+name: anonymisator
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: anonymisator:${ANON_VERSION:-latest}
+    container_name: anonymisator
+    restart: unless-stopped
+
+    environment:
+      ANON_PORT: "8000"
+      # Ein einziger Arbeitsprozess. Jeder hält eine eigene Kopie des
+      # Sprachmodells im Speicher — rund 600 MB. Bei 2,2 GB freiem
+      # Arbeitsspeicher ist ein zweiter Prozess nicht zu verantworten.
+      ANON_WORKERS: "${ANON_WORKERS:-1}"
+      ANON_MAX_UPLOAD_MB: "${ANON_MAX_UPLOAD_MB:-30}"
+      # Gemessen: 100 Seiten belegen rund 1,0 GB, 300 Seiten etwa 2,1 GB.
+      # Auf diesem Server ist bei 80 Seiten Schluss — darüber greift die
+      # Speichergrenze, und ohne Auslagerungsdatei träfe der OOM-Killer
+      # womöglich einen der anderen Dienste statt diesen hier.
+      ANON_MAX_SEITEN: "${ANON_MAX_SEITEN:-80}"
+      ANON_MAX_OCR_SEITEN: "${ANON_MAX_OCR_SEITEN:-25}"
+      ANON_OCR_DPI: "${ANON_OCR_DPI:-300}"
+      ANON_OCR_SPRACHE: "${ANON_OCR_SPRACHE:-deu}"
+      ANON_LOG_LEVEL: "${ANON_LOG_LEVEL:-INFO}"
+      ANON_LOG_JSON: "${ANON_LOG_JSON:-true}"
+      ANON_MODELL_VORLADEN: "true"
+
+    # Kein veröffentlichter Port. Erreichbar allein über Caddy im
+    # gemeinsamen Netz.
+    expose:
+      - "8000"
+
+    # --- Härtung ---------------------------------------------------------
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "10001:10001"
+
+    # Harte Obergrenze. Sie schützt weniger diesen Dienst als die anderen
+    # vier auf demselben Rechner: ohne Grenze könnte ein grosses Dokument
+    # den gesamten Arbeitsspeicher belegen und den OOM-Killer auf einen
+    # beliebigen Prozess ansetzen.
+    deploy:
+      resources:
+        limits:
+          memory: ${ANON_MEM_LIMIT:-1600m}
+        reservations:
+          memory: 700m
+
+    healthcheck:
+      # 127.0.0.1 statt localhost — localhost löst zuerst auf ::1 auf, und
+      # der Dienst lauscht nur auf IPv4. Diese Falle hat den EEG-Navigator
+      # schon einmal dauerhaft "unhealthy" gemeldet.
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - nz-dienstplan_app
+
+networks:
+  # Wird vom Dienstwerk-Stack angelegt und hier nur mitbenutzt.
+  nz-dienstplan_app:
+    external: true

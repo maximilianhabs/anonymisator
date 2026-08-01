@@ -602,3 +602,23 @@ Offene Punkte und bewusst abgelehnte Vorschläge stehen im
 Entwickelt mit Unterstützung von Claude (Anthropic); die Beiträge sind in
 der Commit-Historie als solche gekennzeichnet. Konzept, fachliche
 Entscheidungen und Prüfung liegen beim Autor.
+
+## Deployment auf einem Server
+
+Für den Betrieb auf `neuro-vibe.de` neben den bestehenden Anwendungen gilt
+eine eigene Fassung: [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Der Unterschied ist grundsätzlich. Die mitgelieferte `docker-compose.yml`
+bringt einen eigenen Reverse Proxy mit und ist für einen Server gedacht, auf
+dem sonst nichts läuft. `docker-compose.server.yml` verzichtet darauf und
+klinkt sich in den vorhandenen Caddy ein — zwei Proxys können sich die Ports
+80 und 443 nicht teilen.
+
+Vor dem ersten Deployment prüft
+
+```bash
+bash deploy/vorpruefung.sh
+```
+
+ohne etwas zu verändern, ob Arbeitsspeicher, Plattenplatz, Namensauflösung
+und das gemeinsame Docker-Netz stimmen.
