@@ -64,6 +64,7 @@ def _gruppe_als_dict(gruppe: detect.Gruppe) -> dict:
         "label": gruppe.label,
         "initialen": gruppe.initialen,
         "aktiv": gruppe.aktiv,
+        "sicher": gruppe.sicher,
         "varianten": gruppe.varianten,
         "funde": [{"start": f.start, "ende": f.end, "text": f.text,
                    "quelle": f.quelle, "formen": f.formen}

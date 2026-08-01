@@ -306,6 +306,23 @@ mark.ers {
 }
 .zeile.inaktiv .name, .zeile.inaktiv .marke-label { opacity: .42; }
 .zeile .marke-label.bleibt { color: var(--gedaempft); }
+
+/* Ohne Beleg gefunden: gestrichelt unterstrichen, damit beim Durchsehen
+   sofort auffällt, wo das Sprachmodell allein entschieden hat. */
+.zeile .name.unbelegt {
+  text-decoration: underline dotted var(--rand-stark);
+  text-underline-offset: 3px;
+}
+.zeile .name.unbelegt::after {
+  content: "?";
+  margin-left: 5px;
+  font-size: 10.5px;
+  color: var(--gedaempft);
+  vertical-align: super;
+}
+
+#unbelegt-hinweis { margin: 10px 18px 12px; }
+#unbelegt-hinweis b { display: block; margin-bottom: 2px; }
 .zeile select {
   grid-column: 2 / 4; font: inherit; font-size: 11.5px;
   padding: 2px 4px; margin-top: 2px;

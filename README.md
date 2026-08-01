@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.7.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.8.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 
 Lokales Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren
@@ -392,6 +392,15 @@ bleiben erhalten, Anschriftenblöcke und Aufzählungen behalten ihre Zeilen,
 und das Ersetzen verändert die Zeilenstruktur nicht.
 
 ```bash
+.venv/bin/python tests/test_fehlalarme.py
+```
+
+Misst, was **nicht** gefunden werden darf: Anamnese, Befund, Anatomie,
+Eponyme, Laborwerte und Fachabkürzungen müssen unangetastet bleiben, echte
+Namen und Orte gleichzeitig erhalten. Die übrigen Testdateien prüfen nur, was
+gefunden wird — eine Erkennung, die alles markiert, besteht jeden davon.
+
+```bash
 .venv/bin/python tests/test_dokumenttypen.py
 ```
 
@@ -413,10 +422,43 @@ Aktenzeichen sowie Rechnungs-, Konto- und Versicherungsnummern sind **frei
 erfunden**. Es wurden zu keinem Zeitpunkt echte Personen-, Patienten- oder
 Geschäftsdaten verarbeitet oder in dieses Repository aufgenommen.
 
+## Belegte und unbelegte Treffer
+
+Befundtext steckt voller grossgeschriebener Fachbegriffe, und ein
+Sprachmodell hält davon einiges für Eigennamen. Zwei Dinge halten das im
+Zaum.
+
+**Erstens Regeln an der Wortbildung** statt einer Wortliste, die Fachsprache
+nie einholt: medizinische Endungen (`-itis`, `-pathie`, `-sklerose`),
+Grundwörter am Wortende, lateinische Anatomie, Grossbuchstaben-Kürzel,
+akademische Titel, Fachadverbien. Besonders wirksam bei **Eponymen** —
+„Lasègue-Zeichen" oder „Schellong-Test" tragen formal einen Personennamen,
+sind aber Fachbegriffe. Ein Brief von einem echten Herrn Dr. Schellong wird
+davon nicht berührt: dort entscheidet die Anrede.
+
+**Zweitens die Unterscheidung belegt / unbelegt.** Belegt heisst: Anrede,
+akademischer Titel oder Rollenbezeichnung stand daneben. Unbelegt heisst:
+allein vom Sprachmodell vorgeschlagen. Unbelegte Treffer stehen in der
+Seitenleiste unten, sind gestrichelt unterstrichen und lassen sich gesammelt
+abwählen.
+
+Sie werden trotzdem ersetzt. Ein automatisches Kappen — etwa ab einer
+plausiblen Höchstzahl an Personen — wäre naheliegend, aber falsch: Welche der
+erkannten Personen die echten sind, lässt sich nicht an ihrer Zahl ablesen.
+Ein Brief kann Patient, Angehörige, Zuweiser sowie Haus- und Fachärzte nennen
+und damit zu Recht über jedem Grenzwert liegen. Wer dort automatisch kappt,
+lässt Klarnamen stehen. Gelenkt wird deshalb nur der Blick, nicht das
+Ergebnis.
+
 ## Wie belastbar ist die Erkennung?
 
-Ehrlich gesagt: nicht beziffert. Es gibt bislang **keine Messung von
-Trefferquote und Fehlalarmrate** an einem annotierten Prüfsatz. Die Beurteilung
+Für **Fehlalarme** gibt es seit 0.8.0 eine Messung: `tests/test_fehlalarme.py`
+prüft mehrere hundert Wörter reinen Befundtext, der keine schützenswerte
+Angabe enthält, und verlangt null Treffer — bei gleichzeitiger Gegenprobe,
+dass echte Namen, Orte und Einrichtungen erhalten bleiben.
+
+Für die **Trefferquote** gilt das nicht. Es gibt bislang keine Messung an
+einem annotierten Prüfsatz. Die Beurteilung
 beruht darauf, dass die Testdokumente nach jeder Änderung durchgelesen werden.
 
 Was das heisst: Die Aussage „findet Namen, Anschriften und Kennnummern" ist

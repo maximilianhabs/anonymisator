@@ -360,6 +360,17 @@ _STOPP_MEDIZIN = {
 }
 _STOPP_ALLGEMEIN = {
     "sehr", "mit", "freundlichen", "grüßen", "herr", "frau", "herrn",
+    # Akademische Titel und Anreden. Sie stehen neben Namen und werden vom
+    # Sprachmodell regelmässig mit hineingezogen — besonders in
+    # Grossschreibung, wie sie in Briefköpfen üblich ist.
+    "dr", "drs", "prof", "professor", "doktor", "med", "dent", "vet",
+    "habil", "pd", "priv", "dipl", "psych", "phil", "rer", "nat", "hc",
+    "mba", "msc", "bsc", "ma", "ba",
+    # Partizipien in Rollenbezeichnungen. Generisch über die Endung "-ender"
+    # zu filtern verbietet sich: "Bender" ist ein Familienname.
+    "behandelnder", "behandelnde", "behandelnden", "zuweisender",
+    "zuweisende", "überweisender", "untersuchender", "diensthabender",
+    "aufnehmender", "entlassender", "unterzeichnender", "vertretender",
     "kollege", "kollegin", "fallnummer", "aktenzeichen", "versichertennummer",
     "geburtsdatum", "anschrift", "telefon", "durchwahl", "sekretariat",
     "chefarzt", "chefärztin", "oberarzt", "oberärztin", "assistenzarzt",
@@ -373,6 +384,126 @@ _STOPP_ALLGEMEIN = {
 _STOPP = _STOPP_ANATOMIE | _STOPP_MEDIZIN | _STOPP_ALLGEMEIN
 
 
+# --------------------------------------------------------------------------
+# Fachbegriffe strukturell erkennen
+# --------------------------------------------------------------------------
+# Eine Wortliste kann Fachsprache nie einholen — es entstehen laufend neue
+# Komposita. Die folgenden Regeln greifen deshalb an der Wortbildung an und
+# decken damit Tausende Begriffe ab, die nie einzeln aufgeführt werden müssen.
+
+# Endungen, auf die im Deutschen kein Familienname endet. Die Mindestlänge
+# schützt kurze Namen: "Rose" endet auf "ose", ist aber ein Nachname.
+_MED_ENDUNGEN = (
+    "itis", "itiden", "ose", "osen", "osis", "iasis", "ismus",
+    "pathie", "pathien", "opathie", "algie", "algien", "algesie",
+    "ektomie", "tomie", "stomie", "skopie", "graphie", "grafie",
+    "therapie", "plegie", "parese", "paresen", "plasie", "plasie",
+    "trophie", "atrophie", "penie", "zytose", "philie", "ämie", "ämien",
+    "urie", "logie", "sklerose", "stenose", "fraktur",
+    "insuffizienz", "syndrom", "syndroms", "syndrome",
+    # Adjektive und Adverbien der Fachsprache. Sie stehen oft am Satzanfang
+    # ("Laborchemisch ergaben sich …") und werden dort grossgeschrieben, was
+    # das Sprachmodell regelmässig für einen Eigennamen hält. Die Endungen
+    # sind lang genug, dass kurze Familiennamen auf -isch nicht betroffen
+    # sind: "Kubisch" und "Bartisch" bleiben Namen.
+    "logisch", "chemisch", "physisch", "metrisch", "graphisch", "grafisch",
+    "skopisch", "gnostisch", "peutisch", "matisch", "tomisch", "morphisch",
+    "statisch", "zentrisch", "sektionell", "ational",
+)
+
+# Grundwörter am Ende eines Kompositums. Deutsche Zusammensetzungen tragen
+# ihre Bedeutung hinten, deshalb genügt die Prüfung des Wortendes — eine
+# Suche im ganzen Wort würde "Werther" über den Bestandteil "wert" treffen.
+_MED_GRUNDWOERTER = (
+    # Anatomie
+    "arterie", "arterien", "vene", "venen", "nerv", "nerven", "muskel",
+    "muskeln", "knochen", "gelenk", "gelenke", "sehne", "sehnen", "band",
+    "fuß", "füße", "fuss", "füsse", "hand", "hände", "arm", "arme",
+    "bein", "beine", "finger", "zehe", "zehen", "kopf", "hals", "rumpf",
+    "haut", "schleimhaut", "lappen", "kern", "kerne", "rinde", "mark",
+    # Befund und Diagnostik
+    "antikörper", "antigen", "serologie", "sonographie", "sonografie",
+    "mikroskopie", "szintigraphie", "phänomen", "erkrankung", "krankheit",
+    "befund", "befunde", "diagnostik", "diagnose", "diagnosen", "therapie",
+    "latenz", "latenzen", "potential", "potentiale", "potenzial", "reflex",
+    "reflexe", "agglutinin", "globulin", "globuline", "faktor", "faktoren",
+    "spiegel", "index", "quotient", "geschwindigkeit", "amplitude",
+    # Klinik
+    "stellung", "exposition", "belastung", "verfärbung", "verfärbungen",
+    "schwellung", "schwellungen", "störung", "störungen", "empfindung",
+    "empfindungen", "veränderung", "veränderungen", "symptomatik",
+    "ätiologie", "genese", "anamnese", "medikation", "dosierung",
+    "beschwerde", "beschwerden", "schmerz", "schmerzen", "defizit",
+    "defizite", "ausfall", "ausfälle", "karenz", "schutz", "verlauf",
+    # Eponyme: Zeichen, Tests und Skalen tragen den Namen ihres
+    # Erstbeschreibers. "Lasègue-Zeichen" oder "Schellong-Test" enthalten
+    # damit formal einen Personennamen, sind aber Fachbegriffe und keine
+    # Angabe über die untersuchte Person.
+    "zeichen", "test", "tests", "versuch", "stehversuch", "probe",
+    "manöver", "handgriff", "griff", "skala", "score", "schema",
+    "kriterium", "kriterien", "klassifikation", "einteilung", "regel",
+    "stadium", "stadien", "grad", "grade", "methode", "formel",
+    "operation", "plastik", "prothese", "naht", "zugang", "punktion",
+)
+
+# Lateinische Anatomie: das Gattungswort steht vorn.
+_LATEIN_ANATOMIE = re.compile(
+    r"^(?:Nervus|Nervi|Arteria|Arteriae|Vena|Venae|Musculus|Musculi|Os|Ossa|"
+    r"Ligamentum|Ligamenta|Ramus|Rami|Plexus|Ganglion|Truncus|Fascia|"
+    r"Bursa|Tendo|Vertebra|Costa|Foramen|Sinus|Sulcus|Gyrus|Nucleus|"
+    r"Cortex|Medulla|Corpus|Capsula|Membrana)\b", re.I)
+
+# Krankenkassen und Verbände, die als Abkürzung auftreten und trotz
+# Grossschreibung echte Organisationen sind.
+_ECHTE_ABKUERZUNGEN = {
+    "aok", "tk", "dak", "bkk", "ikk", "kkh", "kvb", "kbv", "mdk", "mds",
+    "bg", "dgb", "vdk", "sbk", "hek", "gkv", "pkv",
+}
+
+
+def _ist_abkuerzung(wert: str) -> bool:
+    """Reine Grossbuchstabenfolge — im Befund fast immer ein Fachkürzel.
+
+    ANA, ANCA, TSH, MAG, CRP, EEG. Krankenkassen sind die Ausnahme und
+    stehen deshalb in einer eigenen Liste.
+    """
+    kern = re.sub(r"[-.\s]", "", wert)
+    if not (2 <= len(kern) <= 6) or not kern.isalpha():
+        return False
+    return kern.isupper() and kern.lower() not in _ECHTE_ABKUERZUNGEN
+
+
+def _ist_fachbegriff(wert: str) -> bool:
+    """Erkennt medizinische Fachsprache an ihrer Wortbildung."""
+    bereinigt = wert.strip(" .,;:-")
+    if _LATEIN_ANATOMIE.match(bereinigt):
+        return True
+
+    # Bei Bindestrichwörtern trägt der letzte Teil die Bedeutung:
+    # "Anti-MAG-Antikörper" ist ein Antikörper.
+    teile = [t for t in re.split(r"[-\s]+", bereinigt.lower()) if t]
+    if not teile:
+        return False
+
+    for teil in teile:
+        if len(teil) >= 8 and teil.endswith(_MED_ENDUNGEN):
+            return True
+
+    # Angehängte Zahlen zählen nicht: "Rankin-Skala 2" ist eine Skala.
+    woerter = [t for t in teile if any(z.isalpha() for z in t)]
+    if not woerter:
+        return False
+
+    letzter = woerter[-1]
+    if len(letzter) >= 6 and letzter.endswith(_MED_GRUNDWOERTER):
+        return True
+    # Auch alleinstehend: "Zehen", "Vorfüße", "Nerven"
+    if letzter in _MED_GRUNDWOERTER:
+        return True
+
+    return False
+
+
 def _ist_stoppwort(wert: str) -> bool:
     """Wahr, wenn der Treffer ausschliesslich aus unverfänglichen Wörtern besteht.
 
@@ -384,8 +515,10 @@ def _ist_stoppwort(wert: str) -> bool:
     bereinigt = wert.strip(" .,;:-").lower()
     if bereinigt in _STOPP:
         return True
-    teile = [t for t in re.split(r"[\s\-]+", bereinigt)
-             if t and not any(z.isdigit() for z in t)]
+    # Auch die einzelnen Bestandteile von Satzzeichen befreien: "Dr." und
+    # "med." tragen ihren Punkt mit und würden sonst nie zur Liste passen.
+    teile = [t.strip(".,;:-") for t in re.split(r"[\s\-]+", bereinigt)]
+    teile = [t for t in teile if t and not any(z.isdigit() for z in t)]
     return bool(teile) and all(t in _STOPP for t in teile)
 
 
@@ -412,10 +545,13 @@ def _ner_funde(text: str) -> Iterable[Fund]:
         typ = zuordnung.get(ent.label_)
         if not typ:
             continue
-        wert = ent.text.strip()
+        # Das Sprachmodell zieht gelegentlich über einen Zeilen- oder
+        # Absatzumbruch hinweg. Weder Person noch Ort noch Einrichtung
+        # erstrecken sich über einen Absatz — am Umbruch wird abgeschnitten.
+        wert = ent.text.split("\n", 1)[0].strip()
         if len(wert) < 2 or wert.isdigit():
             continue
-        if _ist_stoppwort(wert):
+        if _ist_stoppwort(wert) or _ist_fachbegriff(wert) or _ist_abkuerzung(wert):
             continue
         start = ent.start_char + (len(ent.text) - len(ent.text.lstrip()))
         yield Fund(start, start + len(wert), wert, typ, "ner")
@@ -447,6 +583,32 @@ def _markerabstand(muster: re.Pattern, links: str, rechts: str) -> int | None:
         # ist "Patientin Frau Meier", nicht "Meier, unsere Patientin".
         abstaende.append(rechter.start() + 10)
     return min(abstaende) if abstaende else None
+
+
+# Kategorien, deren Treffer allein aus dem Sprachmodell stammen können und
+# deshalb einer Plausibilitätsangabe bedürfen. Ein Telefonmuster oder eine
+# IBAN ist dagegen aus sich heraus eindeutig.
+_UNSICHER_MOEGLICH = {"PERSON", "PATIENT", "ARZT", "ORT", "ORGANISATION"}
+
+
+def _ist_belegt(text: str, fund: Fund) -> bool:
+    """Steht neben dem Treffer etwas, das ihn als Eigennamen bestätigt?
+
+    Eine Anrede, ein akademischer Titel oder eine Rollenbezeichnung sind
+    harte Belege. Ein Vorschlag des Sprachmodells ohne jeden solchen Beleg
+    ist die häufigste Quelle von Fehlalarmen — gerade in Befundtext, der
+    voller grossgeschriebener Fachbegriffe steckt.
+    """
+    if fund.typ not in _UNSICHER_MOEGLICH:
+        return True
+    if not fund.quelle.startswith("ner"):
+        return True  # über Anrede oder Titel gefunden
+    links = text[max(0, fund.start - 70):fund.start]
+    rechts = text[fund.end:fund.end + 45]
+    return bool(
+        _ARZT_MARKER.search(links) or _ARZT_MARKER.search(rechts)
+        or _PATIENT_MARKER.search(links) or _PATIENT_MARKER.search(rechts)
+    )
 
 
 def _rolle_bestimmen(text: str, fund: Fund) -> str:
@@ -529,6 +691,10 @@ class Gruppe:
     label: str = ""
     initialen: str = ""
     aktiv: bool = True
+    # Falsch heisst: allein vom Sprachmodell vorgeschlagen, ohne Anrede,
+    # Titel oder anderen Kontextmarker. Solche Treffer werden trotzdem
+    # ersetzt — sie sind aber die, bei denen sich das Nachsehen lohnt.
+    sicher: bool = True
 
     @property
     def varianten(self) -> list[str]:
@@ -718,6 +884,10 @@ def analysiere(text: str) -> list[Gruppe]:
     liste = _konsistenz_nachlauf(text, liste)
     for gruppe in liste:
         gruppe.anzeige = max(gruppe.varianten, key=len)
+        # Eine Gruppe gilt als belegt, sobald eine ihrer Fundstellen belegt
+        # ist: wer einmal als "Frau Hartmann" auftaucht, ist auch dort eine
+        # Person, wo der Nachname allein steht.
+        gruppe.sicher = any(_ist_belegt(text, f) for f in gruppe.funde)
     liste.sort(key=lambda g: g.funde[0].start if g.funde else 0)
     labels_vergeben(liste)
     return liste

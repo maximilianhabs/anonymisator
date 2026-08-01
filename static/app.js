@@ -207,6 +207,46 @@ function zeichneDokument() {
   $('dokument').innerHTML = html;
 }
 
+/**
+ * Weist auf schwach belegte Treffer hin und bietet an, sie gesammelt
+ * abzuwählen.
+ *
+ * Bewusst kein automatisches Kappen ab einer Anzahl: welche der erkannten
+ * Personen die echten sind, lässt sich nicht an ihrer Zahl ablesen. Ein
+ * Brief kann Patient, Angehörige, Zuweiser, Haus- und Fachärzte nennen und
+ * damit zu Recht über einem Grenzwert liegen. Wer dort automatisch kappt,
+ * lässt Klarnamen stehen — der teuerste Fehler, den dieses Werkzeug machen
+ * kann. Also: alles bleibt ersetzt, aber der Blick wird gelenkt.
+ */
+function zeichneUnbelegtHinweis() {
+  const alt = document.getElementById('unbelegt-hinweis');
+  if (alt) alt.remove();
+
+  const unbelegt = Z.gruppen.filter((g) => !g.sicher && g.aktiv);
+  if (!unbelegt.length) return;
+
+  const kasten = document.createElement('div');
+  kasten.className = 'warnung';
+  kasten.id = 'unbelegt-hinweis';
+  kasten.innerHTML =
+    `<b>${unbelegt.length} Treffer ohne Beleg.</b> Nur vom Sprachmodell `
+    + 'vorgeschlagen, ohne Anrede oder Titel daneben. Sie werden ersetzt — '
+    + 'hier stecken aber die meisten Fehlalarme.';
+
+  const knopf = document.createElement('button');
+  knopf.className = 'knopf klein';
+  knopf.style.marginTop = '8px';
+  knopf.textContent = `Diese ${unbelegt.length} abwählen`;
+  knopf.onclick = () => {
+    unbelegt.forEach((g) => { g.aktiv = false; });
+    labelsVergeben();
+    zeichneAlles();
+  };
+  kasten.appendChild(knopf);
+
+  $('gruppen').prepend(kasten);
+}
+
 function zeichneStufen() {
   const behaelter = $('stufen-knoepfe');
   behaelter.innerHTML = '';
@@ -288,11 +328,15 @@ function zeichneSeitenleiste() {
     kopf.appendChild(alleKnopf);
     block.appendChild(kopf);
 
-    for (const gruppe of gruppen) {
+    // Belegte Treffer zuerst, unbelegte darunter — dort lohnt das Nachsehen.
+    const sortiert = [...gruppen].sort((a, b) => (a.sicher ? 0 : 1) - (b.sicher ? 0 : 1));
+    for (const gruppe of sortiert) {
       block.appendChild(zeileFuer(gruppe));
     }
     behaelter.appendChild(block);
   }
+
+  zeichneUnbelegtHinweis();
 
   if (!Z.gruppen.length) {
     behaelter.innerHTML = '<p class="hilfe" style="padding:16px 18px">'
@@ -325,12 +369,16 @@ function zeileFuer(gruppe) {
   };
 
   const name = document.createElement('span');
-  name.className = 'name';
+  name.className = 'name' + (gruppe.sicher ? '' : ' unbelegt');
   name.textContent = gruppe.anzeige;
   const zusatz = gruppe.varianten.filter((v) => v !== gruppe.anzeige);
-  name.title = zusatz.length
+  const hinweis = gruppe.sicher
+    ? ''
+    : '\n\nNur vom Sprachmodell vorgeschlagen — ohne Anrede, Titel oder '
+      + 'sonstigen Beleg. Wird ersetzt, lohnt aber einen Blick.';
+  name.title = (zusatz.length
     ? `Auch als: ${zusatz.join(', ')}\n(klicken: erste Fundstelle zeigen)`
-    : 'Klicken: erste Fundstelle im Text zeigen';
+    : 'Klicken: erste Fundstelle im Text zeigen') + hinweis;
   name.onclick = () => zeigeFundstelle(gruppe);
 
   const anzahl = document.createElement('span');

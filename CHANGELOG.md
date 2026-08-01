@@ -4,6 +4,59 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.8.0 — 2026-07-31
+
+Deutlich weniger Fehlalarme in Befundtext.
+
+**Behoben**
+Befundtext steckt voller grossgeschriebener Fachbegriffe, die das
+Sprachmodell für Eigennamen hielt. Statt einer Wortliste, die Fachsprache
+nie einholt, greifen jetzt Regeln an der Wortbildung an:
+
+- **Medizinische Endungen** — kein Familienname endet auf `-itis`,
+  `-pathie`, `-ektomie`, `-sklerose`. Die Mindestlänge schützt kurze Namen:
+  „Rose" endet auf `-ose` und bleibt eine Person.
+- **Grundwörter am Wortende** — deutsche Komposita tragen ihre Bedeutung
+  hinten, deshalb genügt die Prüfung des Endes. Eine Suche im ganzen Wort
+  würde „Werther" über den Bestandteil „wert" treffen.
+- **Eponyme** — „Lasègue-Zeichen", „Schellong-Test", „Barthel-Index" tragen
+  formal einen Personennamen, sind aber Fachbegriffe. Erkannt am Grundwort
+  (Zeichen, Test, Skala, Schema, Klassifikation, …). Ein Brief von einem
+  echten Herrn Dr. Schellong wird davon nicht berührt: dort entscheidet die
+  Anrede.
+- **Lateinische Anatomie** — „Nervus suralis", „Arteria carotis" wurden als
+  Ortsangaben geführt.
+- **Grossbuchstaben-Kürzel** — ANA, ANCA, TSH, CRP galten als Einrichtungen.
+  Krankenkassen wie AOK oder TK sind ausgenommen.
+- **Akademische Titel** — „Dr.", „med.", „Prof." wurden mitsamt Punkt
+  geführt und passten deshalb nie zur Stoppliste. Betraf besonders
+  Briefköpfe in Grossschreibung.
+- **Fachadverbien am Satzanfang** — „Laborchemisch ergaben sich …" wurde als
+  Person gelesen.
+- Treffer des Sprachmodells greifen nicht mehr über einen Zeilen- oder
+  Absatzumbruch hinweg.
+
+Gemessen an 216 Wörtern reinem Befundtext: von sechs Fehlalarmen auf null,
+ohne einen einzigen echten Namen zu verlieren.
+
+**Neu**
+- Treffer werden als **belegt** oder **unbelegt** ausgewiesen. Belegt heisst:
+  Anrede, akademischer Titel oder Rollenbezeichnung stand daneben. Unbelegt
+  heisst: allein vom Sprachmodell vorgeschlagen. Unbelegte Treffer stehen in
+  der Seitenleiste unten, sind gestrichelt unterstrichen und lassen sich
+  gesammelt abwählen.
+
+  Bewusst **kein** automatisches Kappen ab einer Anzahl: Welche der erkannten
+  Personen die echten sind, lässt sich nicht an ihrer Zahl ablesen. Ein Brief
+  kann Patient, Angehörige, Zuweiser sowie Haus- und Fachärzte nennen und
+  damit zu Recht über jedem Grenzwert liegen. Wer dort automatisch kappt,
+  lässt Klarnamen stehen — der teuerste Fehler, den dieses Werkzeug machen
+  kann. Alles bleibt ersetzt, gelenkt wird nur der Blick.
+
+- `tests/test_fehlalarme.py` misst, was **nicht** gefunden werden darf. Die
+  übrigen Testdateien prüfen nur, was gefunden wird — eine Erkennung, die
+  alles markiert, besteht jeden davon und ist im Alltag trotzdem unbrauchbar.
+
 ## 0.7.0 — 2026-07-31
 
 Blocksatz zerlegte den Text in einzelne Wörter.
