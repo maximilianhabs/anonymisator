@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.6.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.7.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 
 Lokales Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren
@@ -217,7 +217,20 @@ Verfahren, das aus der Häufigkeit langer Zeilen auf harten Umbruch schliesst,
 versagt dort und lässt den Brief zerhackt. Die Geometrie kennt die Antwort
 dagegen für jede Zeile einzeln.
 
-Zwei Eigenheiten echter Arztbriefe sind dabei entscheidend:
+Davor steht allerdings noch ein Schritt, ohne den alles Weitere ins Leere
+läuft: **Bruchstücke derselben Textzeile müssen wieder vereint werden.** Im
+Blocksatz setzt die erzeugende Software jedes Wort an eine eigene berechnete
+Position, um die Wortabstände zu strecken. PyMuPDF meldet diese Wörter als
+eigene Zeilen — allesamt auf derselben Höhe. Hält man das für Zeilenumbrüche,
+zerfällt ein Absatz zu einer Kette von Einzelwörtern untereinander. In einem
+typischen Brief werden so aus 92 gemeldeten Zeilen zwölf echte.
+
+Dabei darf Blocksatz nicht mit Spaltensatz verwechselt werden — beide erzeugen
+grosse waagerechte Lücken. Unterscheidbar sind sie an deren Verteilung:
+Blocksatz streckt **alle** Wortabstände einer Zeile gleichmässig, eine Tabelle
+hat einen einzelnen Ausreisser.
+
+Drei weitere Eigenheiten echter Arztbriefe sind entscheidend:
 
 **Gelesen wird blockweise**, nicht seitenweit nach Höhe. Steht neben dem
 Anschriftenfeld ein zweiter Block mit Ansprechpartner, Durchwahl und Datum,

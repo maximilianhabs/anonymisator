@@ -4,6 +4,31 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.7.0 — 2026-07-31
+
+Blocksatz zerlegte den Text in einzelne Wörter.
+
+**Behoben**
+- Um die Wortabstände zu strecken, setzt die erzeugende Software im Blocksatz
+  jedes Wort an eine eigene berechnete Position. PyMuPDF meldet diese Wörter
+  als eigene Zeilen — allesamt auf **derselben Höhe**. Sie wurden für echte
+  Zeilenumbrüche gehalten, wodurch ein Absatz zu einer Kette von Einzelwörtern
+  untereinander zerfiel. Zeilenbruchstücke gleicher Höhe werden jetzt zuerst
+  wieder zu einer Textzeile vereint, bevor Absätze bestimmt werden.
+  An einem nachgebildeten Brief: 92 Roh-Zeilen ergaben 92 Ausgabezeilen,
+  jetzt zwei durchgehende Absätze.
+- Die Erkennung tabellarischer Zeilen musste dafür schärfer werden. Blocksatz
+  und Spaltensatz erzeugen beide grosse waagerechte Lücken; unterscheidbar
+  sind sie nur an deren Verteilung. Blocksatz streckt **alle** Wortabstände
+  einer Zeile gleichmässig, eine Tabelle hat einen einzelnen Ausreisser. Der
+  bisherige Test auf die blosse Lückenbreite hätte gestreckten Fliesstext für
+  eine Tabelle gehalten und ihn dann nicht mehr zusammengefügt.
+
+**Verbessert**
+- `tools/layout_diagnose.py` meldet, wie viele Roh-Zeilen zu wie vielen
+  Textzeilen vereint wurden. Ein grosses Verhältnis weist unmittelbar auf
+  Blocksatz hin.
+
 ## 0.6.0 — 2026-07-31
 
 Der Brieftext wird bereits beim Einlesen richtig zusammengesetzt.

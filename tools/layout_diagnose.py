@@ -46,6 +46,8 @@ def diagnose(pfad: Path) -> None:
             if not alle:
                 continue
 
+            roh = sum(len(b["lines"]) for b in bloecke)
+
             zeichenbreite = extract._mittlere_zeichenbreite(alle)
             haupt_x0 = extract._hauptspalte(alle, zeichenbreite)
             rand = extract._rechter_rand(alle, zeichenbreite, haupt_x0)
@@ -60,6 +62,9 @@ def diagnose(pfad: Path) -> None:
 
             print(f"\n{'─' * 66}")
             print(f"Seite {nummer}: {len(bloecke)} Blöcke, {len(alle)} Zeilen")
+            if roh > len(alle):
+                print(f"  Blocksatz       {roh} Roh-Zeilen zu {len(alle)} "
+                      f"vereint (Wörter waren einzeln gesetzt)")
             print(f"  Zeichenbreite   {zeichenbreite:5.2f} pt")
             print(f"  rechter Rand    {rand:5.1f} pt")
             print(f"  Zeilenschritt   {schritt:5.1f} pt "

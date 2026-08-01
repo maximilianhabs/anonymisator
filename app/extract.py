@@ -133,16 +133,64 @@ def _blockzeilen(block) -> list[dict]:
         x0, y0, x1, y1 = zeile["bbox"]
 
         hoehe = max((s["bbox"][3] - s["bbox"][1]) for s in spannen)
-        luecke = max(
-            (b["bbox"][0] - a["bbox"][2] for a, b in zip(spannen, spannen[1:])),
-            default=0.0,
-        )
+        luecken = [b["bbox"][0] - a["bbox"][2]
+                   for a, b in zip(spannen, spannen[1:])]
         zeilen.append({
             "text": text, "x0": x0, "x1": x1, "y0": y0, "y1": y1,
-            "hoehe": hoehe, "spaltig": luecke > hoehe * 1.5,
+            "hoehe": hoehe, "luecken": luecken, "spaltig": _spaltig(luecken, hoehe),
         })
+
     zeilen.sort(key=lambda z: (round(z["y0"], 1), z["x0"]))
-    return zeilen
+    return _gleiche_hoehe_vereinen(zeilen)
+
+
+def _spaltig(luecken: list[float], hoehe: float) -> bool:
+    """Unterscheidet Spaltensatz von gestrecktem Blocksatz.
+
+    Beides erzeugt grosse waagerechte Lücken. Der Unterschied liegt in ihrer
+    Verteilung: Blocksatz streckt **alle** Wortabstände einer Zeile gleichmässig,
+    eine Tabelle hat einen einzelnen Ausreisser. Ein Test auf die blosse
+    Lückenbreite würde gestreckten Fliesstext für eine Tabelle halten.
+    """
+    if not luecken:
+        return False
+    groesste = max(luecken)
+    if groesste > hoehe * 4:  # so weit streckt kein Blocksatz
+        return True
+    mitte = sorted(luecken)[len(luecken) // 2]
+    return groesste > mitte * 2.5 and groesste > hoehe * 1.5
+
+
+def _gleiche_hoehe_vereinen(zeilen: list[dict]) -> list[dict]:
+    """Führt Bruchstücke derselben Textzeile wieder zusammen.
+
+    Im Blocksatz setzt die erzeugende Software jedes Wort einzeln an eine
+    berechnete Position, um die Wortabstände zu strecken. PyMuPDF meldet diese
+    Wörter dann als eigene Zeilen — allesamt auf **derselben Höhe**. Wer das
+    für echte Zeilenumbrüche hält, zerlegt den Absatz in einzelne Wörter.
+    """
+    vereint: list[dict] = []
+    for zeile in zeilen:
+        if vereint:
+            vorige = vereint[-1]
+            luecke = zeile["x0"] - vorige["x1"]
+            gleiche_zeile = (
+                abs(zeile["y0"] - vorige["y0"]) < max(vorige["hoehe"], 1.0) * 0.5
+                # Ein sehr weiter Abstand trennt Spalten, nicht Wörter.
+                and luecke < max(vorige["hoehe"], 1.0) * 10
+                and luecke > -max(vorige["hoehe"], 1.0)
+            )
+            if gleiche_zeile:
+                trenner = "" if luecke < vorige["hoehe"] * 0.15 else " "
+                vorige["text"] = vorige["text"].rstrip() + trenner + zeile["text"].lstrip()
+                vorige["x1"] = max(vorige["x1"], zeile["x1"])
+                vorige["y1"] = max(vorige["y1"], zeile["y1"])
+                vorige["hoehe"] = max(vorige["hoehe"], zeile["hoehe"])
+                vorige["luecken"] = vorige["luecken"] + [luecke] + zeile["luecken"]
+                vorige["spaltig"] = _spaltig(vorige["luecken"], vorige["hoehe"])
+                continue
+        vereint.append(dict(zeile))
+    return vereint
 
 
 def _mittlere_zeichenbreite(zeilen: list[dict]) -> float:

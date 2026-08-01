@@ -303,6 +303,85 @@ pruefe("Brandner\nAnsprechpartner" not in zweispaltig
        and "Auwald\nAnsprechpartner" not in zweispaltig,
        "Kopfspalten wurden nicht zeilenweise verschränkt")
 
+print("\n=== 7. Blocksatz: jedes Wort einzeln gesetzt ===")
+
+# Der schwerste Fall. Um die Wortabstände zu strecken, setzt die erzeugende
+# Software im Blocksatz jedes Wort an eine eigene berechnete Position.
+# PyMuPDF meldet diese Wörter als eigene Zeilen — allesamt auf derselben
+# Höhe. Wer das für Zeilenumbrüche hält, zerlegt den Absatz in einzelne
+# Wörter untereinander.
+BLOCKSATZ_1 = [
+    "Weiterhin berichtete der Patient über episodisch auftretende, vorwiegend kälteinduzierte",
+    "schmerzhafte Missempfindungen im Bereich der Zehen und Vorfüße beidseits mit begleitenden",
+    "Schwellungen, lividen Verfärbungen sowie zeitweiligen Hautveränderungen. Die Beschwerden",
+    "traten insbesondere während der kalten Jahreszeit auf und wurden durch Kälteexposition",
+    "Beschwerden wurden verneint.",
+]
+BLOCKSATZ_2 = [
+    "Klinisch-neurologisch zeigte sich weiterhin ein distal betontes, symmetrisches",
+    "sensomotorisches polyneuropathisches Syndrom ohne Nachweis relevanter motorischer",
+    "Defizite mit leichter Hohlfußstellung bds. Aufgrund der bislang ungeklärten Ätiologie",
+    "erfolgte die stationäre weiterführende neurologische Diagnostik.",
+]
+
+
+def blocksatz_pdf() -> tuple[bytes, int]:
+    schrift = fitz.open()
+    blatt = schrift.new_page(width=595, height=842)
+    links, rechts, groesse = 70, 525, 9
+    hoehe = 80
+    for absatz in (BLOCKSATZ_1, BLOCKSATZ_2):
+        for i, zeile in enumerate(absatz):
+            woerter = zeile.split()
+            breiten = [fitz.get_text_length(w, "helv", groesse) for w in woerter]
+            if i == len(absatz) - 1 or len(woerter) < 2:
+                blatt.insert_text((links, hoehe), zeile,
+                                  fontname="helv", fontsize=groesse)
+            else:
+                luecke = (rechts - links - sum(breiten)) / (len(woerter) - 1)
+                x = links
+                for wort, breite in zip(woerter, breiten):
+                    blatt.insert_text((x, hoehe), wort,
+                                      fontname="helv", fontsize=groesse)
+                    x += breite + luecke
+            hoehe += 13
+        hoehe += 13
+    roh = schrift.tobytes()
+    schrift.close()
+    with fitz.open(stream=roh, filetype="pdf") as auf:
+        zeilenzahl = sum(len(b["lines"]) for b in auf[0].get_text("dict")["blocks"]
+                         if b.get("type", 0) == 0)
+    return roh, zeilenzahl
+
+
+daten, rohzeilen = blocksatz_pdf()
+echte_zeilen = len(BLOCKSATZ_1) + len(BLOCKSATZ_2)
+pruefe(rohzeilen > echte_zeilen * 3,
+       f"Vorbedingung: PyMuPDF meldet {rohzeilen} Roh-Zeilen für "
+       f"{echte_zeilen} echte — der Blocksatz ist nachgebildet")
+
+blocksatz = extract.aus_pdf(daten).text
+bs_absaetze = [a for a in blocksatz.split("\n\n") if a.strip()]
+
+pruefe(len(bs_absaetze) == 2, f"Zwei Absätze erkannt (waren: {len(bs_absaetze)})")
+pruefe(all("\n" not in a.strip() for a in bs_absaetze),
+       "Jeder Absatz ist eine durchgehende Zeile")
+pruefe(blocksatz.startswith("Weiterhin berichtete der Patient über"),
+       "Erste Zeile ist nicht in Einzelwörter zerfallen")
+pruefe("kälteinduzierte schmerzhafte" in blocksatz,
+       "Zeilenübergang wurde mit Leerzeichen verbunden")
+pruefe("Weiterhinberichtete" not in blocksatz and "  " not in blocksatz,
+       "Wörter sind weder verklebt noch doppelt getrennt")
+
+# Blocksatz darf nicht mit Spaltensatz verwechselt werden: seine Lücken sind
+# gleichmässig, die einer Tabelle haben einen Ausreisser.
+pruefe(not extract._spaltig([16.0, 16.4, 15.8, 16.2], 11.0),
+       "Gleichmässig gestreckte Lücken gelten nicht als Tabelle")
+pruefe(extract._spaltig([2.5, 3.0, 61.0, 2.8], 11.0),
+       "Ein einzelner Lückenausreisser gilt als Tabelle")
+pruefe(extract._spaltig([58.0], 11.0),
+       "Eine einzelne sehr weite Lücke gilt als Tabelle")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")
