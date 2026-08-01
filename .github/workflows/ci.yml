@@ -33,10 +33,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Erkennung, Stufen, Formatierung, Dokumenttypen, Fehlalarme
+      - name: Testsuiten
         run: |
           for datei in test_erkennung test_stufen test_formatierung \
-                       test_dokumenttypen test_fehlalarme; do
+                       test_dokumenttypen test_dokumentarten test_fehlalarme \
+                       test_export_hygiene; do
             echo "── $datei"
             python "tests/$datei.py"
           done
@@ -49,6 +50,39 @@ jobs:
             sleep 2
           done
           python tests/test_e2e.py
+
+  # ======================================================================
+  # Statische Analyse und Sicherheitsprüfung
+  # ======================================================================
+  pruefung:
+    name: Linter und Sicherheitsprüfung
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.3"
+          cache: pip
+
+      - name: Werkzeuge
+        run: pip install ruff==0.14.5 bandit[toml]==1.9.2 pip-audit==2.9.0
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Ruff Formatprüfung
+        run: ruff format --check --diff .
+        continue-on-error: true
+
+      - name: Bandit
+        run: bandit -c pyproject.toml -r app/ -ll
+
+      - name: Bekannte Schwachstellen in Abhängigkeiten
+        # Das Sprachmodell liegt nicht auf PyPI und wird übersprungen; alles
+        # Übrige muss sauber sein. pip-audit endet ungleich null, sobald es
+        # eine Schwachstelle findet — genau das soll die Pipeline stoppen.
+        run: pip-audit -r requirements.txt --progress-spinner off
 
   # ======================================================================
   # Abbild bauen und tatsächlich starten
@@ -96,7 +130,7 @@ jobs:
           # Für den Lauf ohne Domain: HTTP, kein Zugangsschutz.
           sed -i 's/^ANON_DOMAIN=.*/ANON_DOMAIN=:80/' .env
           sed -i 's/^ANON_HTTP_PORT=.*/ANON_HTTP_PORT=8080/' .env
-          sed -i 's/^ANON_BASIC_AUTH_USER=.*/ANON_BASIC_AUTH_USER=/' .env
+          sed -i 's/^ANON_AUTH_AKTIV=.*/ANON_AUTH_AKTIV=false/' .env
           docker compose up -d --build
 
           echo "Warte, bis beide Dienste gesund melden …"

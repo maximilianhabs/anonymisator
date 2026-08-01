@@ -11,8 +11,8 @@ Spalte gelesen.
 
 from __future__ import annotations
 
-import random
 import re
+import secrets
 from datetime import date, timedelta
 
 from .detect import Gruppe
@@ -263,7 +263,12 @@ def formen_berechnen(gruppen: list[Gruppe]) -> dict:
     Wert: absolute Daten verschwinden, die Abstände zwischen ihnen bleiben
     exakt erhalten. Aufenthaltsdauer und Verlauf bleiben damit lesbar.
     """
-    versatz_tage = random.choice([-1, 1]) * random.randint(120, 400)
+    # secrets statt random: Der Versatz ist das Geheimnis, das die echten
+    # Behandlungsdaten verdeckt. Ein Mersenne-Twister lässt sich aus
+    # hinreichend vielen Ausgaben rekonstruieren — wer mehrere anonymisierte
+    # Dokumente derselben Einrichtung sieht, könnte den Generatorzustand
+    # aufrollen und damit sämtliche Daten zurückrechnen.
+    versatz_tage = secrets.choice((-1, 1)) * (120 + secrets.randbelow(281))
     versatz = timedelta(days=versatz_tage)
     stichtag = _bezugsdatum(gruppen)
 
@@ -293,11 +298,11 @@ def formen_berechnen(gruppen: list[Gruppe]) -> dict:
                 if wert is not None:
                     formen["gerundet"] = _runden(wert, _waehrung_aus(fund.text))
 
-            if gruppe.typ == "ADRESSE":
-                # Nur die Form "Postleitzahl Ort" trägt keinen Strassennamen
-                # und darf in der leichten Stufe stehen bleiben.
-                if re.fullmatch(r"\d{5}\s+.+", fund.text.strip()):
-                    formen["nur_ort"] = fund.text.strip()
+            # Nur die Form "Postleitzahl Ort" trägt keinen Strassennamen
+            # und darf in der leichten Stufe stehen bleiben.
+            if (gruppe.typ == "ADRESSE"
+                    and re.fullmatch(r"\d{5}\s+.+", fund.text.strip())):
+                formen["nur_ort"] = fund.text.strip()
 
             fund.formen = formen
 

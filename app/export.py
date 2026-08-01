@@ -6,9 +6,10 @@ in dessen Autorfeld noch der Klarname steht, ist nicht anonymisiert.
 
 from __future__ import annotations
 
+import contextlib
 import html
 import io
-from datetime import datetime
+from datetime import UTC, datetime
 
 from docx import Document
 from docx.shared import Pt
@@ -16,7 +17,7 @@ from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import Paragraph, SimpleDocTemplate
 
 
 def ersetze(text: str, ersetzungen: list[dict]) -> str:
@@ -46,7 +47,7 @@ _VERMERK = {
 
 def _kopfzeile(stufe: str = "standard") -> str:
     vorlage = _VERMERK.get(stufe, _VERMERK["standard"])
-    return vorlage.format(datum=f"{datetime.now():%d.%m.%Y}")
+    return vorlage.format(datum=f"{datetime.now(tz=UTC).astimezone():%d.%m.%Y}")
 
 
 def als_txt(text: str, mit_kopfzeile: bool = True, stufe: str = "standard") -> bytes:
@@ -84,10 +85,9 @@ def als_docx(text: str, mit_kopfzeile: bool = True, stufe: str = "standard") -> 
     kern = dokument.core_properties
     for feld in ("author", "last_modified_by", "title", "subject",
                  "comments", "category", "keywords", "identifier"):
-        try:
+        # Nicht jedes Feld ist in jeder python-docx-Fassung beschreibbar.
+        with contextlib.suppress(AttributeError, ValueError):
             setattr(kern, feld, "")
-        except (AttributeError, ValueError):
-            pass
 
     puffer = io.BytesIO()
     dokument.save(puffer)

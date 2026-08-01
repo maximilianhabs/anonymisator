@@ -41,6 +41,12 @@ MAX_UPLOAD_MB = _zahl("ANON_MAX_UPLOAD_MB", 60)
 # Dokument den Container über Minuten blockieren.
 MAX_OCR_SEITEN = _zahl("ANON_MAX_OCR_SEITEN", 50)
 
+# Seitenzahl, ab der ein Dokument insgesamt abgelehnt wird — auch mit
+# Textlayer. Gemessen: 500 Seiten belegen rund 2,8 GB Arbeitsspeicher.
+# Zusammen mit dem Sprachmodell je Arbeitsprozess sprengt das die übliche
+# Speichergrenze; der Behälter würde abgeräumt statt eine Meldung zu geben.
+MAX_SEITEN = _zahl("ANON_MAX_SEITEN", 300)
+
 # Auflösung beim Rastern gescannter Seiten.
 OCR_DPI = _zahl("ANON_OCR_DPI", 300)
 

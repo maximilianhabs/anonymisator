@@ -22,6 +22,7 @@ services:
       ANON_WORKERS: "${ANON_WORKERS:-2}"
       ANON_MAX_UPLOAD_MB: "${ANON_MAX_UPLOAD_MB:-60}"
       ANON_MAX_OCR_SEITEN: "${ANON_MAX_OCR_SEITEN:-50}"
+      ANON_MAX_SEITEN: "${ANON_MAX_SEITEN:-300}"
       ANON_OCR_DPI: "${ANON_OCR_DPI:-300}"
       ANON_OCR_SPRACHE: "${ANON_OCR_SPRACHE:-deu}"
       ANON_LOG_LEVEL: "${ANON_LOG_LEVEL:-INFO}"
@@ -51,7 +52,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${ANON_MEM_LIMIT:-3g}
+          memory: ${ANON_MEM_LIMIT:-4g}
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]

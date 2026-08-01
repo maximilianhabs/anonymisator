@@ -17,7 +17,7 @@ import json
 import logging
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from . import config
 
@@ -35,7 +35,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         eintrag = {
             "zeit": datetime.fromtimestamp(
-                record.created, tz=timezone.utc).isoformat(timespec="milliseconds"),
+                record.created, tz=UTC).isoformat(timespec="milliseconds"),
             "stufe": record.levelname,
             "quelle": record.name,
             "text": record.getMessage(),
@@ -85,7 +85,7 @@ def einrichten() -> logging.Logger:
 class Zeitmesser:
     """Misst die Dauer eines Abschnitts in Millisekunden."""
 
-    def __enter__(self) -> "Zeitmesser":
+    def __enter__(self) -> Zeitmesser:
         self._start = time.perf_counter()
         return self
 

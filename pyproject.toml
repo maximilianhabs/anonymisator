@@ -1,0 +1,82 @@
+[project]
+name = "anonymisator"
+version = "0.10.0"
+description = "Lokale De-Identifikation deutschsprachiger Dokumente"
+requires-python = ">=3.13"
+license = { text = "Apache-2.0" }
+
+# --------------------------------------------------------------------------
+# Ruff
+# --------------------------------------------------------------------------
+[tool.ruff]
+line-length = 90
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # Importreihenfolge
+    "B",         # bugbear
+    "UP",        # veraltete Schreibweisen
+    "SIM",       # Vereinfachungen
+    "DTZ",       # Zeitzonen
+    "S",         # bandit-Regeln, die Ruff mitbringt
+    "RUF",
+]
+ignore = [
+    # Mehrzeilige Regex-Muster werden bewusst als aneinandergereihte
+    # Zeichenketten geschrieben. Das ist die einzige Form, in der ein langes
+    # Muster kommentierbar und lesbar bleibt.
+    "ISC001", "ISC002", "ISC003",
+    # Die Erkennung darf an keiner Stelle abstürzen, nur weil eine Datei
+    # kaputt ist. Breite Auffangklauseln sind hier Absicht und jeweils
+    # kommentiert.
+    "BLE001",
+    # FastAPI verlangt Depends()/File() als Vorgabewert.
+    "B008",
+    # Zeilenlänge in Datentabellen (Kategorien, Stopplisten) bewusst länger.
+    "E501",
+    # Gedankenstrich, Auslassungspunkte und typografische Anführungszeichen
+    # sind in deutschen Texten richtig, nicht "mehrdeutig". Die Regel zielt
+    # auf versehentlich eingefügte kyrillische Homoglyphen; hier steht die
+    # Zeichensetzung mit Absicht so.
+    "RUF001", "RUF002", "RUF003",
+    # zip(folge, folge[1:]) über ungleich lange Folgen ist genau der Zweck.
+    "B905",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Testdateien laufen als Skripte und setzen den Suchpfad vor dem Import.
+"tests/*" = ["E402", "S101", "T201"]
+"tools/*" = ["E402", "T201"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# --------------------------------------------------------------------------
+# Black
+# --------------------------------------------------------------------------
+[tool.black]
+line-length = 90
+target-version = ["py313"]
+
+# --------------------------------------------------------------------------
+# MyPy
+# --------------------------------------------------------------------------
+# Bewusst nicht strikt: spaCy, PyMuPDF und ReportLab bringen keine oder
+# unvollständige Typangaben mit. Geprüft wird der eigene Quelltext auf
+# offensichtliche Fehler, nicht auf lückenlose Typisierung.
+[tool.mypy]
+python_version = "3.13"
+files = ["app"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+
+# --------------------------------------------------------------------------
+# Bandit
+# --------------------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = [".venv", "tests", "tools"]

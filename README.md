@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.9.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.10.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 
 Lokales Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren
@@ -521,6 +521,26 @@ lässt Klarnamen stehen. Gelenkt wird deshalb nur der Blick, nicht das
 Ergebnis.
 
 ## Wie belastbar ist die Erkennung?
+
+### Leistung
+
+Gemessen mit `tools/leistungsmessung.py` auf einem Dokument mit Textlayer
+(Apple Silicon, Python 3.13.3):
+
+| Seiten | Gesamt | je Seite | Speicher |
+|---|---|---|---|
+| 1 | 0,09 s | 91 ms | 894 MB |
+| 20 | 1,7 s | 83 ms | 894 MB |
+| 100 | 9,4 s | 94 ms | 982 MB |
+| 250 | 27,5 s | 110 ms | 1,9 GB |
+| 500 | 69,6 s | 139 ms | 2,8 GB |
+
+Näherungsweise linear; der leichte Anstieg je Seite ab 250 Seiten geht auf
+Speicherdruck zurück. Fünf gleiche Läufe hintereinander erhöhen den
+Speicherstand nicht — kein Leck. Die Voreinstellung begrenzt Dokumente auf
+300 Seiten, weil darüber die Speichergrenze des Behälters greift.
+
+### Erkennungsgüte
 
 Für **Fehlalarme** gibt es seit 0.8.0 eine Messung: `tests/test_fehlalarme.py`
 prüft mehrere hundert Wörter reinen Befundtext, der keine schützenswerte

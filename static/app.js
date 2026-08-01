@@ -17,6 +17,8 @@ const Z = {
   modus: 'original',
   dateiname: 'dokument',
   naechsteId: 0,
+  // Wird je Dokument einmal gesetzt, sobald der Prüfschritt bestätigt ist.
+  geprueft: false,
 };
 
 const BUCHSTABEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -98,6 +100,7 @@ function uebernehmen(daten) {
   Z.stufenInfo = daten.stufen_info;
   Z.stufenReihenfolge = daten.stufen_reihenfolge;
   Z.naechsteId = daten.gruppen.length;
+  Z.geprueft = false;   // neues Dokument, neue Prüfung
   Z.modus = 'original';
 
   document.querySelectorAll('.umschalter button').forEach((b) =>
@@ -516,7 +519,44 @@ function ergebnisText() {
   return text;
 }
 
+/**
+ * Verlangt vor dem ersten Export eine ausdrückliche Bestätigung.
+ *
+ * Der Prüfschritt ist Bestandteil des Verfahrens, nicht Zierrat: keine
+ * automatische Erkennung erreicht volle Trefferquote. Ohne diese Rückfrage
+ * liesse sich ein Dokument hochladen und sofort exportieren, ohne je eine
+ * Fundstelle angesehen zu haben.
+ *
+ * Gefragt wird einmal je Dokument, nicht bei jedem Export — sonst wird die
+ * Rückfrage zur Gewohnheit und damit wirkungslos.
+ */
+function pruefungBestaetigt() {
+  if (Z.geprueft) return true;
+
+  const unbelegt = Z.gruppen.filter((g) => !g.sicher && g.aktiv).length;
+  const stellen = Z.gruppen.filter(wirdErsetzt)
+    .reduce((summe, g) => summe + g.funde.length, 0);
+
+  const text =
+    `Vor dem Export bitte bestätigen:\n\n`
+    + `Es werden ${stellen} Textstellen ersetzt`
+    + (unbelegt ? `, davon ${unbelegt} Gruppen ohne Beleg.` : '.')
+    + `\n\nHaben Sie den markierten Text durchgesehen?\n\n`
+    + `Die Erkennung kann Namen übersehen — Vollständigkeit ist nicht `
+    + `garantiert. Die Verantwortung für das weitergegebene Dokument bleibt `
+    + `bei Ihnen.`;
+
+  if (!window.confirm(text)) {
+    brot('Export abgebrochen. Bitte die Markierungen durchsehen.', true);
+    return false;
+  }
+  Z.geprueft = true;
+  return true;
+}
+
 async function exportieren(format) {
+  if (!pruefungBestaetigt()) return;
+
   const knoepfe = document.querySelectorAll('.export-knoepfe button');
   knoepfe.forEach((b) => { b.disabled = true; });
   try {

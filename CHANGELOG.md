@@ -4,6 +4,59 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.10.0 — 2026-08-01
+
+Freigabeprüfung. Zwei Sicherheitsbefunde und zwei Erkennungslücken behoben,
+Messungen erstmals durchgeführt.
+
+**Sicherheit**
+- Der Datumsversatz kam aus `random`. Der Versatz ist das Geheimnis, das die
+  echten Behandlungsdaten verdeckt — ein Mersenne-Twister lässt sich aus
+  hinreichend vielen Ausgaben rekonstruieren. Wer mehrere anonymisierte
+  Dokumente derselben Einrichtung sieht, hätte den Generatorzustand aufrollen
+  und sämtliche Daten zurückrechnen können. Jetzt `secrets`.
+- Bandit läuft ohne Befund, `pip-audit` meldet keine bekannten Schwachstellen
+  in den Abhängigkeiten.
+
+**Erkennung**
+- „Hartmann, Elisabeth" wurde nicht erkannt — nur der Vorname. Das Format
+  *Nachname, Vorname* ist in Labor- und Kliniksystemen die Regel, weil dort
+  nach Nachnamen sortiert wird; der Nachname wäre im Dokument stehen
+  geblieben.
+- Nummernbezeichnungen mit Bindestrich wurden übersehen: „Fall-Nr.",
+  „Auftrags-Nr.", „Patienten-Nr.". Ausgerechnet diese Form ist in Befunden
+  die häufigste. Alle Nummernregeln nutzen jetzt ein gemeinsames Fragment,
+  das jede Schreibweise abdeckt.
+- Feldbezeichnungen aus Formularköpfen („Auftrags-Nr", „Eingang") galten als
+  Einrichtungsnamen.
+
+**Grenzen**
+- Seitenzahl insgesamt begrenzt, nicht nur bei Texterkennung. Gemessen: 500
+  Seiten belegen 2,8 GB. Ohne Grenze wäre der Behälter abgeräumt worden,
+  statt eine verständliche Meldung zu geben. Voreinstellung 300 Seiten,
+  Speichergrenze entsprechend auf 4 GB angehoben.
+- Defekte Dateien liefern verständliche Meldungen statt englischem
+  Bibliothekstext („Failed to open stream", „File is not a zip file").
+
+**Prüfschritt**
+- Vor dem ersten Export wird ausdrücklich bestätigt, dass der markierte Text
+  durchgesehen wurde. Einmal je Dokument, nicht bei jedem Export — sonst
+  wird die Rückfrage zur Gewohnheit und damit wirkungslos.
+
+**Neue Prüfungen**
+- `tests/test_export_hygiene.py` untersucht die erzeugten Dateien im
+  Rohinhalt: DOCX-Metadaten, Kommentare, Änderungsverfolgung, versteckter
+  Text, eingebettete Dateien; PDF-Metadaten, XMP, Anmerkungen, Textlayer.
+  Mit Gegenprobe, dass die Suche überhaupt anschlägt.
+- `tests/test_dokumentarten.py` prüft Laborbericht, Nummernschreibweisen,
+  Dokumente mit vielen Beteiligten, OCR-typische Lesefehler und
+  mehrspaltige Briefe.
+- `tools/leistungsmessung.py` misst Laufzeit und Speicher über 1 bis 500
+  Seiten. Ergebnis: näherungsweise linear, 82–139 ms je Seite, kein
+  Speicherzuwachs über wiederholte Läufe.
+- `pyproject.toml` mit Ruff, Black, MyPy und Bandit. CI prüft Linter,
+  Sicherheitsbefunde und bekannte Schwachstellen bei jedem Commit.
+
 ## 0.9.0 — 2026-08-01
 
 Auslieferung als Container. Ein frischer Ubuntu-24.04-Server mit Docker

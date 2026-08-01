@@ -17,7 +17,7 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import detect, export, extract, stufen  # noqa: E402
+from app import detect, export, extract, stufen
 
 ANREDE = "Sehr geehrte Frau Kollegin Brandner,"
 FLIESSTEXT = [
@@ -79,7 +79,7 @@ for i, absatz in enumerate(FLIESSTEXT, start=1):
         pruefe("\n" not in passende[0].strip(),
                f"Absatz {i} ist durchgehend, ohne harte Umbrüche")
 
-pruefe(any(b.strip().startswith("Neurologische Klinik") and "\n" in b.strip()
+pruefe(any((b.strip().startswith("Neurologische Klinik") and "\n" in b.strip())
            or b.strip() == "Neurologische Klinik am Auwald"
            for b in text.split("\n\n")),
        "Briefkopf wurde nicht in den Fliesstext gezogen")
@@ -245,12 +245,7 @@ KOPF_LINKS = ["Neurologische Klinik am Auwald", "", "Frau",
               "Dr. med. Ingrid Brandner", "Bahnhofstraße 3", "94032 Passau"]
 KOPF_RECHTS = ["Ansprechpartner:", "Prof. Dr. Weißbach",
                "Durchwahl: 0851 4409-233", "", "Passau, 14.03.2026"]
-KOERPER = ["Sehr geehrte Frau Kollegin Brandner,", ""] + [
-    "wir berichten Ihnen über unsere gemeinsame Patientin Frau Elisabeth",
-    "Hartmann, die sich vom 03.03.2026 bis zum 12.03.2026 in unserer",
-    "stationären Behandlung befand. Die Aufnahme erfolgte über die",
-    "Notaufnahme nach einem erstmaligen generalisierten Anfall.",
-]
+KOERPER = ["Sehr geehrte Frau Kollegin Brandner,", "", "wir berichten Ihnen über unsere gemeinsame Patientin Frau Elisabeth", "Hartmann, die sich vom 03.03.2026 bis zum 12.03.2026 in unserer", "stationären Behandlung befand. Die Aufnahme erfolgte über die", "Notaufnahme nach einem erstmaligen generalisierten Anfall."]
 FUSS = [
     "Neurologische Klinik am Auwald · Ludwigstraße 47 · 94032 Passau · "
     "Tel. 0851 4409-233 · Fax 0851 4409-234 · info@klinik-auwald.de",

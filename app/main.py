@@ -145,9 +145,10 @@ async def analysieren_datei(datei: UploadFile = File(...)):
     try:
         auszug = extract.aus_upload(datei.filename or "", daten)
     except ValueError as fehler:
-        raise HTTPException(422, str(fehler))
+        raise HTTPException(422, str(fehler)) from fehler
     except Exception as fehler:  # defekte PDFs, unlesbare DOCX
-        raise HTTPException(422, f"Die Datei konnte nicht gelesen werden: {fehler}")
+        raise HTTPException(
+            422, f"Die Datei konnte nicht gelesen werden: {fehler}") from fehler
     return _antwort(auszug)
 
 

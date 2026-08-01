@@ -24,9 +24,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import fitz  # noqa: E402
+import itertools
 
-from app import extract  # noqa: E402
+import fitz
+
+from app import extract
 
 
 def diagnose(pfad: Path) -> None:
@@ -52,7 +54,7 @@ def diagnose(pfad: Path) -> None:
             haupt_x0 = extract._hauptspalte(alle, zeichenbreite)
             rand = extract._rechter_rand(alle, zeichenbreite, haupt_x0)
             abstaende = sorted(
-                b["y0"] - a["y0"] for a, b in zip(alle, alle[1:])
+                b["y0"] - a["y0"] for a, b in itertools.pairwise(alle)
                 if 0 < b["y0"] - a["y0"] < 200
             )
             schritt = abstaende[len(abstaende) // 2] if abstaende else 14.0

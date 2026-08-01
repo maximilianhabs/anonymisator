@@ -14,8 +14,8 @@ Gefundene landet im Review und kann dort abgewählt werden.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 import spacy
 
@@ -153,6 +153,12 @@ _EINR_NACHSATZ = (
     r"(?:[ \t]+[A-ZÄÖÜ][\wäöüß.\-]+)?"
     r"|[ \t]+(?!(?:Dr|Prof|med|habil|PD|Herrn?|Frau|Hr|Fr)\b)[A-ZÄÖÜ][a-zäöüß]{2,})")
 
+# Nummernbezeichnungen kommen in jeder erdenklichen Schreibweise vor:
+# "Fallnummer", "Fall-Nr.", "Fall Nr.", "FallNr". Ein gemeinsames Fragment
+# deckt alle ab — ohne es fehlte ausgerechnet die Bindestrichform, die in
+# Labor- und Klinikbefunden die häufigste ist.
+_NR = r"(?:[-\s]?(?:[Nn]ummer|NUMMER|[Nn]r\.?|NR\.?))"
+
 # (typ, pattern, gruppe) — gruppe 0 = ganzer Treffer, sonst nur die Fundstelle
 REGELN: list[tuple[str, str, int]] = [
     # --- eindeutige Formate -------------------------------------------------
@@ -162,13 +168,13 @@ REGELN: list[tuple[str, str, int]] = [
     ("GEBURTSDATUM",
      rf"(?:geb\.|geboren\s+am|Geburtsdatum|Geb\.[-\s]?Dat(?:um)?\.?|GebDat|\*)\s*:?\s*{_DATUM}", 0),
     ("VERSICHERTENNR",
-     r"(?:Versicherten(?:nummer|nr\.?)|KVNR|Vers\.-?Nr\.?|Krankenversicherten-?nummer)"
+     rf"(?:Versicherten{_NR}|KVNR|Vers\.-?Nr\.?|Krankenversicherten-?nummer)"
      r"\s*:?\s*([A-Z]\s?\d[\d\s]{7,12}\d)", 1),
     ("VERSICHERTENNR", r"\b[A-Z]\d{9}\b", 0),
     ("IBAN", r"\b[A-Z]{2}\d{2}(?:[ \t]?[A-Z0-9]{4}){3,7}(?:[ \t]?[A-Z0-9]{1,3})?\b", 0),
     ("FALLNUMMER",
-     r"(?:Fall(?:nummer|nr\.?)|Fall-\s?Nr\.?|Aufnahme(?:nummer|nr\.?)|Aufnahme-\s?Nr\.?"
-     r"|Patienten(?:nummer|nr\.?)|Pat\.-?\s?Nr\.?|PID|Vorgangs(?:nummer|nr\.?))"
+     rf"(?:Fall{_NR}|Aufnahme{_NR}|Auftrags{_NR}|Labor{_NR}"
+     rf"|Patienten{_NR}|Pat\.-?\s?Nr\.?|PID|Vorgangs{_NR}|Befund{_NR})"
      r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9/\-.]{2,20})", 1),
     ("AKTENZEICHEN",
      r"(?:Aktenzeichen|Az\.|Gesch\.-?\s?Z\.|Geschäftszeichen|Unser\s+Zeichen|Ihr\s+Zeichen)"
@@ -179,13 +185,13 @@ REGELN: list[tuple[str, str, int]] = [
     # auf Gutachten, Rechnungen und Schriftverkehr. Diese Nummern sind
     # durchweg direkte Identifikatoren und werden auf jeder Stufe ersetzt.
     ("RECHNUNGSNR",
-     r"(?:Rechnungs(?:nummer|nr\.?)|Rechnung[ \t]*-?[ \t]*Nr\.?|Beleg(?:nummer|nr\.?)"
-     r"|Abrechnungs(?:nummer|nr\.?)|Auftrags(?:nummer|nr\.?)|Bestell(?:nummer|nr\.?)"
-     r"|Quittungs(?:nummer|nr\.?)|Gutschrift(?:snummer|s?[ \t]*-?[ \t]*Nr\.?)"
-     r"|Lieferschein(?:nummer|nr\.?)|Invoice[ \t]*(?:No\.?|Number))"
+     rf"(?:Rechnungs{_NR}|Rechnung{_NR}|Beleg{_NR}"
+     rf"|Abrechnungs{_NR}|Bestell{_NR}"
+     rf"|Quittungs{_NR}|Gutschrift{_NR}"
+     rf"|Lieferschein{_NR}|Invoice[ \\t]*(?:No\.?|Number))"
      r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9/\-.]{2,25})", 1),
     ("KUNDENNR",
-     r"(?:Kunden(?:nummer|nr\.?)|Kd\.-?[ \t]?Nr\.?|Mitglieds(?:nummer|nr\.?)"
+     rf"(?:Kunden{_NR}|Kd\.-?[ \\t]?Nr\.?|Mitglieds{_NR}"
      r"|Vertrags(?:nummer|nr\.?)|Mandanten(?:nummer|nr\.?)|Debitoren(?:nummer|nr\.?)"
      r"|Kreditoren(?:nummer|nr\.?)|Lieferanten(?:nummer|nr\.?)|Personal(?:nummer|nr\.?)"
      r"|Mitarbeiter(?:nummer|nr\.?)|Policen(?:nummer|nr\.?)|Schaden(?:s?nummer|s?nr\.?))"
@@ -253,6 +259,16 @@ REGELN: list[tuple[str, str, int]] = [
      r"(?![\wäöüß])", 0),
 
     # --- Personen über Anrede/Titel (fängt, was die NER verpasst) -----------
+    # "Hartmann, Elisabeth" — in Labor- und Kliniksystemen die Regel, weil
+    # dort nach Nachnamen sortiert wird. Ohne diese Regel findet das
+    # Sprachmodell nur den Vornamen und der Nachname bleibt im Dokument.
+    # Der Feldname davor ist Pflicht, sonst träfe das Muster jede Aufzählung
+    # zweier grossgeschriebener Wörter.
+    ("PERSON",
+     rf"(?:Patient(?:in)?|Pat\.|Name|Nachname|Versicherte[rn]?|Geschädigte[rn]?|"
+     rf"Proband(?:in)?|Einsender(?:in)?|Freigabe|Befunder(?:in)?)"
+     rf"[ \t]*:[ \t]*({_NAMENSTEIL},[ \t]*{_NAMENSTEIL})", 1),
+
     ("PERSON",
      rf"(?:Herr|Herrn|Frau|Hr\.|Fr\.)\s+{_TITEL}((?:{_NAMENSTEIL}\s+)?{_NAMENSTEIL})", 1),
     ("ARZT",
@@ -328,7 +344,7 @@ _STOPP_ANATOMIE = {
     "apixaban", "rivaroxaban", "edoxaban", "dabigatran", "phenprocoumon",
     "marcumar", "heparin", "enoxaparin", "prednisolon", "dexamethason",
     "methylprednisolon", "cortison", "azathioprin", "methotrexat",
-    "sumatriptan", "zolmitriptan", "topiramat", "flunarizin", "baclofen",
+    "sumatriptan", "zolmitriptan", "flunarizin", "baclofen",
     "tizanidin", "tolperison", "botulinumtoxin", "immunglobulin",
     # Einheiten und Darreichungsformen — sie stehen in Medikationsplänen
     # neben dem Wirkstoff und müssen mit als unverfänglich gelten.
@@ -446,6 +462,11 @@ _MED_GRUNDWOERTER = (
     "kriterium", "kriterien", "klassifikation", "einteilung", "regel",
     "stadium", "stadien", "grad", "grade", "methode", "formel",
     "operation", "plastik", "prothese", "naht", "zugang", "punktion",
+    # Feldbezeichnungen aus Formularköpfen. "Auftrags-Nr." oder
+    # "Fall-Nummer" sind die Beschriftung neben dem Wert, nicht der Wert —
+    # die Nummer selbst fangen die eigenen Regeln ab.
+    "nr", "nummer", "nummern", "datum", "name", "vorname", "nachname",
+    "anschrift", "eingang", "ausgang", "einsender", "empfänger", "absender",
 )
 
 # Lateinische Anatomie: das Gattungswort steht vorn.
@@ -500,10 +521,7 @@ def _ist_fachbegriff(wert: str) -> bool:
     if len(letzter) >= 6 and letzter.endswith(_MED_GRUNDWOERTER):
         return True
     # Auch alleinstehend: "Zehen", "Vorfüße", "Nerven"
-    if letzter in _MED_GRUNDWOERTER:
-        return True
-
-    return False
+    return letzter in _MED_GRUNDWOERTER
 
 
 def _ist_stoppwort(wert: str) -> bool:

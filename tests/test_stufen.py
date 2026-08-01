@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import detect, export, stufen  # noqa: E402
+from app import detect, export, stufen
 
 BRIEF = """Neurologische Klinik am Auwald
 Ludwigstraße 47, 94032 Passau

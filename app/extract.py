@@ -8,6 +8,7 @@ from __future__ import annotations
 import io
 import re
 from dataclasses import dataclass, field
+from itertools import pairwise
 
 import fitz  # PyMuPDF
 import pytesseract
@@ -136,7 +137,7 @@ def _blockzeilen(block) -> list[dict]:
 
         hoehe = max((s["bbox"][3] - s["bbox"][1]) for s in spannen)
         luecken = [b["bbox"][0] - a["bbox"][2]
-                   for a, b in zip(spannen, spannen[1:])]
+                   for a, b in pairwise(spannen)]
         zeilen.append({
             "text": text, "x0": x0, "x1": x1, "y0": y0, "y1": y1,
             "hoehe": hoehe, "luecken": luecken, "spaltig": _spaltig(luecken, hoehe),
@@ -270,7 +271,7 @@ def _pdf_absaetze(doc) -> str:
         rand = _rechter_rand(alle, zeichenbreite, haupt_x0)
 
         abstaende = sorted(
-            b["y0"] - a["y0"] for a, b in zip(alle, alle[1:])
+            b["y0"] - a["y0"] for a, b in pairwise(alle)
             if 0 < b["y0"] - a["y0"] < 200
         )
         schritt = abstaende[len(abstaende) // 2] if abstaende else 14.0
@@ -327,6 +328,12 @@ def aus_pdf(daten: bytes) -> Extraktion:
     hinweise: list[str] = []
     with fitz.open(stream=daten, filetype="pdf") as doc:
         seiten = doc.page_count
+        if seiten > config.MAX_SEITEN:
+            raise ValueError(
+                f"Das Dokument hat {seiten} Seiten; verarbeitet werden "
+                f"höchstens {config.MAX_SEITEN}. Sehr grosse Dokumente "
+                "sprengen den Arbeitsspeicher — bitte in Abschnitte teilen."
+            )
         text = _pdf_absaetze(doc)
 
         zeichen_pro_seite = len(text.strip()) / max(seiten, 1)
@@ -418,11 +425,50 @@ def aus_docx(daten: bytes) -> Extraktion:
 
 
 def aus_upload(dateiname: str, daten: bytes) -> Extraktion:
+    """Wählt das Leseverfahren und übersetzt Bibliotheksfehler.
+
+    PyMuPDF und python-docx melden defekte Dateien auf Englisch und in ihrer
+    eigenen Begrifflichkeit ("Failed to open stream", "File is not a zip
+    file"). Vor dem Anwender steht damit eine Meldung, aus der sich nicht
+    ablesen lässt, was zu tun ist.
+    """
     name = dateiname.lower()
+
+    if not daten:
+        raise ValueError("Die Datei ist leer.")
+
     if name.endswith(".pdf"):
-        return aus_pdf(daten)
+        if not daten.lstrip()[:5].startswith(b"%PDF"):
+            raise ValueError(
+                "Die Datei trägt die Endung .pdf, beginnt aber nicht wie ein "
+                "PDF. Vermutlich wurde sie beim Herunterladen oder Versenden "
+                "beschädigt."
+            )
+        try:
+            return aus_pdf(daten)
+        except ValueError:
+            raise
+        except Exception as fehler:
+            raise ValueError(
+                "Das PDF liess sich nicht öffnen; vermutlich ist es "
+                "unvollständig oder beschädigt. Versuchsweise im "
+                "PDF-Betrachter öffnen und neu speichern."
+            ) from fehler
+
     if name.endswith(".docx"):
-        return aus_docx(daten)
+        if not daten[:2] == b"PK":
+            raise ValueError(
+                "Die Datei trägt die Endung .docx, ist aber kein "
+                "Word-Dokument. Alte .doc-Dateien bitte in Word als .docx "
+                "speichern."
+            )
+        try:
+            return aus_docx(daten)
+        except Exception as fehler:
+            raise ValueError(
+                "Das Word-Dokument liess sich nicht lesen; vermutlich ist es "
+                "beschädigt. Versuchsweise in Word öffnen und neu speichern."
+            ) from fehler
     if name.endswith(".doc"):
         raise ValueError(
             "Das alte .doc-Format wird nicht unterstützt. "
