@@ -218,6 +218,27 @@ _EINR_NACHSATZ = (
     r"(?:[ \t]+[A-ZÄÖÜ][\wäöüß.\-]+)?"
     r"|[ \t]+(?!(?:Dr|Prof|med|habil|PD|Herrn?|Frau|Hr|Fr)\b)[A-ZÄÖÜ][a-zäöüß]{2,})")
 
+# Briefköpfe stehen häufig durchgehend in Versalien, und dort ist keine der
+# bisherigen Regeln zuständig: die Muster oben verlangen Binnenkleinschreibung
+# ("Bezirksklinik", Nachsatz "[A-ZÄÖÜ][a-zäöüß]{2,}"), und das Sprachmodell
+# ist bei Grossschreibung unzuverlässig — "BEZIRKSKLINIKUM MAINKOFEN" in der
+# Unterschriftszeile hat es gar nicht erst getaggt. Genau dort steht der
+# Absender: ein Briefkopf ohne erkannte Einrichtung ist der Fehler, der am
+# meisten kostet.
+_EINR_KOPF_VERSAL = (
+    r"(?:UNIVERSITÄTSKLINIK(?:UM)?|BEZIRKSKLINIK(?:UM)?|FACHKLINIK|TAGESKLINIK|"
+    r"REHAKLINIK|POLIKLINIK|KLINIK(?:UM|EN)?|KRANKENHAUS|KRANKENANSTALT|"
+    r"HOSPITAL|SPITAL|HOSPIZ|ZENTRUM|AMBULANZ|ÄRZTEHAUS|SANATORIUM|"
+    r"GEMEINSCHAFTSPRAXIS|PRAXIS|INSTITUT|PFLEGEHEIM|SENIORENHEIM|MVZ)")
+# Vor- und Nachsilben gehören zum Wort: BEZIRKS|KLINIKUM, KLINIK|EN.
+_EINRICHTUNG_VERSAL = (
+    r"(?<![\wÄÖÜäöüß])"
+    rf"[A-ZÄÖÜ][A-ZÄÖÜß\-]*?{_EINR_KOPF_VERSAL}[A-ZÄÖÜß]*"
+    # Der Ortsname dahinter, ebenfalls in Versalien. Nur [ \t]: an der
+    # Zeilengrenze ist Schluss, sonst verschluckt der Treffer den Umbruch.
+    r"(?:[ \t]+(?!GMBH|GGMBH|AG|KG|E\.[ \t]?V)[A-ZÄÖÜ][A-ZÄÖÜß\-]{2,}){0,2}"
+    r"(?![\wÄÖÜäöüß])")
+
 # Nummernbezeichnungen kommen in jeder erdenklichen Schreibweise vor:
 # "Fallnummer", "Fall-Nr.", "Fall Nr.", "FallNr". Ein gemeinsames Fragment
 # deckt alle ab — ohne es fehlte ausgerechnet die Bindestrichform, die in
@@ -307,6 +328,7 @@ REGELN: list[tuple[str, str, int]] = [
     # ohne erkannten Absender wäre der peinlichste denkbare Fehler.
     ("ORGANISATION", rf"{_EINR_VORSATZ}{{1,3}}{_EINRICHTUNG}(?:{_EINR_NACHSATZ})?", 0),
     ("ORGANISATION", rf"{_EINRICHTUNG}{_EINR_NACHSATZ}", 0),
+    ("ORGANISATION", _EINRICHTUNG_VERSAL, 0),
     # Firmen erkennt man an der Rechtsform, die hinter dem Namen steht.
     ("ORGANISATION",
      r"(?:[A-ZÄÖÜ][\wäöüß&.\-]*[ \t]+){1,4}"
@@ -533,6 +555,10 @@ _MED_ENDUNGEN = (
     "logisch", "chemisch", "physisch", "metrisch", "graphisch", "grafisch",
     "skopisch", "gnostisch", "peutisch", "matisch", "tomisch", "morphisch",
     "statisch", "zentrisch", "sektionell", "ational",
+    # Partizipien auf -iert beschreiben den Zustand, nie eine Person:
+    # "orientiert", "kompensiert", "dokumentiert". In Versalien geschrieben
+    # ("WACH UND ORIENTIERT") hält das Sprachmodell sie für Firmennamen.
+    "iert", "ierte", "ierten", "iertem", "ierter",
 )
 
 # Grundwörter am Ende eines Kompositums. Deutsche Zusammensetzungen tragen

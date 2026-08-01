@@ -84,6 +84,12 @@ ohne_treffer(
     "war grössenkonstant. Die Sensibilitätsprüfung war regelrecht.",
     "Lange Fachkomposita sind keine Personen")
 
+print("\n=== 3d. Fachsprache in Versalien ===")
+ohne_treffer(
+    "Der Patient war WACH und ORIENTIERT. Die Herzinsuffizienz zeigte sich "
+    "KOMPENSIERT. Der Verlauf wurde fortlaufend DOKUMENTIERT.",
+    "Partizipien in Grossschreibung sind keine Firmennamen")
+
 print("\n=== 4. Eponyme: Zeichen, Tests und Skalen ===")
 ohne_treffer(
     "Der Babinski-Reflex war negativ, das Lasegue-Zeichen beidseits "
@@ -138,6 +144,26 @@ for text, muss in ECHTE:
     gefunden = [f.text for g in gruppen for f in g.funde]
     pruefe(any(muss in t for t in gefunden),
            f"{muss!r} wird weiterhin erkannt{'' if any(muss in t for t in gefunden) else f' — {gefunden}'}")
+
+print("\n=== 7a. Briefköpfe in Versalien ===")
+# Der Absender steht oft durchgehend gross. Das Sprachmodell erkennt ihn
+# dort unzuverlässig — in der Unterschriftszeile hatte es "BEZIRKSKLINIKUM
+# MAINKOFEN" gar nicht getaggt. Ein Briefkopf ohne erkannte Einrichtung ist
+# der Fehler, der am meisten kostet, deshalb steht er hier fest.
+VERSAL = [
+    ("Mit freundlichen Grüßen\n\nBEZIRKSKLINIKUM MAINKOFEN\n"
+     "Prof. Dr. med. Weissbach", "BEZIRKSKLINIKUM MAINKOFEN"),
+    ("UNIVERSITÄTSKLINIKUM REGENSBURG", "UNIVERSITÄTSKLINIKUM REGENSBURG"),
+    ("Die Aufnahme erfolgte im KLINIKUM PASSAU am 3. Mai.", "KLINIKUM PASSAU"),
+    ("SANKT-JOSEF-KRANKENHAUS", "SANKT-JOSEF-KRANKENHAUS"),
+    ("NEUROZENTRUM MAINKOFEN", "NEUROZENTRUM MAINKOFEN"),
+]
+for text, muss in VERSAL:
+    treffer = [g.anzeige for g in detect.analysiere(text)
+               if g.typ == "ORGANISATION"]
+    pruefe(muss in treffer,
+           f"{muss!r} wird als Einrichtung erkannt"
+           f"{'' if muss in treffer else f' — gefunden: {treffer}'}")
 
 print("\n=== 7b. Der Beleg gilt für das ganze Dokument ===")
 # Die Gegenrichtung zu allem darüber: hier ist ein Treffer erwünscht, auch
