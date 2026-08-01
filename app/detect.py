@@ -305,7 +305,17 @@ REGELN: list[tuple[str, str, int]] = [
      r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9 /\-.]{2,20})", 1),
     # Deutsches Kfz-Kennzeichen — in Unfallgutachten ein direkter Identifikator
     ("KFZ", r"\b[A-ZÄÖÜ]{1,3}[-–][ ]?[A-Z]{1,2}[ ]?\d{1,4}[ ]?[EH]?\b", 0),
-    ("EMAIL", r"[\w.+-]+@[\w-]+\.[\w.-]*[a-zA-Z]{2,}", 0),
+    # Das @ ist der Anker, nicht der Zusammenhang. In Briefköpfen bricht die
+    # Adresse regelmässig um — "t.schmidt-wilcke\n@mainkofen.de" —, weil der
+    # Satz sie am Spaltenrand trennt. Eine Regel, die Zusammenhang verlangt,
+    # sieht dort nichts, und übrig bleibt der Klarname im Ortsteil.
+    #
+    # Hier ist das Verschlucken des Umbruchs ausnahmsweise richtig: er liegt
+    # *innerhalb* der Adresse, nicht zwischen zwei Angaben. Höchstens ein
+    # Umbruch je Seite des @, damit das Muster nicht über einen Absatz
+    # greift und den halben Briefkopf mitnimmt.
+    ("EMAIL",
+     r"[\w.+-]+[ \t]*\n?[ \t]*@[ \t]*\n?[ \t]*[\w-]+\.[\w.-]*[a-zA-Z]{2,}", 0),
     ("URL", r"(?:https?://|www\.)[^\s<>\"')\]]+", 0),
     ("TELEFON",
      r"(?:Tel\.?|Telefon|Fon|Fax|Telefax|Mobil|Handy|Mobiltelefon|Durchwahl|Piep(?:er)?)"
@@ -505,6 +515,12 @@ _STOPP_MEDIZIN = {
     "demenz", "migräne", "apoplex", "insult",
 }
 _STOPP_ALLGEMEIN = {
+    # Bezeichner aus Briefköpfen. Sie stehen unmittelbar vor der Angabe, die
+    # sie benennt, und werden vom Sprachmodell für Eigennamen gehalten --
+    # "Tel" kam als Ortsname an. Die Angabe selbst fasst ohnehin eine eigene
+    # Regel, der Bezeichner davor ist nur Beiwerk.
+    "tel", "fon", "fax", "telefax", "mobil", "mail", "email", "e-mail",
+    "web", "internet", "zentrale",
     "sehr", "mit", "freundlichen", "grüßen", "herr", "frau", "herrn",
     # Akademische Titel und Anreden. Sie stehen neben Namen und werden vom
     # Sprachmodell regelmässig mit hineingezogen — besonders in
@@ -1212,9 +1228,17 @@ def analysiere(text: str) -> list[Gruppe]:
             if treffer.typ in ("ORT", "ORGANISATION"):
                 treffer.typ = "PERSON"
             continue
+        # Nur Stellen, die noch frei sind. `_entwirren` ist längst gelaufen,
+        # diese Funde entstehen erst danach — ohne die Prüfung entstünden
+        # überlappende Bereiche, und beim Ersetzen schöbe sich ein Platzhalter
+        # in den anderen ("[ARZT_1]RSON_2]"). Der Nachname steckt regelmässig
+        # in einem bereits erkannten vollen Namen: "Schmidt" aus
+        # t.schmidt-wilcke@… liegt mitten in "T. Schmidt-Wilcke".
+        vergeben = [(f.start, f.end) for g in liste for f in g.funde]
         funde = [
             Fund(t.start(), t.end(), t.group(0), "PERSON", "regex:email-ortsteil")
             for t in re.finditer(rf"\b{re.escape(name)}\b", text)
+            if not any(t.start() < e and s < t.end() for s, e in vergeben)
         ]
         if not funde:
             continue

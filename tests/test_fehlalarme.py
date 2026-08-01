@@ -165,6 +165,36 @@ for text, muss in VERSAL:
            f"{muss!r} wird als Einrichtung erkannt"
            f"{'' if muss in treffer else f' — gefunden: {treffer}'}")
 
+print("\n=== 7c. E-Mail-Adressen, am @ verankert ===")
+# In Briefköpfen bricht die Adresse am Spaltenrand um. Eine Regel, die
+# Zusammenhang verlangt, sieht dort nichts -- und übrig bleibt der Klarname
+# im Ortsteil, also genau das, was geschützt werden soll.
+EMAILS = [
+    ("Kontakt:\nt.schmidt-wilcke\n@mainkofen.de", "umbrochen vor dem @"),
+    ("Kontakt: t.schmidt-wilcke@\nmainkofen.de", "umbrochen nach dem @"),
+    ("Kontakt: t.schmidt-wilcke @mainkofen.de", "Leerzeichen vor dem @"),
+    ("Rückfragen an ingrid.brandner@klinik.de", "zusammenhängend"),
+]
+for text, was in EMAILS:
+    typen = [g.typ for g in detect.analysiere(text)]
+    pruefe("EMAIL" in typen, f"E-Mail erkannt, {was}")
+
+# Ein Absatzumbruch trennt zwei Angaben und darf nicht überbrückt werden.
+pruefe("EMAIL" not in [g.typ for g in detect.analysiere(
+           "Sehr geehrte Frau Kollegin\n\n@mainkofen.de")],
+       "Das Muster greift nicht über einen Absatz")
+
+# Überlappende Bereiche schieben beim Ersetzen einen Platzhalter in den
+# anderen. Der Nachname aus dem Ortsteil steckt regelmässig in einem
+# bereits erkannten vollen Namen.
+_t = ("Prof. Dr. med. T. Schmidt-Wilcke\nKontakt:\n"
+      "t.schmidt-wilcke\n@mainkofen.de")
+_spannen = sorted((f.start, f.end) for g in detect.analysiere(_t)
+                  for f in g.funde)
+pruefe(all(_spannen[i][1] <= _spannen[i + 1][0]
+           for i in range(len(_spannen) - 1)),
+       f"Keine überlappenden Fundstellen — {_spannen}")
+
 print("\n=== 7b. Der Beleg gilt für das ganze Dokument ===")
 # Die Gegenrichtung zu allem darüber: hier ist ein Treffer erwünscht, auch
 # wenn das Wort für sich genommen harmlos aussieht. Wer einmal mit Anrede
