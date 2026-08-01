@@ -285,6 +285,31 @@ async def protokoll_und_kopfzeilen(anfrage: Request, weiter):
     # Antworten nicht in Proxy- oder Browsercaches liegen bleiben sollen.
     antwort.headers["Cache-Control"] = "no-store, must-revalidate"
     antwort.headers["X-Anfrage-Kennung"] = kennung
+
+    # Die Anwendung lädt nichts aus dem Netz und soll auch nichts laden
+    # können. Das ist hier kein Selbstzweck: Wer eine eingeschleuste Quelle
+    # nachladen könnte, könnte den Dokumenttext aus dem Browser
+    # heraustragen -- an der zustandslosen Verarbeitung im Rücken vorbei.
+    #
+    # 'unsafe-inline' steht bewusst nur bei style-src: die Oberfläche setzt
+    # die Farbcodierung der Fundstellen über style-Attribute. Ohne die
+    # Ausnahme bliebe die Prüfansicht farblos, was die Erkennungsarbeit
+    # unbrauchbar machte. Für Skripte gilt sie nicht -- inline-Skripte gibt
+    # es in der Oberfläche keine, und genau dort läge auch das Risiko.
+    antwort.headers["X-Frame-Options"] = "DENY"
+    antwort.headers["X-Content-Type-Options"] = "nosniff"
+    antwort.headers["Referrer-Policy"] = "no-referrer"
+    antwort.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'none'; "
+        "object-src 'none'"
+    )
     return antwort
 
 

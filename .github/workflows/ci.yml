@@ -149,7 +149,13 @@ jobs:
 
       - name: Sicherheitskopf gesetzt
         run: |
-          kopf=$(curl -fsSI http://127.0.0.1:8080/)
+          # GET, nicht HEAD: FastAPI ergänzt bei @app.get -- anders als
+          # reines Starlette -- keine HEAD-Methode, die Route antwortet
+          # deshalb mit 405. Mit -f bricht curl dann ab, und die Prüfung
+          # scheitert an sich selbst statt an einem fehlenden Kopfzeilenfeld.
+          # -D - schreibt die Kopfzeilen nach stdout, -o /dev/null wirft den
+          # Rumpf weg. Das ist zugleich der Weg, den ein Browser nimmt.
+          kopf=$(curl -fsS -o /dev/null -D - http://127.0.0.1:8080/)
           echo "$kopf"
           for erwartet in "x-frame-options" "x-content-type-options" \
                           "content-security-policy" "referrer-policy"; do
