@@ -146,7 +146,23 @@ function uebernehmen(daten) {
 
   $('hinweise').innerHTML = daten.hinweise.map((h) => `<p>${esc(h)}</p>`).join('');
   labelsVergeben();
+  kategorienInAuswahl();
   zeichneAlles();
+}
+
+/** Füllt die Kategorieliste des Auswahlmenüs — einmal je Dokument. */
+function kategorienInAuswahl() {
+  const feld = $('auswahl-kategorie');
+  if (!feld) return;
+  feld.innerHTML = '';
+  for (const typ of UMSTELLBAR) {
+    if (!Z.kategorien[typ]) continue;
+    const eintrag = document.createElement('option');
+    eintrag.value = typ;
+    eintrag.textContent = Z.kategorien[typ].titel;
+    feld.appendChild(eintrag);
+  }
+  feld.value = 'MANUELL';
 }
 
 // -------------------------------------------------------------- Pseudonyme
@@ -479,6 +495,88 @@ function zeichneAlles() {
 
 // ------------------------------------------------------- Eigener Begriff
 
+// ------------------------------------------------- Markieren im Text
+//
+// Der Notausgang für alles, was keine Regel trifft: Text auswählen, Kategorie
+// bestimmen, ersetzen. Anders als "Zusätzlich ersetzen" in der Seitenleiste
+// wirkt das auf **genau die gewählte Stelle**, nicht auf jedes Vorkommen —
+// nützlich, wenn dasselbe Wort einmal ein Name und einmal ein Fachbegriff ist.
+
+let auswahlBereich = null;
+
+/** Rechnet eine Auswahl im gerenderten HTML auf Zeichenpositionen im Text um. */
+function auswahlZuBereich(auswahl) {
+  const dok = $('dokument');
+  if (!auswahl.rangeCount) return null;
+  const bereich = auswahl.getRangeAt(0);
+  if (bereich.collapsed || !dok.contains(bereich.commonAncestorContainer)) return null;
+
+  // Zeichen vor dem Auswahlbeginn zählen — das ergibt den Versatz im
+  // Originaltext, weil der angezeigte Text zeichengleich dazu ist.
+  const davor = document.createRange();
+  davor.selectNodeContents(dok);
+  davor.setEnd(bereich.startContainer, bereich.startOffset);
+  const start = davor.toString().length;
+  const ende = start + bereich.toString().length;
+
+  return start < ende ? { start, ende, text: Z.text.slice(start, ende) } : null;
+}
+
+function auswahlMenueZeigen() {
+  const menue = $('auswahl-menue');
+  const auswahl = window.getSelection();
+  const bereich = auswahlZuBereich(auswahl);
+
+  if (!bereich || !bereich.text.trim() || Z.modus !== 'original') {
+    menue.hidden = true;
+    auswahlBereich = null;
+    return;
+  }
+
+  // Bereits abgedeckte Stellen nicht erneut anbieten.
+  if (alleFunde(false).some((f) => bereich.start < f.ende && f.start < bereich.ende)) {
+    menue.hidden = true;
+    auswahlBereich = null;
+    return;
+  }
+
+  auswahlBereich = bereich;
+  const kurz = bereich.text.trim().replace(/\s+/g, ' ');
+  $('auswahl-text').textContent = kurz.length > 30 ? kurz.slice(0, 30) + '…' : kurz;
+
+  const rechteck = auswahl.getRangeAt(0).getBoundingClientRect();
+  menue.hidden = false;
+  menue.style.left = `${Math.max(8, rechteck.left)}px`;
+  menue.style.top = `${rechteck.bottom + 6}px`;
+}
+
+function auswahlUebernehmen() {
+  if (!auswahlBereich) return;
+  const typ = $('auswahl-kategorie').value;
+  const text = auswahlBereich.text;
+
+  Z.gruppen.push({
+    id: `s${Z.naechsteId}`,
+    typ,
+    anzeige: text.trim().replace(/\s+/g, ' '),
+    label: '',
+    initialen: '',
+    aktiv: true,
+    sicher: true,          // von Hand gesetzt — der stärkste Beleg überhaupt
+    varianten: [text],
+    funde: [{ start: auswahlBereich.start, ende: auswahlBereich.ende,
+              text, quelle: 'auswahl', formen: {} }],
+  });
+  Z.naechsteId += 1;
+
+  window.getSelection().removeAllRanges();
+  $('auswahl-menue').hidden = true;
+  auswahlBereich = null;
+  labelsVergeben();
+  zeichneAlles();
+  brot(`„${text.trim().slice(0, 24)}" wird ersetzt.`);
+}
+
 async function begriffHinzufuegen() {
   const feld = $('eigener-begriff');
   const begriff = feld.value.trim();
@@ -703,6 +801,18 @@ function start() {
   });
 
   $('knopf-begriff').onclick = begriffHinzufuegen;
+
+  // Auswahl im Text: Menü einblenden, sobald etwas markiert ist.
+  document.addEventListener('selectionchange', () => {
+    // Verzögert, damit die Auswahl beim Loslassen der Maus steht.
+    clearTimeout(window._auswahlZeit);
+    window._auswahlZeit = setTimeout(auswahlMenueZeigen, 120);
+  });
+  $('auswahl-hinzu').onclick = auswahlUebernehmen;
+  // Klick ausserhalb schliesst das Menü, ohne die Auswahl zu übernehmen.
+  document.addEventListener('mousedown', (e) => {
+    if (!$('auswahl-menue').contains(e.target)) $('auswahl-menue').hidden = true;
+  });
   $('eigener-begriff').addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') begriffHinzufuegen();
   });

@@ -25,7 +25,16 @@ def pruefe(bedingung, beschreibung):
 
 
 def ohne_treffer(text: str, was: str) -> None:
-    gruppen = detect.analysiere(text)
+    """Prüft, dass in diesem Text nichts Schützenswertes gefunden wird.
+
+    Die Kategorie ZAHL bleibt dabei aussen vor. Sie erfasst absichtlich jede
+    Zahl ohne physikalische Einheit — „85 Punkte", „Grad 2" — und wirkt
+    ausschliesslich in der strengen Stufe. Dort ist genau das gewollt: eine
+    Zahl ohne Einheit kann eine Durchwahl, ein Zimmer oder eine Kennung
+    sein. In den beiden anderen Stufen bleibt sie unangetastet, ist hier
+    also kein Fehlalarm.
+    """
+    gruppen = [g for g in detect.analysiere(text) if g.typ != "ZAHL"]
     treffer = [f"{g.anzeige} ({g.typ})" for g in gruppen]
     pruefe(not treffer, f"{was}{f' — gefunden: {treffer}' if treffer else ''}")
 

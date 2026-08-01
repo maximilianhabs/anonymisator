@@ -76,6 +76,8 @@ KATEGORIEN: dict[str, dict] = {
     "ALTER":          {"label": "ALTER",    "stil": "zahl",   "prioritaet": 34, "farbe": "#46a758"},
     "ZEITSPANNE":     {"label": "ZEITRAUM", "stil": "zahl",   "prioritaet": 33, "farbe": "#46a758"},
     "JAHRESZAHL":     {"label": "JAHR",     "stil": "zahl",   "prioritaet": 20, "farbe": "#46a758"},
+    # Niedrigste Priorität überhaupt: jede spezifischere Regel geht vor.
+    "ZAHL":           {"label": "ZAHL",     "stil": "zahl",   "prioritaet": 10, "farbe": "#8e8e8e"},
     "MANUELL":        {"label": "GESCHWÄRZT", "stil": "zahl", "prioritaet": 99, "farbe": "#000000"},
 }
 
@@ -91,6 +93,7 @@ KATEGORIE_TITEL = {
     "TELEFON": "Telefon/Fax", "ADRESSE": "Anschrift",
     "ORGANISATION": "Einrichtung / Firma",
     "ORT": "Ort", "DATUM": "Datum", "BETRAG": "Geldbetrag",
+    "ZAHL": "Zahl ohne Einheit",
     "ALTER": "Altersangabe", "ZEITSPANNE": "Zeitraum", "JAHRESZAHL": "Jahreszahl",
     "MANUELL": "Manuell ergänzt",
 }
@@ -131,10 +134,72 @@ _KEIN_NAME = (
 # Mindestens zwei Kleinbuchstaben — schliesst "Dr" aus, lässt "Utz" zu.
 _NAMENSTEIL = _KEIN_NAME + r"[A-ZÄÖÜ][a-zäöüß]{2,}(?:-[A-ZÄÖÜ][a-zäöüß]{2,})?"
 
+# Nach einem akademischen Titel darf der Name auch durchgehend gross
+# geschrieben sein: "PROF. DR. MED. WEISSBACH" ist in Briefköpfen und
+# Unterschriftenzeilen die Regel. Diese Form nur hier zuzulassen und nicht
+# überall ist Absicht — freistehend würde sie jede Abkürzung fangen, von
+# EEG bis MRT. Der vorangehende Titel ist der Beleg, der sie rechtfertigt.
+_NAME_GROSS = _KEIN_NAME + r"(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]{3,})"
+_NAMENSTEIL_NACH_TITEL = (
+    _NAME_GROSS + r"(?:-(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]{2,}))?")
+
+# Akademische Zusätze, die zwischen Titel und Namen stehen können, ohne
+# selbst ein Name zu sein. Gross- und Kleinschreibung gemischt, weil
+# Briefköpfe "MED." und Fliesstext "med." schreibt.
+_TITELKETTE = (
+    r"(?:(?i:dr|prof|priv|pd|med|dent|vet|habil|h\.\s?c|rer|nat|phil|"
+    r"dipl|ing|psych|univ)\.?[ \t]*)*")
+
 # Titel und Anreden, die zwischen Anrede und Namen stehen dürfen und
 # mitkonsumiert, aber nicht als Name gewertet werden.
 _TITEL = (r"(?:(?:Dr|Prof|PD|med|habil|Dipl\.-?\s?(?:Med|Psych)|Kolleg(?:e|in)|"
           r"Doktor|Professor)\.?\s+)*")
+
+# --------------------------------------------------------------------------
+# Physikalische Einheiten
+# --------------------------------------------------------------------------
+# Sie entscheiden, ob eine Zahl ein Messwert ist. Steht eine davon hinter der
+# Zahl, trägt sie medizinische Aussage und bleibt unangetastet — auch in der
+# strengen Stufe. Ohne Einheit gilt die Zahl als mögliche Kennung.
+#
+# Die Reihenfolge ist bedeutsam: längere Einheiten müssen vor ihren kürzeren
+# Anfängen stehen, sonst greift "m" bereits bei "mmHg".
+_EINHEITEN = (
+    # Zusammengesetzte zuerst
+    r"mg/dl|mg/l|mg/kg|µg/l|ug/l|µg/dl|ng/ml|ng/l|pg/ml|pmol/l|nmol/l|"
+    r"mmol/l|µmol/l|umol/l|mval/l|mU/l|µU/ml|mIE/l|"
+    r"g/dl|g/l|IE/l|U/l|E/l|U/ml|ml/min|l/min|mmHg|cmH2O|kg/m²|kg/m2|"
+    # Masse und Volumen
+    r"mg|µg|ug|mcg|ng|pg|kg|g\b|ml|dl|cl|µl|ul|l\b|"
+    # Länge
+    r"mm|cm|dm|km|m\b|µm|um|nm|"
+    # Elektrisch
+    r"mV|µV|uV|kV|V\b|mA|µA|uA|A\b|Ohm|Ω|"
+    # Zeit und Frequenz
+    r"ms|µs|us|ns|sec|s\b|min|h\b|Hz|kHz|MHz|/min|/s|"
+    # Stoffmenge, Aktivität, Sonstiges
+    r"mmol|µmol|umol|mol|mval|IE|IU|E\b|U\b|Bq|Gy|Sv|"
+    r"°C|°|%|‰|dpt|dB|kcal|kJ|J\b|W\b|bar|Pa|hPa"
+)
+# Erkennt einen Messwert irgendwo im Text — für die Prüfung von
+# Treffern des Sprachmodells.
+_MESSWERT_ENTHALTEN = re.compile(
+    rf"\d(?:[.,]\d+)?[ \t]?(?:{_EINHEITEN})(?![A-Za-zÄÖÜäöü0-9])")
+
+# Lookahead: optionales Leerzeichen, dann eine Einheit, danach kein
+# Wortzeichen mehr (sonst würde "mg" auch in "mgxyz" passen).
+#
+# Der Teil "/\d+" davor fängt Bruchschreibweisen ab, bei denen die Einheit
+# nur hinter der zweiten Zahl steht: bei "140/90 mmHg" sind beide Werte
+# Messwerte, nicht nur die 90. Ohne das würde der Blutdruck zerschnitten.
+#
+# Der Abstand ist "[ \t]*" statt eines einzelnen Leerzeichens: In
+# Laborbefunden stehen Wert und Einheit in Spalten und damit weit
+# auseinander — "Natrium      139     mmol/l". Mit nur einem Leerzeichen
+# gälte der Messwert dort als Kennung und verschwände in der strengen Stufe.
+_EINHEIT_FOLGT = (
+    rf"(?:[ \t]*/[ \t]*\d+(?:[.,]\d+)?)?[ \t]*(?:{_EINHEITEN})"
+    r"(?![A-Za-zÄÖÜäöü0-9])")
 
 # Bausteine für Einrichtungsnamen
 _EINRICHTUNG = (
@@ -271,8 +336,40 @@ REGELN: list[tuple[str, str, int]] = [
 
     ("PERSON",
      rf"(?:Herr|Herrn|Frau|Hr\.|Fr\.)\s+{_TITEL}((?:{_NAMENSTEIL}\s+)?{_NAMENSTEIL})", 1),
+    # Der akademische Titel ist einer der stärksten Belege überhaupt: was
+    # danach steht und wie ein Name aussieht, ist einer. Deshalb wird die
+    # ganze Titelkette übersprungen — "Prof. Dr. med. habil." — und der
+    # Name danach auch in Grossschreibung genommen.
     ("ARZT",
-     rf"(?:Dr\.|Prof\.|OA|OÄ|CA|ChA)\s*{_TITEL}((?:{_NAMENSTEIL}\s+)?{_NAMENSTEIL})", 1),
+     rf"(?i:dr|prof|oa|oä|ca|cha|chefarzt|chefärztin|oberarzt|oberärztin)\.?[ \t]+"
+     rf"{_TITELKETTE}"
+     rf"((?:{_NAMENSTEIL_NACH_TITEL}[ \t]+)?{_NAMENSTEIL_NACH_TITEL})", 1),
+
+    # Initialen statt ausgeschriebenem Vornamen: "Dr. med. K. Weißbach".
+    ("ARZT",
+     rf"(?i:dr|prof|oa|oä|ca|cha)\.?[ \t]+{_TITELKETTE}"
+     rf"((?:[A-ZÄÖÜ]\.[ \t]*){{1,3}}{_NAMENSTEIL_NACH_TITEL})", 1),
+
+    # --- Freistehende Zahlen ------------------------------------------------
+    # Der Grundsatz: Eine Zahl mit physikalischer Einheit ist ein Messwert und
+    # trägt medizinische Aussage — sie bleibt. Eine Zahl ohne Einheit ist eine
+    # mögliche Kennung: Durchwahl, Piepser, Zimmer, Bett, Fallnummer ohne
+    # Beschriftung. In der strengen Stufe wird sie ersetzt.
+    #
+    # Das ersetzt ein Dutzend Einzelregeln durch ein Prinzip. Die Priorität
+    # ist die niedrigste von allen, damit Datum, Telefon, IBAN und alles
+    # andere Spezifische zuerst greifen.
+    # Der possessive Quantifier "?+" ist wesentlich: ohne ihn fällt die
+    # Maschine hinter den Dezimalteil zurück und prüft bei "36,5 °C" nur
+    # noch ",5 °C" — der Treffer wäre dann "36", die Einheit übersehen.
+    # Der Rückblick "(?<![\d.,])" verhindert, dass die Regel mitten in eine
+    # Dezimalzahl greift: bei "1,84 mU/l" wäre "84" sonst ein eigener
+    # Treffer, obwohl die ganze Zahl einen Messwert bildet.
+    # Im Rückblick steht auch der Buchstabe: klebt die Zahl unmittelbar an
+    # einem Wort, gehört sie zum Fachbegriff und ist keine Kennung —
+    # Vitamin B12, T3, T4, O2, CO2, C3, IgG4, HbA1c.
+    ("ZAHL",
+     rf"(?<![\d.,A-Za-zÄÖÜäöüß])\d{{2,}}(?:[.,]\d+)?+\b(?!{_EINHEIT_FOLGT})", 0),
 
     # --- Zeitangaben --------------------------------------------------------
     # Nur für die strenge Stufe relevant, dort aber unverzichtbar: ein
@@ -571,6 +668,12 @@ def _ner_funde(text: str) -> Iterable[Fund]:
         wert = ent.text.split("\n", 1)[0].strip()
         if len(wert) < 2 or wert.isdigit():
             continue
+        # Enthält der Treffer einen Messwert, ist er keine Person und kein
+        # Ort. "Temperatur 36,5 °C" oder "Amplitude 45 mV" hat das
+        # Sprachmodell wiederholt für Ortsnamen gehalten — eine physikalische
+        # Einheit im Treffer schliesst das aus.
+        if _MESSWERT_ENTHALTEN.search(wert):
+            continue
         if _ist_stoppwort(wert) or _ist_fachbegriff(wert) or _ist_abkuerzung(wert):
             continue
         start = ent.start_char + (len(ent.text) - len(ent.text.lstrip()))
@@ -793,6 +896,50 @@ def _nachnamen_zusammenfuehren(gruppen: list[Gruppe]) -> list[Gruppe]:
 _NACHLAUF_TYPEN = {"PERSON", "PATIENT", "ARZT", "ORT", "ORGANISATION"}
 
 
+_EMAIL_TRENNER = re.compile(r"[._\-]+")
+
+
+def _namen_aus_emails(text: str, gruppen: list[Gruppe]) -> list[str]:
+    """Gewinnt Personennamen aus dem Ortsteil einer E-Mail-Adresse.
+
+    Dienstliche Adressen sind fast immer nach Vorname.Nachname gebaut:
+    konrad.weissbach@klinik.de, k.weissbach@…, weissbach.k@…. Die Adresse
+    selbst wird ohnehin ersetzt — der Name darin verrät aber zusätzlich,
+    wonach im übrigen Text zu suchen ist. Genau dort steht er oft ohne
+    Titel und entgeht deshalb den anderen Regeln.
+
+    Zurückgegeben werden nur Bestandteile, die tatsächlich wie ein Name
+    aussehen: mindestens drei Buchstaben, kein Funktionswort wie "info",
+    "praxis" oder "sekretariat".
+    """
+    unbrauchbar = {
+        "info", "kontakt", "mail", "email", "post", "praxis", "kanzlei",
+        "sekretariat", "empfang", "anmeldung", "verwaltung", "buchhaltung",
+        "service", "support", "noreply", "no", "reply", "team", "office",
+        "zentrale", "ambulanz", "station", "klinik", "klinikum", "labor",
+        "abrechnung", "personal", "datenschutz", "webmaster", "admin",
+    }
+
+    kandidaten: list[str] = []
+    for gruppe in gruppen:
+        if gruppe.typ != "EMAIL":
+            continue
+        for fund in gruppe.funde:
+            ortsteil = fund.text.split("@", 1)[0]
+            for stueck in _EMAIL_TRENNER.split(ortsteil):
+                stueck = stueck.strip()
+                if len(stueck) < 3 or not stueck.isalpha():
+                    continue
+                if stueck.lower() in unbrauchbar:
+                    continue
+                # Im Text steht der Name gross geschrieben, in der Adresse
+                # klein. Gesucht wird deshalb mit grossem Anfangsbuchstaben.
+                name = stueck.capitalize()
+                if re.search(rf"\b{re.escape(name)}\b", text):
+                    kandidaten.append(name)
+    return kandidaten
+
+
 def _konsistenz_nachlauf(text: str, gruppen: list[Gruppe]) -> list[Gruppe]:
     """Sucht jede bereits erkannte Bezeichnung im gesamten Dokument erneut.
 
@@ -901,6 +1048,34 @@ def analysiere(text: str) -> list[Gruppe]:
             gruppe.typ = fund.typ
 
     liste = _nachnamen_zusammenfuehren(list(gruppen.values()))
+
+    # Namen aus E-Mail-Adressen als zusätzliche Gruppen, bevor der
+    # Konsistenzlauf sie im ganzen Dokument nachschlägt.
+    nach_schluessel = {g.schluessel: g for g in liste}
+    vorhanden = set(nach_schluessel)
+    for name in _namen_aus_emails(text, liste):
+        if name.lower() in vorhanden:
+            # Der Name ist schon bekannt — aber womöglich falsch einsortiert.
+            # Das Sprachmodell hält Nachnamen regelmässig für Ortsnamen, und
+            # Orte bleiben in der Standardstufe stehen. Wer in einer
+            # dienstlichen E-Mail-Adresse steht, ist eine Person; dieser
+            # Beleg wiegt schwerer als die Vermutung des Modells.
+            treffer = nach_schluessel[name.lower()]
+            if treffer.typ in ("ORT", "ORGANISATION"):
+                treffer.typ = "PERSON"
+            continue
+        funde = [
+            Fund(t.start(), t.end(), t.group(0), "PERSON", "regex:email-ortsteil")
+            for t in re.finditer(rf"\b{re.escape(name)}\b", text)
+        ]
+        if not funde:
+            continue
+        vorhanden.add(name.lower())
+        liste.append(Gruppe(
+            id=f"e{len(liste)}", typ="PERSON", anzeige=name,
+            schluessel=name.lower(), funde=funde,
+        ))
+
     liste = _konsistenz_nachlauf(text, liste)
     for gruppe in liste:
         gruppe.anzeige = max(gruppe.varianten, key=len)

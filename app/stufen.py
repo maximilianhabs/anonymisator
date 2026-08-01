@@ -74,7 +74,7 @@ STUFEN: dict[str, dict[str, str]] = {
         "ORGANISATION": "behalten", "ADRESSE": "nur_ort", "ORT": "behalten",
         "GEBURTSDATUM": "jahrgang", "DATUM": "behalten",
         "ALTER": "behalten", "ZEITSPANNE": "behalten", "JAHRESZAHL": "behalten",
-        "BETRAG": "behalten", "URL": "behalten",
+        "BETRAG": "behalten", "URL": "behalten", "ZAHL": "behalten",
     },
     "standard": {
         "PATIENT": "ersetzen", "ARZT": "ersetzen", "PERSON": "ersetzen",
@@ -87,6 +87,10 @@ STUFEN: dict[str, dict[str, str]] = {
         # Gerundet statt ersetzt: eine Rechnung ohne jede Grössenordnung ist
         # wertlos, eine centgenaue Summe zu einem Datum dagegen wiedererkennbar.
         "BETRAG": "gerundet",
+        # Zahlen ohne Einheit bleiben hier noch stehen — erst die strenge
+        # Stufe räumt sie weg. In der Standardstufe wäre der Verlust an
+        # Lesbarkeit grösser als der Gewinn an Schutz.
+        "ZAHL": "behalten",
         "URL": "ersetzen",
     },
     "streng": {
@@ -95,6 +99,10 @@ STUFEN: dict[str, dict[str, str]] = {
         "GEBURTSDATUM": "ersetzen", "DATUM": "ersetzen",
         "ALTER": "ersetzen", "ZEITSPANNE": "ersetzen", "JAHRESZAHL": "ersetzen",
         "BETRAG": "ersetzen", "URL": "ersetzen",
+        # Jede Zahl ohne physikalische Einheit: Durchwahl, Piepser, Zimmer,
+        # Bett, Kennungen ohne Beschriftung. Messwerte bleiben, weil dort
+        # eine Einheit folgt.
+        "ZAHL": "ersetzen",
     },
 }
 

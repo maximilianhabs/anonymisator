@@ -444,3 +444,36 @@ mark.ers {
 }
 .haftung-box p:last-child { margin-bottom: 0; }
 .haftung-box b { color: var(--text); font-weight: 600; }
+
+/* --------------------------------------------- Markieren durch Auswahl */
+.auswahl-menue {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand-stark);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .16);
+  font-size: 12.5px;
+}
+.auswahl-menue .auswahl-text {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--gedaempft);
+}
+.auswahl-menue select {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid var(--rand);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
