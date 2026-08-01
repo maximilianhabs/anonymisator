@@ -376,3 +376,71 @@ mark.ers {
 .datenschutz-box li { margin-bottom: 5px; }
 .datenschutz-box li:last-child { margin-bottom: 0; }
 .datenschutz-box b { font-weight: 600; }
+
+/* ------------------------------------------- Ausführlicher Datenschutz */
+.datenschutz-box .ausfuehrlich {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rand);
+}
+.datenschutz-box .ausfuehrlich > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--akzent);
+  list-style: none;
+  padding: 2px 0;
+}
+.datenschutz-box .ausfuehrlich > summary::-webkit-details-marker { display: none; }
+.datenschutz-box .ausfuehrlich > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform .15s;
+}
+.datenschutz-box .ausfuehrlich[open] > summary::before { content: "▾ "; }
+.datenschutz-box .ausfuehrlich > summary:hover { text-decoration: underline; }
+
+.datenschutz-box .ausfuehrlich h3 {
+  margin: 16px 0 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.datenschutz-box .ausfuehrlich h3:first-of-type { margin-top: 12px; }
+.datenschutz-box .ausfuehrlich p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--gedaempft);
+}
+.datenschutz-box .ausfuehrlich b { color: var(--text); font-weight: 600; }
+.datenschutz-box .ausfuehrlich code {
+  font: 11.5px var(--mono);
+  background: var(--bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+/* --------------------------------------------------------- Haftung */
+.haftung-box {
+  margin-top: 18px;
+  padding: 15px 18px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-left: 3px solid var(--gedaempft);
+  border-radius: var(--radius);
+}
+.haftung-box strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.haftung-box p {
+  margin: 0 0 9px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--gedaempft);
+}
+.haftung-box p:last-child { margin-bottom: 0; }
+.haftung-box b { color: var(--text); font-weight: 600; }

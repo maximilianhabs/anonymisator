@@ -6,7 +6,22 @@ zwischen Nebenversionen ändern.
 
 ## 0.11.0 — 2026-08-01
 
-Einmalige Verarbeitung: sichtbar gemacht und nachgewiesen.
+Einmalige Verarbeitung: sichtbar gemacht, ausführlich erklärt, nachgewiesen.
+
+**Aufklärung des Anwenders**
+- Ausklappbarer Abschnitt „Der Weg Ihrer Datei, Schritt für Schritt" auf der
+  Startseite. Er benennt für jede der acht Stationen konkret, was geschieht
+  und wie lange etwas verweilt: Übertragung, Entgegennahme, Lesen und
+  Verwerfen, Analyse, Prüfung im Browser, Export, Protokollierung, Neustart.
+  Einschliesslich der technischen Einzelheiten, die sonst niemand nachprüfen
+  könnte — die 1-MB-Grenze der Auslagerung, `TMPDIR`, das `tmpfs`.
+- Eigener Haftungsabschnitt: Die Standards werden benannt, zugleich steht
+  ausdrücklich da, dass **keine vollständige Erkennung zugesichert werden
+  kann**, dass die Verantwortung für ein weitergegebenes Dokument beim
+  Anwender bleibt und dass die Software kein Medizinprodukt ist.
+- Beides unterscheidet ausdrücklich zwischen Betrieb auf dem eigenen Gerät
+  und Betrieb auf einem Server — nur im ersten Fall verlässt nichts den
+  Rechner.
 
 **Behoben — eine Zusicherung, die nicht mehr stimmte**
 - Die Kopfzeile versprach „läuft vollständig lokal · keine Datei verlässt

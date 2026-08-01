@@ -67,6 +67,119 @@
         liegt in Ihrem Browser. Mit „Neues Dokument" oder dem Schliessen des
         Fensters ist er fort.</li>
     </ul>
+
+    <details class="ausfuehrlich">
+      <summary>Ausführlich: der Weg Ihrer Datei, Schritt für Schritt</summary>
+
+      <h3>1 &middot; Übertragung</h3>
+      <p>
+        Wird der Anonymisator auf Ihrem eigenen Rechner betrieben, verlässt
+        die Datei ihn nicht — die Verbindung läuft über
+        <code>127.0.0.1</code> und ist von aussen nicht erreichbar.
+      </p>
+      <p>
+        Läuft er auf einem Server, <b>geht die Datei über das Netz</b>. Die
+        Verbindung ist dabei durchgehend mit TLS verschlüsselt (HTTPS), und
+        der Zugang ist durch Benutzername und Passwort geschützt. Der
+        vorgeschaltete Reverse Proxy reicht die Daten unverändert weiter und
+        führt kein Zugriffsprotokoll.
+      </p>
+
+      <h3>2 &middot; Entgegennahme</h3>
+      <p>
+        Dateien <b>bis 1 MB</b> hält der Dienst ausschliesslich im
+        Arbeitsspeicher. <b>Darüber</b> legt der verwendete Webserver
+        (Starlette) eine temporäre Datei an. Deren Ort bestimmt die Variable
+        <code>TMPDIR</code>; im Container zeigt sie auf <code>/tmp</code>,
+        und <code>/tmp</code> ist dort ein <b>tmpfs</b> — ein Dateisystem,
+        das vollständig im Arbeitsspeicher liegt. <b>Die Datei erreicht damit
+        zu keinem Zeitpunkt eine Festplatte.</b>
+      </p>
+
+      <h3>3 &middot; Lesen und sofortiges Verwerfen</h3>
+      <p>
+        Der Inhalt wird einmal in den Arbeitsspeicher gelesen. Unmittelbar
+        danach — <b>noch bevor die Analyse beginnt</b> — wird die Datei
+        geschlossen und ein etwaiger Zwischenspeicher gelöscht. Nach der
+        Textgewinnung wird auch der Rohinhalt ausdrücklich freigegeben,
+        statt bis zum Ende der Anfrage im Speicher zu stehen.
+      </p>
+
+      <h3>4 &middot; Analyse</h3>
+      <p>
+        Gearbeitet wird ab hier nur noch mit dem gewonnenen Text, und zwar
+        allein für die Dauer dieser einen Anfrage. Der Dienst ist
+        zustandslos: es gibt keine Sitzung, keine Datenbank, kein
+        Upload-Verzeichnis und keinen Zwischenspeicher, der eine Anfrage
+        überdauert. Die Erkennung läuft vollständig auf demselben Rechner —
+        <b>es besteht keine Verbindung zu einem Cloud-Dienst</b>, und der
+        Container braucht überhaupt keine ausgehende Netzverbindung.
+      </p>
+
+      <h3>5 &middot; Prüfen in Ihrem Browser</h3>
+      <p>
+        Der markierte Text wird an Ihren Browser zurückgegeben und liegt
+        dort, solange dieses Fenster geöffnet ist — dort findet ja Ihre
+        Prüfung statt. Er wird nicht in Cookies, nicht im lokalen Speicher
+        und nicht im Sitzungsspeicher abgelegt. Mit „Neues Dokument" oder
+        dem Schliessen des Fensters ist er fort.
+      </p>
+
+      <h3>6 &middot; Export</h3>
+      <p>
+        Beim Erzeugen der Ausgabedatei wird der Text noch einmal an den
+        Dienst gesendet — er hält ihn ja nicht vor. Auch dieser Durchlauf
+        hinterlässt nichts. Die erzeugte Datei entsteht im Arbeitsspeicher
+        und geht direkt an Ihren Browser; auf dem Server bleibt keine Kopie.
+      </p>
+
+      <h3>7 &middot; Protokollierung</h3>
+      <p>
+        Festgehalten werden ausschliesslich Zeitpunkt, Methode, aufgerufener
+        Pfad, Statuscode und Verarbeitungsdauer. <b>Weder Dokumenttext noch
+        Dateiname noch eine erkannte Angabe erscheinen im Protokoll.</b> Das
+        Zugriffsprotokoll des Webservers ist abgeschaltet, weil es zusätzlich
+        die Adresse des Aufrufers mitführen würde.
+      </p>
+
+      <h3>8 &middot; Neustart</h3>
+      <p>
+        Ein Neustart des Dienstes entfernt jeden Rest, da der
+        Zwischenspeicher im Arbeitsspeicher liegt. Es existiert kein
+        dauerhafter Datenträger für Dokumentinhalte.
+      </p>
+    </details>
+  </div>
+
+  <div class="haftung-box">
+    <strong>Nutzung auf eigene Verantwortung</strong>
+    <p>
+      Dieses Werkzeug ist mit hohem Anspruch an Datensparsamkeit gebaut: keine
+      Speicherung, keine Protokollierung von Inhalten, keine Weitergabe an
+      Dritte, Verarbeitung ausschliesslich auf dem betreibenden Rechner. Diese
+      Eigenschaften sind durch automatische Prüfungen abgesichert, die bei
+      jeder Änderung laufen.
+    </p>
+    <p>
+      <b>Eine vollständige Erkennung kann dennoch niemand zusichern.</b> Kein
+      automatisches Verfahren findet jeden Namen — ein Name ohne Anrede mitten
+      im Satz, ein Lesefehler in einem Scan oder eine ungewöhnliche
+      Schreibweise können durchrutschen. Der Prüfschritt vor dem Export ist
+      deshalb Bestandteil des Verfahrens und nicht ersetzbar.
+    </p>
+    <p>
+      <b>Die Verantwortung für ein weitergegebenes Dokument bleibt bei Ihnen.</b>
+      Prüfen Sie das Ergebnis, bevor Sie es aus der Hand geben. Ob eine
+      Weitergabe im Einzelfall zulässig ist, richtet sich nach Ihrer
+      Rechtsgrundlage, Ihrer Schweigepflicht und den Vorgaben Ihrer
+      Einrichtung — das kann Ihnen kein Programm abnehmen.
+    </p>
+    <p>
+      Die Software wird ohne Gewähr bereitgestellt (Apache License 2.0,
+      Abschnitte 7 und 8). Sie ist <b>kein Medizinprodukt</b> und nicht nach
+      MDR zertifiziert. Eine Haftung für Schäden aus ihrer Verwendung ist im
+      gesetzlich zulässigen Rahmen ausgeschlossen.
+    </p>
   </div>
 
   <div class="hinweis-box">
