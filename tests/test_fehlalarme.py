@@ -68,6 +68,22 @@ ohne_treffer(
     "Extremitätenarterien und der Arteria carotis interna war unauffällig.",
     "Anatomische Bezeichnungen sind keine Orte")
 
+print("\n=== 3b. Anatomie in der Kurzform des Befunds ===")
+ohne_treffer(
+    "Z.n. Dekompression bei Kompression des N. medianus. Der N. tibialis "
+    "posterior war seitengleich, der M. extensor digitorum brevis atroph. "
+    "Die A. carotis interna und die V. jugularis waren frei. St. p. "
+    "Implantation. Lig. collaterale mediale intakt.",
+    "Abgekürzte Gattungswörter sind keine Orte")
+
+print("\n=== 3c. Komposita mit medizinischem Baustein ===")
+ohne_treffer(
+    "Das Differentialblutbild war unauffällig. Der Hirnnervenstatus zeigte "
+    "keine Auffälligkeiten. Patient wach und bewusstseinsklar. Kein Hinweis "
+    "auf einen Atemwegsinfekt. Gesamteiweiß im Normbereich. Der Nodulus "
+    "war grössenkonstant. Die Sensibilitätsprüfung war regelrecht.",
+    "Lange Fachkomposita sind keine Personen")
+
 print("\n=== 4. Eponyme: Zeichen, Tests und Skalen ===")
 ohne_treffer(
     "Der Babinski-Reflex war negativ, das Lasegue-Zeichen beidseits "
@@ -110,12 +126,37 @@ ECHTE = [
     ("Dipl.-Psych. Anna Sailer", "Sailer"),
     # Krankenkasse als Abkürzung
     ("Die AOK Bayern übernimmt die Kosten.", "AOK"),
+    # Nachnamen, die einen medizinischen Baustein tragen. Sie bleiben unter
+    # der Mindestlänge und dürfen deshalb nicht der Kompositaregel zum
+    # Opfer fallen.
+    ("Herr Herzog wurde aufgenommen.", "Herzog"),
+    ("Frau Bluthardt stellte sich vor.", "Bluthardt"),
+    ("Wir danken Herrn Dr. Ohrmann.", "Ohrmann"),
 ]
 for text, muss in ECHTE:
     gruppen = detect.analysiere(text)
     gefunden = [f.text for g in gruppen for f in g.funde]
     pruefe(any(muss in t for t in gefunden),
            f"{muss!r} wird weiterhin erkannt{'' if any(muss in t for t in gefunden) else f' — {gefunden}'}")
+
+print("\n=== 7b. Der Beleg gilt für das ganze Dokument ===")
+# Die Gegenrichtung zu allem darüber: hier ist ein Treffer erwünscht, auch
+# wenn das Wort für sich genommen harmlos aussieht. Wer einmal mit Anrede
+# eingeführt wurde, ist im ganzen Dokument dieselbe Person.
+KONSISTENZ = [
+    ("Herr Peter Tisch stellte sich vor. Später berichtete Tisch über "
+     "Schmerzen.", "Tisch", 2),
+    ("Frau Anna Sommer wurde aufgenommen. Sommer klagte über Schwindel.",
+     "Sommer", 2),
+    ("Aufnahme im Bezirksklinikum Stuttgart. Verlegung nach Stuttgart.",
+     "Stuttgart", 2),
+]
+for text, teil, mindestens in KONSISTENZ:
+    treffer = sum(
+        1 for g in detect.analysiere(text) for f in g.funde if teil in f.text)
+    pruefe(treffer >= mindestens,
+           f"{teil!r} wird an allen {mindestens} Stellen erfasst "
+           f"(gefunden: {treffer})")
 
 print("\n=== 8. Belegte und unbelegte Treffer ===")
 belegt = detect.analysiere("Wir danken Frau Dr. Ostermeier für die Zuweisung.")

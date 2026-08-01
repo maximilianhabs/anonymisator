@@ -409,6 +409,10 @@ _KOMPILIERT = [(typ, re.compile(muster), gruppe) for typ, muster, gruppe in REGE
 # nie eine Person identifizieren. Anatomie ist hier der wichtigste Block:
 # ein Befund, in dem "Temporallappen" geschwärzt wurde, ist unbrauchbar.
 _STOPP_ANATOMIE = {
+    # Die lateinischen Gattungswörter in ihrer Kurzform. Das Sprachmodell
+    # trennt "Lig. collaterale" gern am Punkt, sodass der Rumpf allein
+    # ankommt und die Regel für die volle Kurzform nicht mehr greift.
+    "lig", "proc", "ncl", "fasc", "tuberc", "artic", "musc", "nerv", "vas",
     "temporallappen", "frontallappen", "parietallappen", "okzipitallappen",
     "schläfenlappen", "stirnlappen", "scheitellappen", "hinterhauptslappen",
     "hippocampus", "hippokampus", "amygdala", "thalamus", "hypothalamus",
@@ -462,6 +466,11 @@ _STOPP_ANATOMIE = {
     "vena", "musculus", "ramus", "truncus",
 }
 _STOPP_MEDIZIN = {
+    # Stehende Wendungen, die das Sprachmodell für Eigennamen hält. Sie
+    # erreichen die Prüfung bereits um den Schlusspunkt gekürzt, stehen
+    # deshalb ohne ihn in der Liste.
+    "z.n", "z. n", "zn", "st.p", "st. p", "d.d", "v.a", "i.v", "p.o",
+    "s.c", "i.m", "a.e", "ggf", "bds", "re", "li",
     "patient", "patientin", "patienten", "diagnose", "diagnosen", "befund",
     "befunde", "vorbefund", "vorbefunde", "therapie", "anamnese", "epikrise",
     "medikation", "medikamente", "station", "klinik", "klinikum", "abteilung",
@@ -573,6 +582,37 @@ _LATEIN_ANATOMIE = re.compile(
     r"Bursa|Tendo|Vertebra|Costa|Foramen|Sinus|Sulcus|Gyrus|Nucleus|"
     r"Cortex|Medulla|Corpus|Capsula|Membrana)\b", re.I)
 
+# Dieselben Gattungswörter in der Kurzform, wie sie im Befund steht:
+# "N. tibialis", "M. biceps", "A. carotis", "Lig. collaterale". Dazu die
+# stehenden Wendungen "Z. n." (Zustand nach) und "St. p." (Status post).
+_ANATOMIE_KURZ = re.compile(
+    r"^(?:[NMAVR]|Lig|Proc|Art|Gl|Ncl|Tr|Fasc|Vv|Aa|Nn|Mm|Z\.\s?n|St\.\s?p)\.\s*"
+    r"[a-zäöüß]", re.I)
+
+# Bausteine, die ein Wort als medizinischen Fachbegriff ausweisen. Sie werden
+# im ganzen Wort gesucht, nicht nur am Ende — "Differentialblutbild" trägt
+# "blut" in der Mitte.
+#
+# Die Mindestlänge von elf Zeichen ist der Schutz: Familiennamen wie "Herzog"
+# (herz), "Bluthardt" (blut) oder "Ohrmann" (ohr) bleiben darunter und
+# gelten weiter als Namen. Lange deutsche Komposita mit medizinischem
+# Baustein sind dagegen praktisch nie Nachnamen.
+_MED_BAUSTEINE = (
+    "blut", "nerv", "atem", "bewusstsein", "eiweiss", "eiweiß", "muskel",
+    "knochen", "gelenk", "gefäss", "gefäß", "herz", "lunge", "leber",
+    "niere", "magen", "darm", "haut", "auge", "ohr", "hirn", "wirbel",
+    "rücken", "schädel", "becken", "schulter", "gewebe", "zelle", "serum",
+    "plasma", "liquor", "urin", "stuhl", "harn", "galle", "lymph",
+    "status", "befund", "infekt", "entzündung", "erkrankung", "syndrom",
+    "therapie", "diagnos", "anamnes", "untersuchung", "behandlung",
+    "versuch", "reflex", "sensib", "motor", "vegetat", "kognitiv",
+)
+_MIN_BAUSTEINLAENGE = 11
+
+# Lateinische Endungen, die im Deutschen keinen Familiennamen bilden.
+_LATEIN_ENDUNGEN = ("ulus", "olus", "culus", "icus", "inus", "osus", "atum",
+                    "ismus", "itis", "oma", "osis", "iasis", "algia")
+
 # Krankenkassen und Verbände, die als Abkürzung auftreten und trotz
 # Grossschreibung echte Organisationen sind.
 _ECHTE_ABKUERZUNGEN = {
@@ -596,7 +636,21 @@ def _ist_abkuerzung(wert: str) -> bool:
 def _ist_fachbegriff(wert: str) -> bool:
     """Erkennt medizinische Fachsprache an ihrer Wortbildung."""
     bereinigt = wert.strip(" .,;:-")
-    if _LATEIN_ANATOMIE.match(bereinigt):
+    if _LATEIN_ANATOMIE.match(bereinigt) or _ANATOMIE_KURZ.match(bereinigt):
+        return True
+
+    klein = bereinigt.lower()
+
+    # Ein langes Wort mit medizinischem Baustein: "Differentialblutbild",
+    # "Hirnnervenstatus", "Atemwegsinfekt". Kurze Wörter bleiben aussen vor,
+    # damit "Herzog" und "Bluthardt" weiter als Namen gelten.
+    for wortteil in re.split(r"[-\s]+", klein):
+        if len(wortteil) >= _MIN_BAUSTEINLAENGE and any(
+                b in wortteil for b in _MED_BAUSTEINE):
+            return True
+
+    # Lateinische Endung ohne deutsches Namensvorbild: "Nodulus", "Neuritis".
+    if len(klein) >= 6 and klein.endswith(_LATEIN_ENDUNGEN):
         return True
 
     # Bei Bindestrichwörtern trägt der letzte Teil die Bedeutung:
@@ -673,6 +727,13 @@ def _ner_funde(text: str) -> Iterable[Fund]:
         # Sprachmodell wiederholt für Ortsnamen gehalten — eine physikalische
         # Einheit im Treffer schliesst das aus.
         if _MESSWERT_ENTHALTEN.search(wert):
+            continue
+        # Ohne einen einzigen Grossbuchstaben ist es kein Eigenname. Im
+        # Deutschen trägt jeder Name, Ort und Firmenname eine Majuskel;
+        # "seitengleich", "grössenkonstant" und "collaterale mediale" haben
+        # keine. Das Sprachmodell greift bei solchen Wörtern regelmässig
+        # daneben, weil sie an der Satzstelle eines Namens stehen.
+        if not any(z.isupper() for z in wert):
             continue
         if _ist_stoppwort(wert) or _ist_fachbegriff(wert) or _ist_abkuerzung(wert):
             continue
@@ -895,6 +956,30 @@ def _nachnamen_zusammenfuehren(gruppen: list[Gruppe]) -> list[Gruppe]:
 
 _NACHLAUF_TYPEN = {"PERSON", "PATIENT", "ARZT", "ORT", "ORGANISATION"}
 
+# Gattungswörter aus Einrichtungsnamen. Sie benennen die Art des Hauses, nicht
+# das einzelne Haus, und dürfen deshalb nicht als Einzelbegriff im Dokument
+# nachgeschlagen werden — sonst wäre jedes "die Klinik" im Fliesstext ein
+# Treffer.
+# Gattungswörter, die einen Treffer als Haus ausweisen. Sie werden im ganzen
+# Wort gesucht, weil sie im Deutschen meist angewachsen sind: "Neurozentrum"
+# trägt "zentrum", "Rehaklinik" trägt "klinik".
+_EINRICHTUNG_KERN = (
+    "klinik", "krankenhaus", "spital", "hospital", "praxis", "zentrum",
+    "institut", "ambulanz", "sanatorium", "poliklinik", "ärztehaus",
+    "arztpraxis", "pflegeheim", "seniorenheim", "hospiz", "labor",
+)
+
+_EINRICHTUNGSWORT = {
+    "klinik", "kliniken", "klinikum", "krankenhaus", "spital", "praxis",
+    "zentrum", "institut", "abteilung", "ambulanz", "station", "haus",
+    "gmbh", "ggmbh", "ag", "kg", "ohg", "mbh", "ev", "e.v", "kdör",
+    "universität", "universitäts", "hochschule", "fakultät", "med",
+    "neurologie", "neurologische", "neurologisches", "chirurgie", "innere",
+    "medizin", "medizinische", "medizinisches", "rehaklinik", "reha",
+    "fachklinik", "facharzt", "fachärztin", "gemeinschaftspraxis", "mvz",
+    "der", "die", "das", "für", "und", "am", "an", "im", "in", "zu", "zum",
+}
+
 
 _EMAIL_TRENNER = re.compile(r"[._\-]+")
 
@@ -980,8 +1065,20 @@ def _konsistenz_nachlauf(text: str, gruppen: list[Gruppe]) -> list[Gruppe]:
 
     gruppen = gruppen + zusatz
 
-    # 2. Jede Variante — und bei Personen zusätzlich der blosse Nachname —
-    #    im ganzen Text nachschlagen.
+    # 2. Jede Variante — und zusätzlich ihre Bestandteile — im ganzen Text
+    #    nachschlagen.
+    #
+    #    Bei Personen zählt jeder Namensteil, nicht nur der Nachname. Wer
+    #    einmal als "Herr Peter Tisch" eingeführt wurde, ist auch dort
+    #    gemeint, wo später bloss "Tisch" steht — selbst wenn das Wort für
+    #    sich genommen ein Möbelstück ist. Der Beleg aus der Anrede wiegt
+    #    schwerer als die Alltagsbedeutung. Trifft es einmal daneben, kann
+    #    der Nutzer die Stelle einzeln wieder freigeben; die umgekehrte
+    #    Reihenfolge — Name bleibt stehen, niemand merkt es — ist die
+    #    gefährlichere.
+    #
+    #    Bei Einrichtungen ist es der Ortsteil: aus "Bezirksklinikum
+    #    Stuttgart" wird auch das spätere blosse "Stuttgart" geschwärzt.
     for gruppe in gruppen:
         if gruppe.typ not in _NACHLAUF_TYPEN:
             continue
@@ -990,7 +1087,18 @@ def _konsistenz_nachlauf(text: str, gruppen: list[Gruppe]) -> list[Gruppe]:
             for variante in gruppe.varianten:
                 teile = variante.split()
                 if len(teile) > 1:
-                    begriffe.append(teile[-1])
+                    begriffe.extend(
+                        t for t in teile if not _ist_stoppwort(t))
+        elif gruppe.typ == "ORGANISATION":
+            for variante in gruppe.varianten:
+                teile = [t.strip(",.") for t in variante.split()]
+                # Das Gattungswort ("Klinikum", "Praxis") benennt keine
+                # bestimmte Stelle und bliebe sonst überall hängen.
+                begriffe.extend(
+                    t for t in teile[1:]
+                    if len(t) >= 4 and t[0].isupper()
+                    and t.lower() not in _EINRICHTUNGSWORT
+                    and not _ist_stoppwort(t))
         for begriff in dict.fromkeys(begriffe):
             if len(begriff) < 4:
                 continue
@@ -1048,6 +1156,20 @@ def analysiere(text: str) -> list[Gruppe]:
             gruppe.typ = fund.typ
 
     liste = _nachnamen_zusammenfuehren(list(gruppen.values()))
+
+    # Trägt ein Treffer ein Gattungswort für ein Haus, ist er eine
+    # Einrichtung — auch wenn das Sprachmodell ihn für einen Ort oder eine
+    # Person gehalten hat. "Sankt-Josef-Krankenhaus" und "Neurozentrum
+    # Mainkofen" kamen beide als Ort an, und Orte bleiben in der
+    # Standardstufe stehen. Die behandelnde Einrichtung ist aber ein
+    # Hinweis auf die Person: wer sie kennt, hat das Feld erheblich
+    # eingegrenzt. Deshalb wiegt das Gattungswort schwerer.
+    for gruppe in liste:
+        if gruppe.typ in ("ORT", "PERSON") and any(
+                kern in gruppe.anzeige.lower() for kern in _EINRICHTUNG_KERN):
+            gruppe.typ = "ORGANISATION"
+            for fund in gruppe.funde:
+                fund.typ = "ORGANISATION"
 
     # Namen aus E-Mail-Adressen als zusätzliche Gruppen, bevor der
     # Konsistenzlauf sie im ganzen Dokument nachschlägt.
