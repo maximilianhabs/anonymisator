@@ -4,6 +4,60 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.12.0 — 2026-08-01
+
+Erkennungsschärfe aus dem Praxistest an echten Arztbriefen: zwei Runden
+gemeldeter Fehlalarme behoben, dazu ein Ausfall bei Briefkopf-Einrichtungen
+und ein Fehler in der CI-Prüfung.
+
+**Fachsprache, die nicht mehr für Namen gehalten wird**
+- Anatomie in der Kurzform (`N. tibialis`, `Z.n.`, `Lig. collaterale`) —
+  bisher war nur die Langform abgedeckt, im Befund steht fast immer die
+  Kurzform.
+- Lange Komposita mit medizinischem Baustein (`Differentialblutbild`,
+  `Hirnnervenstatus`, `Atemwegsinfekt`), ab elf Zeichen Wortlänge — die
+  Schranke schützt kurze Nachnamen wie `Herzog` und `Bluthardt`.
+- Fachadjektive (`multisegmentale`, `rechtskonvexer`, `granulomatöser`) und
+  Partizipien auf `-iert` (`WACH und ORIENTIERT`).
+- Verwaltungs- und Messkomposita (`Kassensitz`, `Laborbudget`,
+  `Lageempfinden`, `Schilddrüsenparameter`, `Finger-Nase`).
+- Wirkstoffstämme der internationalen INN-Nomenklatur (`Ezetimib` u. a. auf
+  `-statin`, `-sartan`, `-pril`, `-timib`, `-mumab`).
+- Wirbelsäulensegmente (`S1`, `HWK7`, `Th12`), auch als Bestandteil eines
+  längeren Treffers.
+- Durchgehend kleingeschriebene Modelltreffer (`seitengleich`,
+  `bewusstseinsklar`) — im Deutschen trägt jeder Eigenname eine Majuskel.
+
+**Einrichtungen**
+- Briefköpfe in Versalien (`BEZIRKSKLINIKUM MAINKOFEN`) wurden vom
+  Sprachmodell unzuverlässig erkannt, in der Unterschriftszeile gar nicht.
+  Eigenes, vom Sprachmodell unabhängiges Muster für die Versalform.
+- Ein Gattungswort im Namen (`klinik`, `krankenhaus`, `zentrum` …) stuft
+  einen als Ort erkannten Treffer zur Einrichtung hoch — Orte bleiben in
+  der Standardstufe stehen, die behandelnde Einrichtung nicht.
+
+**Konsistenz über das Dokument**
+- Der Nachlauf sucht jetzt auch einzelne Namensbestandteile und den
+  Ortsteil einer Einrichtung im ganzen Text: aus „Herr Peter Tisch" wird
+  auch das spätere blosse „Tisch" geschwärzt, aus „Bezirksklinikum
+  Stuttgart" auch das spätere „Stuttgart".
+
+**E-Mail-Adressen**
+- Am `@` verankert statt am Zusammenhang: Adressen, die im Briefkopf am
+  Spaltenrand umbrechen (`t.schmidt-wilcke` / `@mainkofen.de`), wurden
+  bisher übersehen und der Klarname blieb im Ortsteil sichtbar.
+- Dabei ein Fehler behoben, der unabhängig vom Umbruch bestand: aus einer
+  E-Mail-Adresse gewonnene Namen prüften nicht, ob die Textstelle bereits
+  einem anderen Fund gehörte. Lag der Ortsteil in einem bereits erkannten
+  vollen Namen, schob sich beim Ersetzen ein Platzhalter in den anderen.
+
+**Betrieb**
+- Vier Sicherheitskopfzeilen (`X-Frame-Options`,
+  `X-Content-Type-Options`, `Content-Security-Policy`,
+  `Referrer-Policy`) wurden nie gesetzt — die CI-Prüfung dafür scheiterte
+  seit ihrem Bestehen an einer eigenen, vorgelagerten Ursache (`HEAD`
+  statt `GET`) und verbarg damit den eigentlichen Mangel. Beides behoben.
+
 ## 0.11.0 — 2026-08-01
 
 Einmalige Verarbeitung: sichtbar gemacht, ausführlich erklärt, nachgewiesen.
