@@ -575,6 +575,18 @@ _MED_ENDUNGEN = (
     # "orientiert", "kompensiert", "dokumentiert". In Versalien geschrieben
     # ("WACH UND ORIENTIERT") hält das Sprachmodell sie für Firmennamen.
     "iert", "ierte", "ierten", "iertem", "ierter",
+    # Fachadjektive. Am Satzanfang grossgeschrieben ("Multisegmentale
+    # Veränderungen …") liest das Sprachmodell sie als Ortsnamen.
+    "entale", "entaler", "entalen", "mentale", "mentaler",
+    "matös", "matöse", "matöser", "matösen", "kulös", "kulöse", "kulöser",
+    "ulös", "ulöse", "ulöser", "ulösen", "konvex", "konvexe", "konvexer",
+    "konkav", "konkave", "konkaver", "segmental", "segmentale",
+    # Wirkstoffstämme der INN-Nomenklatur. Sie sind international
+    # vergeben und bilden im Deutschen keinen Familiennamen -- anders als
+    # ein blosses "-ib", das in "Habib" steckte.
+    "statin", "sartan", "pril", "olol", "azol", "tidin", "profen",
+    "cillin", "mycin", "floxacin", "gliptin", "glitazon", "parin",
+    "xaban", "timib", "tinib", "zumab", "ximab", "mumab", "zepam",
 )
 
 # Grundwörter am Ende eines Kompositums. Deutsche Zusammensetzungen tragen
@@ -587,6 +599,8 @@ _MED_GRUNDWOERTER = (
     "fuß", "füße", "fuss", "füsse", "hand", "hände", "arm", "arme",
     "bein", "beine", "finger", "zehe", "zehen", "kopf", "hals", "rumpf",
     "haut", "schleimhaut", "lappen", "kern", "kerne", "rinde", "mark",
+    "nase", "ohr", "auge", "mund", "knie", "hacke", "ferse", "schulter",
+    "hüfte", "rücken", "brust", "bauch", "becken", "wirbel", "schädel",
     # Befund und Diagnostik
     "antikörper", "antigen", "serologie", "sonographie", "sonografie",
     "mikroskopie", "szintigraphie", "phänomen", "erkrankung", "krankheit",
@@ -615,6 +629,20 @@ _MED_GRUNDWOERTER = (
     # die Nummer selbst fangen die eigenen Regeln ab.
     "nr", "nummer", "nummern", "datum", "name", "vorname", "nachname",
     "anschrift", "eingang", "ausgang", "einsender", "empfänger", "absender",
+    # Grundwörter aus der Verwaltungs- und Messsprache des Arztbriefs.
+    # Sie stehen am Ende deutscher Zusammensetzungen, die das Sprachmodell
+    # für Eigennamen hält: "Kassensitz", "Laborbudget", "Lageempfinden",
+    # "Schilddrüsenparameter". Am Wortende bilden sie im Deutschen keinen
+    # Familiennamen -- die Prüfung greift nur auf das letzte Glied zu.
+    "sitz", "budget", "empfinden", "parameter", "wert", "werte", "bereich",
+    "grenze", "grenzen", "spanne", "dauer", "frequenz", "intervall",
+    "abstand", "abstände", "breite", "höhe", "tiefe", "länge", "gewicht",
+    "umfang", "volumen", "menge", "anteil", "verhältnis", "summe",
+    "schwung", "beweglichkeit", "tonus", "trophik", "koordination",
+    # "kraft" steht bewusst NICHT hier: Kraft ist ein verbreiteter
+    # Familienname und wäre unter der Sechs-Zeichen-Schranke sofort
+    # unterdrückt worden. Zusammensetzungen darauf ("Muskelkraft") fängt
+    # ohnehin schon der Baustein "muskel".
 )
 
 # Lateinische Anatomie: das Gattungswort steht vorn.
@@ -652,8 +680,18 @@ _MED_BAUSTEINE = (
 _MIN_BAUSTEINLAENGE = 11
 
 # Lateinische Endungen, die im Deutschen keinen Familiennamen bilden.
+# "iones" ist die Pluralform ("Perniones"); die kürzere Variante "ones"
+# steht bewusst nicht dabei, weil sie "Jones" träfe.
 _LATEIN_ENDUNGEN = ("ulus", "olus", "culus", "icus", "inus", "osus", "atum",
-                    "ismus", "itis", "oma", "osis", "iasis", "algia")
+                    "ismus", "itis", "oma", "osis", "iasis", "algia",
+                    "iones", "ationes", "itides", "omata")
+
+# Segmentbezeichnungen der Wirbelsäule: C1-C7, Th1-Th12, L1-L5, S1-S5,
+# dazu die deutschen Kürzel HWK/BWK/LWK/SWK. Sie stehen im Befund überall
+# und kamen als Ort ("S1") oder Firma ("HWK7") an.
+_WIRBELSEGMENT = re.compile(
+    r"^(?:HWK|BWK|LWK|SWK|WK|Th|[CTLS])[ \t]?\d{1,2}"
+    r"(?:[/-](?:HWK|BWK|LWK|SWK|Th|[CTLS])?\d{1,2})?$", re.I)
 
 # Krankenkassen und Verbände, die als Abkürzung auftreten und trotz
 # Grossschreibung echte Organisationen sind.
@@ -678,7 +716,8 @@ def _ist_abkuerzung(wert: str) -> bool:
 def _ist_fachbegriff(wert: str) -> bool:
     """Erkennt medizinische Fachsprache an ihrer Wortbildung."""
     bereinigt = wert.strip(" .,;:-")
-    if _LATEIN_ANATOMIE.match(bereinigt) or _ANATOMIE_KURZ.match(bereinigt):
+    if (_LATEIN_ANATOMIE.match(bereinigt) or _ANATOMIE_KURZ.match(bereinigt)
+            or _WIRBELSEGMENT.match(bereinigt)):
         return True
 
     klein = bereinigt.lower()
@@ -703,6 +742,11 @@ def _ist_fachbegriff(wert: str) -> bool:
 
     for teil in teile:
         if len(teil) >= 8 and teil.endswith(_MED_ENDUNGEN):
+            return True
+        # Ein Segmentkürzel irgendwo im Treffer macht die ganze Angabe zur
+        # Ortsbezeichnung am Körper: "Wurzelkompression S1" ist ein Befund,
+        # kein Eigenname.
+        if _WIRBELSEGMENT.match(teil):
             return True
 
     # Angehängte Zahlen zählen nicht: "Rankin-Skala 2" ist eine Skala.

@@ -84,6 +84,38 @@ ohne_treffer(
     "war grössenkonstant. Die Sensibilitätsprüfung war regelrecht.",
     "Lange Fachkomposita sind keine Personen")
 
+print("\n=== 3d0. Weitere Komposita, Adjektive, Wirkstoffe, Segmente ===")
+ohne_treffer(
+    "Multisegmentale degenerative Veränderungen. Rechtskonvexer "
+    "Gelenkschwung lumbosakral. Granulomatöser Prozess nachgewiesen. "
+    "Finger-Nase beidseits sicher. Der Kassensitz wurde übernommen. Das "
+    "Laborbudget ist ausgeschöpft. Lageempfinden ungestört. "
+    "Schilddrüsenparameter im Normbereich. Perniones an beiden Zehen. "
+    "Medikation: Ezetimib 10 mg, Atorvastatin, Ramipril täglich. "
+    "Bandscheibenvorfall L5/S1 mit Wurzelkompression S1. Osteochondrose "
+    "HWK7 und Th12.",
+    "Adjektive, Komposita, Wirkstoffe und Wirbelsegmente sind keine Namen")
+
+print("\n=== 3e. Gegenprobe: Nachnamen, die den neuen Filtern ähneln ===")
+# Genau die Wörter, auf denen die Filter oben aufbauen, kommen als
+# Nachname vor. Ohne Anrede waeren sie unter der Laengenschranke frei --
+# mit Anrede muss der Regex-Anker durchgreifen, unabhaengig vom Filter.
+NAMENSRISIKO = [
+    ("Herr Kraft wurde aufgenommen.", "Kraft"),
+    ("Frau Nase stellte sich vor.", "Nase"),
+    ("Wir danken Herrn Dr. Ohr.", "Ohr"),
+    ("Herr Wert berichtete über Schwindel.", "Wert"),
+    ("Frau Menge wurde entlassen.", "Menge"),
+    ("Herr Berg stellte sich vor.", "Berg"),
+    ("Frau Habib wurde untersucht.", "Habib"),
+    ("Herr Jones berichtete über Schmerzen.", "Jones"),
+]
+for text, muss in NAMENSRISIKO:
+    gefunden = [f.text for g in detect.analysiere(text) for f in g.funde]
+    pruefe(any(muss in t for t in gefunden),
+           f"{muss!r} bleibt trotz Aehnlichkeit zum Fachbegriff erkannt"
+           f"{'' if any(muss in t for t in gefunden) else f' — {gefunden}'}")
+
 print("\n=== 3d. Fachsprache in Versalien ===")
 ohne_treffer(
     "Der Patient war WACH und ORIENTIERT. Die Herzinsuffizienz zeigte sich "
