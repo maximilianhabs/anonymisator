@@ -16,6 +16,8 @@ const Z = {
   stufe: 'standard',
   modus: 'original',
   dateiname: 'dokument',
+  seiten: 0,
+  dateigroesseBytes: null,
   naechsteId: 0,
   // Wird je Dokument einmal gesetzt, sobald der Prüfschritt bestätigt ist.
   geprueft: false,
@@ -44,6 +46,8 @@ function zustandLoeschen() {
   Z.gruppen = [];
   Z.kategorien = {};
   Z.dateiname = 'dokument';
+  Z.seiten = 0;
+  Z.dateigroesseBytes = null;
   Z.naechsteId = 0;
   Z.geprueft = false;
   Z.modus = 'original';
@@ -54,7 +58,7 @@ function zustandLoeschen() {
   if (auswahl) auswahl.value = '';
 
   // Der gerenderte Text steht als HTML in der Seite und muss ebenfalls fort.
-  for (const id of ['dokument', 'gruppen', 'hinweise', 'bilanz', 'quelle-info']) {
+  for (const id of ['dokument', 'gruppen', 'hinweise', 'bilanz', 'quelle-info', 'statistik-inhalt']) {
     const el = $(id);
     if (el) el.innerHTML = '';
   }
@@ -100,6 +104,9 @@ async function analysiere(anfrage, ladeText) {
 
 function dateiAnalysieren(datei) {
   Z.dateiname = datei.name.replace(/\.[^.]+$/, '');
+  // Die Browser-API kennt die Originalgrösse der Datei bereits, bevor sie
+  // gesendet wird — der Server muss sie dafür nicht extra zurückmelden.
+  Z.dateigroesseBytes = datei.size;
   const formular = new FormData();
   formular.append('datei', datei);
   analysiere(
@@ -112,6 +119,7 @@ function textAnalysieren() {
   const text = $('eingabe-text').value;
   if (!text.trim()) { brot('Bitte zuerst Text einfügen.', true); return; }
   Z.dateiname = 'text';
+  Z.dateigroesseBytes = null;   // kein Datei-Upload, keine Dateigrösse
   analysiere({
     url: '/api/analysieren/text',
     optionen: {
@@ -130,6 +138,7 @@ function uebernehmen(daten) {
   Z.stufenInfo = daten.stufen_info;
   Z.stufenReihenfolge = daten.stufen_reihenfolge;
   Z.naechsteId = daten.gruppen.length;
+  Z.seiten = daten.seiten || 0;
   Z.geprueft = false;   // neues Dokument, neue Prüfung
   Z.modus = 'original';
 
@@ -304,7 +313,7 @@ function zeichneStufen() {
     const info = Z.stufenInfo[name];
     const knopf = document.createElement('button');
     knopf.type = 'button';
-    knopf.className = name === Z.stufe ? 'aktiv' : '';
+    knopf.className = `stufe-${name}` + (name === Z.stufe ? ' aktiv' : '');
     // Der sichtbare Text steckt in zwei Kindelementen; ohne aria-label bleibt
     // der Knopf für Vorlesesoftware namenlos.
     knopf.setAttribute('aria-label', `${info.titel} — ${info.untertitel}. ${info.zweck}`);
@@ -322,6 +331,10 @@ function zeichneStufen() {
 
   const info = Z.stufenInfo[Z.stufe] || {};
   $('stufen-zweck').textContent = info.zweck || '';
+
+  const erlaeuterung = $('stufen-erlaeuterung');
+  erlaeuterung.className = `stufen-erlaeuterung stufe-${Z.stufe}`;
+  erlaeuterung.textContent = info.erlaeuterung || '';
 
   const warnung = $('stufen-warnung');
   warnung.hidden = !info.warnung;
@@ -486,11 +499,59 @@ function zeigeFundstelle(gruppe) {
   treffer.classList.add('blitz');
 }
 
+/**
+ * Aufschlüsselung nach Kategorie: wie viele Angaben je Art erkannt wurden,
+ * wie viele davon tatsächlich ersetzt werden, dazu ein paar Eckdaten zum
+ * Dokument selbst. Die Bilanz oben beantwortet "wie viel insgesamt";
+ * das hier beantwortet "wovon wie viel".
+ */
+function zeichneStatistik() {
+  const ziel = $('statistik-inhalt');
+  if (!ziel) return;
+
+  const zeilen = [];
+  let summeGruppen = 0;
+  let summeFunde = 0;
+  for (const typ of Object.keys(Z.kategorien)) {
+    const gruppen = Z.gruppen.filter((g) => g.typ === typ);
+    if (!gruppen.length) continue;
+    const kat = Z.kategorien[typ];
+    const ersetzt = gruppen.filter(wirdErsetzt).length;
+    const funde = gruppen.reduce((s, g) => s + g.funde.length, 0);
+    summeGruppen += gruppen.length;
+    summeFunde += funde;
+    const zahl = ersetzt === gruppen.length
+      ? `${gruppen.length}`
+      : `${gruppen.length} <span class="klein">(${ersetzt} ersetzt)</span>`;
+    zeilen.push(
+      `<div class="statistik-zeile">`
+      + `<span><span class="strich" style="background:${kat.farbe}"></span>${esc(kat.titel)}</span>`
+      + `<span>${zahl}</span></div>`);
+  }
+
+  const dokZeilen = [`${Z.text.length.toLocaleString('de-DE')} Zeichen`];
+  if (Z.seiten) dokZeilen.push(`${Z.seiten} Seite${Z.seiten === 1 ? '' : 'n'}`);
+  if (Z.dateigroesseBytes != null) {
+    const mb = Z.dateigroesseBytes / (1024 * 1024);
+    dokZeilen.push(mb >= 0.1
+      ? `${mb.toLocaleString('de-DE', { maximumFractionDigits: 1 })} MB`
+      : `${Math.round(Z.dateigroesseBytes / 1024)} KB`);
+  }
+
+  ziel.innerHTML = zeilen.length
+    ? zeilen.join('')
+      + `<div class="statistik-summe"><span>${summeGruppen} Angaben, `
+      + `${summeFunde} Fundstellen</span></div>`
+      + `<div class="statistik-dokument">${dokZeilen.join(' · ')}</div>`
+    : `<div class="statistik-dokument">Nichts erkannt · ${dokZeilen.join(' · ')}</div>`;
+}
+
 function zeichneAlles() {
   zeichneStufen();
   zeichneDokument();
   zeichneSeitenleiste();
   zeichneBilanz();
+  zeichneStatistik();
 }
 
 // ------------------------------------------------------- Eigener Begriff
@@ -550,22 +611,65 @@ function auswahlMenueZeigen() {
   menue.style.top = `${rechteck.bottom + 6}px`;
 }
 
+/**
+ * Findet jedes weitere Vorkommen von `suchtext` in `text` — exakt dieselbe
+ * Zeichenfolge, Gross-/Kleinschreibung eingeschlossen, an einer Wortgrenze.
+ *
+ * Anders als "Zusätzlich ersetzen" (das jede Schreibvariante unabhängig von
+ * Gross-/Kleinschreibung findet) bleibt das hier bewusst fallsensitiv: eine
+ * von Hand markierte Stelle steht für eine bestimmte, konkrete Angabe in
+ * exakt dieser Schreibweise, nicht für das Wort an sich. Spiegelt serverseitig
+ * `_konsistenz_nachlauf` in app/detect.py, das dieselbe Wortgrenzenprüfung für
+ * automatisch erkannte Treffer vornimmt.
+ */
+function wortgrenzenTreffer(text, suchtext) {
+  const istWortzeichen = (z) => z !== undefined && /[\wÄÖÜäöüß]/.test(z);
+  const treffer = [];
+  let ab = 0;
+  for (;;) {
+    const i = text.indexOf(suchtext, ab);
+    if (i === -1) break;
+    if (!istWortzeichen(text[i - 1]) && !istWortzeichen(text[i + suchtext.length])) {
+      treffer.push({ start: i, ende: i + suchtext.length });
+    }
+    ab = i + 1;
+  }
+  return treffer;
+}
+
 function auswahlUebernehmen() {
   if (!auswahlBereich) return;
   const typ = $('auswahl-kategorie').value;
   const text = auswahlBereich.text;
+  const anzeige = text.trim().replace(/\s+/g, ' ');
+
+  const funde = [{ start: auswahlBereich.start, ende: auswahlBereich.ende,
+                   text, quelle: 'auswahl', formen: {} }];
+
+  // Dieselbe Buchstabenfolge an anderer Stelle im Dokument gilt als dieselbe
+  // Angabe und wird mitgenommen — sofern die Stelle noch frei ist. Kurze
+  // Fragmente (unter 3 Zeichen) bleiben aussen vor, sonst würde eine
+  // versehentlich markierte Silbe im ganzen Text nach sich ziehen.
+  if (anzeige.length >= 3) {
+    const belegt = alleFunde(false);
+    for (const treffer of wortgrenzenTreffer(Z.text, anzeige)) {
+      if (treffer.start === auswahlBereich.start) continue;
+      if (belegt.some((f) => treffer.start < f.ende && f.start < treffer.ende)) continue;
+      funde.push({ start: treffer.start, ende: treffer.ende, text: anzeige,
+                   quelle: 'auswahl-nachlauf', formen: {} });
+    }
+  }
 
   Z.gruppen.push({
     id: `s${Z.naechsteId}`,
     typ,
-    anzeige: text.trim().replace(/\s+/g, ' '),
+    anzeige,
     label: '',
     initialen: '',
     aktiv: true,
     sicher: true,          // von Hand gesetzt — der stärkste Beleg überhaupt
-    varianten: [text],
-    funde: [{ start: auswahlBereich.start, ende: auswahlBereich.ende,
-              text, quelle: 'auswahl', formen: {} }],
+    varianten: [anzeige],
+    funde,
   });
   Z.naechsteId += 1;
 
@@ -574,7 +678,10 @@ function auswahlUebernehmen() {
   auswahlBereich = null;
   labelsVergeben();
   zeichneAlles();
-  brot(`„${text.trim().slice(0, 24)}" wird ersetzt.`);
+  const weitere = funde.length - 1;
+  brot(weitere
+    ? `„${anzeige.slice(0, 24)}" wird ersetzt — ${weitere + 1}× im Dokument.`
+    : `„${anzeige.slice(0, 24)}" wird ersetzt.`);
 }
 
 async function begriffHinzufuegen() {

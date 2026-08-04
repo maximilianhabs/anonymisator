@@ -12,6 +12,13 @@
   --gefahr: #c62828;
   --warn-bg: #fff8e6;
   --warn-rand: #f2d489;
+  /* Eine Stufe, eine Farbe — von "wird angepasst" bis "wird konsequent
+     entfernt". "Streng" teilt sich die Farbe bewusst mit --gefahr: es ist
+     dieselbe Konsequenz wie ein Warnhinweis, nur als Merkmal der Stufe statt
+     als Fliesstext. */
+  --stufe-leicht: #2e9e5b;
+  --stufe-standard: #b45f06;
+  --stufe-streng: var(--gefahr);
   --radius: 10px;
   --schatten: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .06);
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -29,6 +36,8 @@
     --gefahr: #f16a6a;
     --warn-bg: #2e2716;
     --warn-rand: #5c4d24;
+    --stufe-leicht: #3ecf7e;
+    --stufe-standard: #e2a33d;
     --schatten: none;
   }
 }
@@ -222,23 +231,72 @@ mark.ers {
 }
 .stufen-knoepfe button {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
-  font: inherit; padding: 7px 4px; cursor: pointer;
+  font: inherit; padding: 7px 4px 6px; cursor: pointer;
   border: none; background: none; border-radius: 6px;
   color: var(--gedaempft); line-height: 1.25;
 }
+/* Der Farbstreifen macht auf einen Blick sichtbar, wie weit eine Stufe geht
+   — gedämpft im Ruhezustand, kräftig, sobald sie gewählt ist. Damit bleibt
+   die Farbe ein Merkmal der Stufe, nicht bloss der Auswahl. */
+.stufen-knoepfe button::before {
+  content: ""; display: block; width: 22px; height: 3px;
+  border-radius: 2px; margin-bottom: 4px; opacity: .4;
+  background: var(--stufen-farbe);
+}
+.stufen-knoepfe button.stufe-leicht { --stufen-farbe: var(--stufe-leicht); }
+.stufen-knoepfe button.stufe-standard { --stufen-farbe: var(--stufe-standard); }
+.stufen-knoepfe button.stufe-streng { --stufen-farbe: var(--stufe-streng); }
 .stufen-knoepfe button strong { font-size: 12.5px; font-weight: 600; }
 .stufen-knoepfe button span { font-size: 10px; opacity: .85; }
 .stufen-knoepfe button:hover { color: var(--text); }
 .stufen-knoepfe button.aktiv {
   background: var(--flaeche); color: var(--text); box-shadow: var(--schatten);
 }
+.stufen-knoepfe button.aktiv::before { opacity: 1; }
 .stufen-zweck { margin: 9px 2px 0; font-size: 11.5px; color: var(--gedaempft); }
+.stufen-erlaeuterung {
+  margin: 7px 2px 0; padding: 7px 9px;
+  background: var(--bg); border-left: 3px solid var(--stufen-farbe, var(--rand-stark));
+  border-radius: 4px; font-size: 11px; color: var(--gedaempft); line-height: 1.5;
+}
+.stufen-erlaeuterung.stufe-leicht { --stufen-farbe: var(--stufe-leicht); }
+.stufen-erlaeuterung.stufe-standard { --stufen-farbe: var(--stufe-standard); }
+.stufen-erlaeuterung.stufe-streng { --stufen-farbe: var(--stufe-streng); }
 
 .bilanz {
   padding: 14px 18px; border-bottom: 1px solid var(--rand);
   font-size: 13px; line-height: 1.5;
 }
 .bilanz b { font-size: 19px; font-weight: 600; }
+
+.statistik {
+  padding: 0 18px 12px; border-bottom: 1px solid var(--rand);
+  font-size: 12px;
+}
+.statistik summary {
+  padding: 10px 0; cursor: pointer; user-select: none;
+  color: var(--gedaempft); font-weight: 600;
+  list-style: none;
+}
+.statistik summary::-webkit-details-marker { display: none; }
+.statistik summary::before { content: "▸ "; }
+.statistik[open] summary::before { content: "▾ "; }
+.statistik-zeile {
+  display: flex; justify-content: space-between; gap: 10px;
+  padding: 3px 0; color: var(--text);
+}
+.statistik-zeile .strich {
+  display: inline-block; width: 7px; height: 7px; border-radius: 2px;
+  margin-right: 6px; flex: none;
+}
+.statistik-summe {
+  display: flex; justify-content: space-between; font-weight: 600;
+  padding: 7px 0 3px; margin-top: 4px; border-top: 1px solid var(--rand);
+}
+.statistik-dokument {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rand);
+  color: var(--gedaempft);
+}
 
 .warnung {
   margin: 12px 18px 0; padding: 10px 12px;

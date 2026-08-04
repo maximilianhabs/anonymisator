@@ -31,11 +31,21 @@ from .detect import Gruppe
 
 STUFEN_REIHENFOLGE = ["leicht", "standard", "streng"]
 
+# "erlaeuterung" beschreibt den Mechanismus, nicht das Ergebnis. Bewusst
+# keine Formulierung wie "gilt als anonymisiert nach DSGVO" — das wäre eine
+# Rechtsaussage, die eine automatische Erkennung nicht zusichern kann (siehe
+# Haftungsabschnitt im README). Beschrieben wird, was mit welcher Kategorie
+# geschieht; die Einordnung bleibt der lesenden Person überlassen.
 STUFEN_INFO = {
     "leicht": {
         "titel": "Leicht",
         "untertitel": "Pseudonymisiert",
         "zweck": "Interne Fallbesprechung, Übergabe im Haus.",
+        "erlaeuterung": (
+            "Namen werden zu Initialen, das Geburtsdatum zum Jahrgang. "
+            "Einrichtung, Ort und alle übrigen Daten bleiben unverändert "
+            "stehen."
+        ),
         "warnung": (
             "Dies ist keine Anonymisierung. Initialen, Geburtsjahr, "
             "Einrichtung und Behandlungszeitraum lassen zusammen regelmässig "
@@ -47,12 +57,26 @@ STUFEN_INFO = {
         "titel": "Standard",
         "untertitel": "Anonymisiert",
         "zweck": "Lehre, Fallvorstellung, Weitergabe ausser Haus.",
+        "erlaeuterung": (
+            "Namen, Einrichtungen und Anschriften werden ersetzt. Geburtsdatum "
+            "und Alter werden auf die Dekade vergröbert, alle übrigen Daten um "
+            "denselben zufälligen Zeitraum verschoben — der Abstand zwischen "
+            "zwei Terminen bleibt dadurch ablesbar. Ein blosser Ortsname ohne "
+            "Adresse bleibt stehen."
+        ),
         "warnung": None,
     },
     "streng": {
         "titel": "Streng",
         "untertitel": "Anonymisiert, ohne Zeitbezug",
         "zweck": "Publikation, öffentliche Beispiele.",
+        "erlaeuterung": (
+            "Zusätzlich zur Standardstufe: auch blosse Ortsnamen, das "
+            "Geburtsdatum selbst und Zahlen ohne physikalische Einheit "
+            "(Durchwahl, Zimmer, Kennung) werden ersetzt. Daten verlieren "
+            "den gemeinsamen Zeitversatz — auch der Abstand zwischen zwei "
+            "Terminen lässt sich nicht mehr ablesen."
+        ),
         "warnung": None,
     },
 }

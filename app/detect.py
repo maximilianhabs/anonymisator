@@ -520,7 +520,8 @@ _STOPP_ALLGEMEIN = {
     # "Tel" kam als Ortsname an. Die Angabe selbst fasst ohnehin eine eigene
     # Regel, der Bezeichner davor ist nur Beiwerk.
     "tel", "fon", "fax", "telefax", "mobil", "mail", "email", "e-mail",
-    "web", "internet", "zentrale",
+    "web", "internet", "zentrale", "kontakt", "ansprechpartner",
+    "ansprechpartnerin",
     "sehr", "mit", "freundlichen", "grüßen", "herr", "frau", "herrn",
     # Akademische Titel und Anreden. Sie stehen neben Namen und werden vom
     # Sprachmodell regelmässig mit hineingezogen — besonders in

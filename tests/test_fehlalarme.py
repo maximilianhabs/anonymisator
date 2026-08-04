@@ -122,6 +122,30 @@ ohne_treffer(
     "KOMPENSIERT. Der Verlauf wurde fortlaufend DOKUMENTIERT.",
     "Partizipien in Grossschreibung sind keine Firmennamen")
 
+print("\n=== 3f. Briefkopf-Bezeichner vor Kontaktdaten ===")
+# "Kontakt" fehlte in der Stoppliste und wurde zur Rolle PATIENT, weil
+# "geboren" — der nächstgelegene Rollenmarker — zufällig in Reichweite lag.
+# Der Bezeichner selbst trägt keine Angabe; das Beispiel enthält bewusst
+# legitime Treffer (Name, Geburtsdatum, Adresse, E-Mail, Telefon), darum
+# reicht "ohne_treffer" hier nicht — geprüft wird gezielt, dass der
+# Bezeichner selbst nirgends als eigene Fundstelle auftaucht.
+_bezeichner_text = (
+    "Herr Peter Beispiel, geboren am 03.11.1958, wohnhaft in 12345 "
+    "Musterstadt. Kontakt: p.beispiel@musterklinikum.de. Tel: 05551 123456.")
+_bezeichner_treffer = [
+    f.text for g in detect.analysiere(_bezeichner_text) for f in g.funde
+    if f.text.strip(": ") in ("Kontakt", "Tel")]
+pruefe(not _bezeichner_treffer,
+       f"Kontakt und Tel sind keine eigenen Fundstellen"
+       f"{f' — gefunden: {_bezeichner_treffer}' if _bezeichner_treffer else ''}")
+
+_ansprech_treffer = [
+    f.text for g in detect.analysiere("Ansprechpartnerin: Frau Dr. Sailer.")
+    for f in g.funde if f.text.strip(": ") == "Ansprechpartnerin"]
+pruefe(not _ansprech_treffer,
+       f"Ansprechpartnerin ist kein eigener Name"
+       f"{f' — gefunden: {_ansprech_treffer}' if _ansprech_treffer else ''}")
+
 print("\n=== 4. Eponyme: Zeichen, Tests und Skalen ===")
 ohne_treffer(
     "Der Babinski-Reflex war negativ, das Lasegue-Zeichen beidseits "
