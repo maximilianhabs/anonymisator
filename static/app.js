@@ -509,7 +509,7 @@ function zeichneStatistik() {
   const ziel = $('statistik-inhalt');
   if (!ziel) return;
 
-  const zeilen = [];
+  const nachTyp = [];
   let summeGruppen = 0;
   let summeFunde = 0;
   for (const typ of Object.keys(Z.kategorien)) {
@@ -520,13 +520,7 @@ function zeichneStatistik() {
     const funde = gruppen.reduce((s, g) => s + g.funde.length, 0);
     summeGruppen += gruppen.length;
     summeFunde += funde;
-    const zahl = ersetzt === gruppen.length
-      ? `${gruppen.length}`
-      : `${gruppen.length} <span class="klein">(${ersetzt} ersetzt)</span>`;
-    zeilen.push(
-      `<div class="statistik-zeile">`
-      + `<span><span class="strich" style="background:${kat.farbe}"></span>${esc(kat.titel)}</span>`
-      + `<span>${zahl}</span></div>`);
+    nachTyp.push({ kat, gruppen: gruppen.length, ersetzt, funde });
   }
 
   const dokZeilen = [`${Z.text.length.toLocaleString('de-DE')} Zeichen`];
@@ -538,12 +532,39 @@ function zeichneStatistik() {
       : `${Math.round(Z.dateigroesseBytes / 1024)} KB`);
   }
 
-  ziel.innerHTML = zeilen.length
-    ? zeilen.join('')
-      + `<div class="statistik-summe"><span>${summeGruppen} Angaben, `
-      + `${summeFunde} Fundstellen</span></div>`
-      + `<div class="statistik-dokument">${dokZeilen.join(' · ')}</div>`
-    : `<div class="statistik-dokument">Nichts erkannt · ${dokZeilen.join(' · ')}</div>`;
+  if (!nachTyp.length) {
+    ziel.innerHTML = `<div class="statistik-dokument">Nichts erkannt · ${dokZeilen.join(' · ')}</div>`;
+    return;
+  }
+
+  const kacheln = [
+    [summeGruppen, 'Angaben'], [summeFunde, 'Fundstellen'],
+    [Z.text.length.toLocaleString('de-DE'), 'Zeichen'],
+  ].map(([zahl, label]) =>
+    `<div class="statistik-kachel"><div class="statistik-zahl">${zahl}</div>`
+    + `<div class="statistik-kachel-label">${label}</div></div>`).join('');
+
+  // Die Anteilsleiste macht das Gewicht jeder Kategorie auf einen Blick
+  // sichtbar — Fundstellen, nicht Angaben: eine dreimal erwähnte Person
+  // soll auch dreimal so breit wirken.
+  const anteil = nachTyp.map(({ kat, funde }) =>
+    `<span style="width:${(funde / summeFunde) * 100}%;background:${kat.farbe}"></span>`
+  ).join('');
+
+  const zeilen = nachTyp.map(({ kat, gruppen, ersetzt, funde }) => {
+    const zahl = ersetzt === gruppen
+      ? `${gruppen}`
+      : `${gruppen} <span class="klein">(${ersetzt} ersetzt)</span>`;
+    return `<div class="statistik-zeile">`
+      + `<span class="strich" style="background:${kat.farbe}"></span>`
+      + `<span class="name">${esc(kat.titel)}</span><span>${zahl}</span></div>`;
+  }).join('');
+
+  ziel.innerHTML = `<div class="statistik-kacheln">${kacheln}</div>`
+    + `<div class="statistik-anteil">${anteil}</div>`
+    + zeilen
+    + (Z.seiten || Z.dateigroesseBytes != null
+      ? `<div class="statistik-dokument">${dokZeilen.slice(1).join(' · ')}</div>` : '');
 }
 
 function zeichneAlles() {

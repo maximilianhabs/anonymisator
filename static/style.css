@@ -1,43 +1,72 @@
-/* Anonymisator — nüchtern, dicht, gut lesbar. Hell und dunkel. */
+/* Anonymisator — Archiv statt Startup: warmes Papier, eine Tintenfarbe,
+   gedeckte Stufenfarben. Selbst gehostete Schriften, kein Nachladen —
+   passend zur eigenen Regel, dass die Anwendung nichts aus dem Netz zieht. */
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/static/fonts/ibm-plex-sans-variable.woff2") format("woff2-variations"),
+       url("/static/fonts/ibm-plex-sans-variable.woff2") format("woff2");
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Newsreader";
+  src: url("/static/fonts/newsreader-variable.woff2") format("woff2-variations"),
+       url("/static/fonts/newsreader-variable.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
-  --bg: #f6f7f9;
+  --bg: #faf9f5;
   --flaeche: #ffffff;
-  --rand: #e2e5ea;
-  --rand-stark: #cbd1da;
-  --text: #1a1d23;
-  --gedaempft: #646b78;
-  --akzent: #1f6feb;
+  --rand: #e7e3da;
+  --rand-stark: #d3ccbe;
+  --text: #191a17;
+  --gedaempft: #6b6a61;
+  --akzent: #1c5c53;
+  --akzent-fond: #e7efec;
   --akzent-text: #ffffff;
-  --gefahr: #c62828;
-  --warn-bg: #fff8e6;
-  --warn-rand: #f2d489;
+  --gefahr: #9c3b36;
+  --warn-bg: #f6ece7;
+  --warn-rand: #dfc3b3;
   /* Eine Stufe, eine Farbe — von "wird angepasst" bis "wird konsequent
-     entfernt". "Streng" teilt sich die Farbe bewusst mit --gefahr: es ist
-     dieselbe Konsequenz wie ein Warnhinweis, nur als Merkmal der Stufe statt
-     als Fliesstext. */
-  --stufe-leicht: #2e9e5b;
-  --stufe-standard: #b45f06;
+     entfernt". Gedeckte Töne (Salbei/Messing/Ochsenblut) statt reiner
+     Ampelfarben, damit sie zur übrigen Palette gehören statt sich
+     davon abzusetzen. "Streng" teilt sich die Farbe bewusst mit --gefahr:
+     es ist dieselbe Konsequenz wie ein Warnhinweis, nur als Merkmal der
+     Stufe statt als Fliesstext. */
+  --stufe-leicht: #5c7a52;
+  --stufe-leicht-fond: #eef1e8;
+  --stufe-standard: #a3752e;
+  --stufe-standard-fond: #f5ecdc;
   --stufe-streng: var(--gefahr);
-  --radius: 10px;
-  --schatten: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .06);
+  --stufe-streng-fond: var(--warn-bg);
+  --radius: 8px;
+  --schatten: 0 1px 2px rgba(25, 26, 23, .04), 0 4px 14px rgba(25, 26, 23, .05);
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Charter, Georgia, serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14161a;
-    --flaeche: #1c1f25;
-    --rand: #2b3038;
-    --rand-stark: #3a414c;
-    --text: #e6e8ec;
-    --gedaempft: #939aa7;
-    --akzent: #4f8ff7;
-    --gefahr: #f16a6a;
-    --warn-bg: #2e2716;
-    --warn-rand: #5c4d24;
-    --stufe-leicht: #3ecf7e;
-    --stufe-standard: #e2a33d;
+    --bg: #16181a;
+    --flaeche: #1d2022;
+    --rand: #2c2f2f;
+    --rand-stark: #3c403e;
+    --text: #ece9e2;
+    --gedaempft: #9a9a91;
+    --akzent: #5aab9e;
+    --akzent-fond: #1e2b28;
+    --gefahr: #c26b64;
+    --warn-bg: #2c1f1b;
+    --warn-rand: #4a352c;
+    --stufe-leicht: #8aa87c;
+    --stufe-leicht-fond: #212a1e;
+    --stufe-standard: #cc9b4f;
+    --stufe-standard-fond: #2c2419;
     --schatten: none;
   }
 }
@@ -52,7 +81,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font: 15px/1.55 "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -61,15 +90,19 @@ h1, h2 { margin: 0; font-weight: 600; }
 /* ---------------------------------------------------------------- Kopf */
 .kopf {
   display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
-  padding: 14px 22px;
+  padding: 15px 22px;
   background: var(--flaeche);
   border-bottom: 1px solid var(--rand);
 }
-.marke { display: flex; align-items: center; gap: 9px; }
-.marke h1 { font-size: 16px; letter-spacing: -.01em; }
+.marke { display: flex; align-items: center; gap: 10px; }
+.marke h1 {
+  font-family: var(--serif); font-size: 19px; font-weight: 500;
+  letter-spacing: -.005em;
+}
+.marke h1 .leicht { font-weight: 350; color: var(--gedaempft); }
 .punkt {
-  width: 9px; height: 9px; border-radius: 50%;
-  background: #2e9e5b; box-shadow: 0 0 0 3px rgba(46, 158, 91, .18);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--stufe-leicht); box-shadow: 0 0 0 3px color-mix(in srgb, var(--stufe-leicht) 20%, transparent);
 }
 .lokal { margin: 0; font-size: 12.5px; color: var(--gedaempft); }
 
@@ -97,7 +130,7 @@ h1, h2 { margin: 0; font-weight: 600; }
   transition: border-color .15s, background .15s;
   min-height: 260px;
 }
-.ablage.aktiv { border-color: var(--akzent); background: rgba(31, 111, 235, .05); }
+.ablage.aktiv { border-color: var(--akzent); background: var(--akzent-fond); }
 .ablage h2 { margin-bottom: 4px; }
 .symbol {
   width: 30px; height: 30px; margin-bottom: 12px;
@@ -218,21 +251,37 @@ mark.ers {
 
 /* -------------------------------------------------------- Seitenleiste */
 .seitenleiste {
-  display: flex; flex-direction: column; min-height: 0;
-  border-left: 1px solid var(--rand); background: var(--flaeche);
+  display: flex; flex-direction: column; min-height: 0; gap: 12px;
+  padding: 14px 14px 4px;
+  border-left: 1px solid var(--rand); background: var(--bg);
+  overflow-y: auto;
 }
 @media (max-width: 1000px) { .seitenleiste { border-left: none; border-top: 1px solid var(--rand); } }
 
+/* Jeder Abschnitt eine eigene Karte statt einer durchlaufenden Spalte mit
+   Trennlinien — das schafft sichtbare Ruhepunkte in einer sonst dichten
+   Seitenleiste, ohne die Reihenfolge oder Funktion zu ändern. */
+.stufenwahl, .bilanz, .statistik, .warnung, .werkzeug, .export {
+  background: var(--flaeche); border: 1px solid var(--rand);
+  border-radius: var(--radius); box-shadow: var(--schatten);
+  padding: 14px 16px;
+  /* Ohne das drückt Flexbox die grösste Karte zusammen, sobald alle Karten
+     zusammen die Höhe der Seitenleiste übersteigen — mit "overflow: hidden"
+     auf der Statistik unsichtbar, nicht nur unschön. Jede Karte behält ihre
+     natürliche Höhe; wird es insgesamt zu hoch, scrollt die Seitenleiste. */
+  flex-shrink: 0;
+}
+.gruppen { background: var(--flaeche); border: 1px solid var(--rand); border-radius: var(--radius); min-height: 90px; }
+
 /* ------------------------------------------------------------ Stufenwahl */
-.stufenwahl { padding: 13px 18px 12px; border-bottom: 1px solid var(--rand); }
 .stufen-knoepfe {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;
-  background: var(--bg); padding: 3px; border-radius: 8px;
+  background: var(--bg); padding: 3px; border-radius: 6px;
 }
 .stufen-knoepfe button {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
-  font: inherit; padding: 7px 4px 6px; cursor: pointer;
-  border: none; background: none; border-radius: 6px;
+  font: inherit; padding: 8px 4px 7px; cursor: pointer;
+  border: none; background: none; border-radius: 5px;
   color: var(--gedaempft); line-height: 1.25;
 }
 /* Der Farbstreifen macht auf einen Blick sichtbar, wie weit eine Stufe geht
@@ -240,77 +289,92 @@ mark.ers {
    die Farbe ein Merkmal der Stufe, nicht bloss der Auswahl. */
 .stufen-knoepfe button::before {
   content: ""; display: block; width: 22px; height: 3px;
-  border-radius: 2px; margin-bottom: 4px; opacity: .4;
+  border-radius: 2px; margin-bottom: 4px; opacity: .45;
   background: var(--stufen-farbe);
 }
-.stufen-knoepfe button.stufe-leicht { --stufen-farbe: var(--stufe-leicht); }
-.stufen-knoepfe button.stufe-standard { --stufen-farbe: var(--stufe-standard); }
-.stufen-knoepfe button.stufe-streng { --stufen-farbe: var(--stufe-streng); }
+.stufen-knoepfe button.stufe-leicht { --stufen-farbe: var(--stufe-leicht); --stufen-fond: var(--stufe-leicht-fond); }
+.stufen-knoepfe button.stufe-standard { --stufen-farbe: var(--stufe-standard); --stufen-fond: var(--stufe-standard-fond); }
+.stufen-knoepfe button.stufe-streng { --stufen-farbe: var(--stufe-streng); --stufen-fond: var(--stufe-streng-fond); }
 .stufen-knoepfe button strong { font-size: 12.5px; font-weight: 600; }
 .stufen-knoepfe button span { font-size: 10px; opacity: .85; }
 .stufen-knoepfe button:hover { color: var(--text); }
 .stufen-knoepfe button.aktiv {
-  background: var(--flaeche); color: var(--text); box-shadow: var(--schatten);
+  background: var(--stufen-fond); color: var(--text);
 }
 .stufen-knoepfe button.aktiv::before { opacity: 1; }
-.stufen-zweck { margin: 9px 2px 0; font-size: 11.5px; color: var(--gedaempft); }
+.stufen-zweck { margin: 10px 2px 0; font-size: 11.5px; color: var(--gedaempft); }
 .stufen-erlaeuterung {
-  margin: 7px 2px 0; padding: 7px 9px;
-  background: var(--bg); border-left: 3px solid var(--stufen-farbe, var(--rand-stark));
-  border-radius: 4px; font-size: 11px; color: var(--gedaempft); line-height: 1.5;
+  margin: 8px 2px 0; padding: 9px 11px;
+  background: var(--stufen-fond, var(--bg)); border-left: 3px solid var(--stufen-farbe, var(--rand-stark));
+  border-radius: 4px; font-size: 11.5px; color: var(--text); line-height: 1.55;
 }
-.stufen-erlaeuterung.stufe-leicht { --stufen-farbe: var(--stufe-leicht); }
-.stufen-erlaeuterung.stufe-standard { --stufen-farbe: var(--stufe-standard); }
-.stufen-erlaeuterung.stufe-streng { --stufen-farbe: var(--stufe-streng); }
+.stufen-erlaeuterung.stufe-leicht { --stufen-farbe: var(--stufe-leicht); --stufen-fond: var(--stufe-leicht-fond); }
+.stufen-erlaeuterung.stufe-standard { --stufen-farbe: var(--stufe-standard); --stufen-fond: var(--stufe-standard-fond); }
+.stufen-erlaeuterung.stufe-streng { --stufen-farbe: var(--stufe-streng); --stufen-fond: var(--stufe-streng-fond); }
 
-.bilanz {
-  padding: 14px 18px; border-bottom: 1px solid var(--rand);
-  font-size: 13px; line-height: 1.5;
-}
-.bilanz b { font-size: 19px; font-weight: 600; }
+.bilanz { font-size: 13px; line-height: 1.5; }
+.bilanz b { font-family: var(--serif); font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
 
-.statistik {
-  padding: 0 18px 12px; border-bottom: 1px solid var(--rand);
-  font-size: 12px;
-}
+.statistik { padding: 0 16px; font-size: 12px; overflow: hidden; }
 .statistik summary {
-  padding: 10px 0; cursor: pointer; user-select: none;
+  padding: 12px 0; cursor: pointer; user-select: none;
   color: var(--gedaempft); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .05em; font-size: 11px;
   list-style: none;
 }
 .statistik summary::-webkit-details-marker { display: none; }
 .statistik summary::before { content: "▸ "; }
 .statistik[open] summary::before { content: "▾ "; }
+.statistik[open] { padding-bottom: 14px; }
+
+.statistik-kacheln {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--rand); border: 1px solid var(--rand); border-radius: 6px;
+  overflow: hidden; margin-bottom: 12px;
+}
+.statistik-kachel { background: var(--flaeche); padding: 10px 6px; text-align: center; }
+.statistik-zahl {
+  font-family: var(--serif); font-size: 22px; font-weight: 500;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.statistik-kachel-label { font-size: 9.5px; color: var(--gedaempft); margin-top: 5px; }
+
+.statistik-anteil {
+  height: 5px; border-radius: 3px; background: var(--bg);
+  margin-bottom: 10px; overflow: hidden; display: flex;
+}
+.statistik-anteil span { height: 100%; }
+
 .statistik-zeile {
-  display: flex; justify-content: space-between; gap: 10px;
-  padding: 3px 0; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0; color: var(--text); font-variant-numeric: tabular-nums;
 }
 .statistik-zeile .strich {
   display: inline-block; width: 7px; height: 7px; border-radius: 2px;
-  margin-right: 6px; flex: none;
+  flex: none;
 }
+.statistik-zeile .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .statistik-summe {
   display: flex; justify-content: space-between; font-weight: 600;
-  padding: 7px 0 3px; margin-top: 4px; border-top: 1px solid var(--rand);
+  padding: 8px 0 2px; margin-top: 5px; border-top: 1px solid var(--rand);
 }
 .statistik-dokument {
-  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rand);
+  margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--rand);
   color: var(--gedaempft);
 }
 
 .warnung {
-  margin: 12px 18px 0; padding: 10px 12px;
-  background: var(--warn-bg); border: 1px solid var(--warn-rand);
-  border-radius: 7px; font-size: 12.5px;
+  background: var(--warn-bg); border-color: var(--warn-rand);
+  font-size: 12.5px;
 }
 /* Für die leichte Stufe: die Aussage "bleibt personenbezogen" darf nicht
    wie eine beiläufige Randnotiz aussehen. */
 .warnung.stark {
-  margin: 12px 18px; border-left: 3px solid var(--gefahr);
+  border-left: 3px solid var(--gefahr);
   line-height: 1.5;
 }
 
-.werkzeug { padding: 14px 18px; border-bottom: 1px solid var(--rand); }
+.werkzeug {}
 .werkzeug label {
   display: block; font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: .04em;
@@ -323,13 +387,14 @@ mark.ers {
   border: 1px solid var(--rand); background: var(--bg); color: var(--text);
 }
 .hilfe { margin: 7px 0 0; font-size: 11.5px; color: var(--gedaempft); }
-.hilfe.treffer { color: #2e9e5b; }
+.hilfe.treffer { color: var(--stufe-leicht); }
 .hilfe.leer { color: var(--gefahr); }
 
-.gruppen { flex: 1; overflow-y: auto; padding: 4px 0 10px; }
+.gruppen { flex: 1; overflow-y: auto; padding: 4px 0 10px; margin-bottom: 12px; }
 @media (max-width: 1000px) { .gruppen { max-height: 50vh; } }
 
 .kategorie { border-bottom: 1px solid var(--rand); }
+.kategorie:last-child { border-bottom: none; }
 .kategorie-kopf {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 18px 6px;
@@ -389,7 +454,7 @@ mark.ers {
 }
 
 /* -------------------------------------------------------------- Export */
-.export { padding: 13px 18px 18px; border-top: 1px solid var(--rand); }
+.export { margin-bottom: 14px; }
 .schalter {
   display: flex; align-items: center; gap: 8px;
   font-size: 12.5px; color: var(--gedaempft); margin-bottom: 11px; cursor: pointer;
@@ -400,7 +465,7 @@ mark.ers {
 /* --------------------------------------------------------------- Toast */
 .brot {
   position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
-  background: #1a1d23; color: #fff; padding: 10px 17px;
+  background: #191a17; color: #fff; padding: 10px 17px;
   border-radius: 8px; font-size: 13px; z-index: 40;
   box-shadow: 0 6px 22px rgba(0, 0, 0, .28);
   max-width: min(560px, 90vw);
@@ -424,7 +489,7 @@ mark.ers {
   padding: 15px 18px;
   background: var(--flaeche);
   border: 1px solid var(--rand);
-  border-left: 3px solid #2e9e5b;
+  border-left: 3px solid var(--stufe-leicht);
   border-radius: var(--radius);
   font-size: 12.5px;
   line-height: 1.6;

@@ -19,6 +19,14 @@ eigenen Lizenzen stehen:
   ReportLab 5.0.0 — BSD
   Pillow 12.3.0 — MIT-CMU
   pytesseract 0.3.13 — Apache-2.0
+  IBM Plex Sans (Variable) — SIL Open Font License 1.1
+      https://github.com/IBM/plex — IBM Corp.
+  Newsreader (Variable) — SIL Open Font License 1.1
+      https://github.com/googlefonts/newsreader — Production Type
+
+Beide Schriften liegen als Datei unter static/fonts/ und werden von dort
+ausgeliefert, nicht von einer Schriftart-CDN geladen — aus demselben Grund,
+aus dem die Anwendung sonst nichts nachlädt.
 
 Hinweis zu PyMuPDF: Die Bibliothek ist doppelt lizenziert und wird hier
 unter der AGPL-3.0 genutzt. Dieses Repository enthält keinen Quelltext von
