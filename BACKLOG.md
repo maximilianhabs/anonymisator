@@ -34,6 +34,30 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   ehesten danebenliegt — eine Ampel, die überall Farbe zeigt, erreicht das
   Gegenteil. Die Sortierung der Seitenleiste sollte optional nach
   Konfidenz statt nach Textposition möglich sein.
+
+  Ergänzung aus externem Feedback (2026-08-04): Ein Tastaturkürzel, das
+  gezielt zur nächsten unbelegten Fundstelle springt, statt die Liste
+  durchscrollen zu müssen — genau dort, wohin die Ampel den Blick lenken
+  soll. Dazu Bestätigen/Verwerfen einer Fundstelle per Taste (Vorschlag:
+  Leertaste bestätigt, Entf verwirft — beide bereits durch bestehende
+  Aktionen belegt, siehe `kategorienInAuswahl`/`auswahlUebernehmen` in
+  `app.js`, vor Umsetzung auf Kollisionen prüfen). Manuelles Zuweisen der
+  Rolle Arzt/Patient pro Taste (`U`/`P`) ist ebenfalls sinnvoll, sofern es
+  ausschliesslich greift, wenn eine Fundstelle fokussiert ist und kein
+  Eingabefeld — sonst kollidiert es mit normalem Tippen im Freitextfeld
+  „Zusätzlich ersetzen". Review-Arbeit an einem langen Dokument ist
+  Akkordarbeit; das rechtfertigt den Aufwand einer durchdachten
+  Tastaturbedienung, aber genau deshalb muss die Fokus-Logik zuerst stehen,
+  nicht die Tastenbelegung.
+- **Sichtbare Rückmeldung beim Stufenwechsel.** Der Wechsel zwischen
+  Leicht/Standard/Streng läuft rein clientseitig (siehe §9 der
+  Funktionsbeschreibung — alle Formen sind vorberechnet). Das ist der
+  Punkt, nicht sichtbar zu sein: keine Netzwerkanfrage, keine Wartezeit.
+  Genau das kann aber wie ein Ausbleiben der Reaktion wirken. Ein kurzer,
+  weicher Übergang auf den Markierungen beim Neuzeichnen (CSS-Transition
+  auf Hintergrundfarbe/Text, ~150 ms, wie an anderen Stellen der
+  Oberfläche bereits verwendet) würde die Änderung spürbar machen, ohne
+  eine Ladeanimation vorzutäuschen, die es nicht gibt.
 - **Einrichtungsname über den Zeilenumbruch.** Steht der Absender umbrochen
   im Briefkopf („BEZIRKSKLINIKUM\nMAINKOFEN"), wird nur die erste Zeile
   erfasst; der Ortsname bleibt stehen. Kein Muster greift absichtlich über
