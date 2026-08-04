@@ -8,7 +8,9 @@ if [ ! -x .venv/bin/python ]; then
   echo "Kein .venv gefunden. Einmalig einrichten:"
   echo "  python3 -m venv .venv"
   echo "  .venv/bin/pip install -r requirements.txt"
-  echo "  .venv/bin/python -m spacy download de_core_news_lg"
+  echo "(Das Sprachmodell steht mit fester Version in requirements.txt —"
+  echo " ein separater 'spacy download'-Aufruf ist nicht nötig und würde"
+  echo " die Version offenlassen.)"
   exit 1
 fi
 
