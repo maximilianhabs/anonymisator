@@ -4,6 +4,61 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.14.0 — 2026-08-04
+
+Gestaltung überarbeitet: eine Anmutung, die zum Gegenstand passt — ein
+Werkzeug für vertrauliche Akten, nicht ein Tech-Produkt.
+
+- Gedecktes Papierweiss statt reinem Weiss, ein Tintengrün als einzige
+  Markenfarbe. Die Stufenfarben aus 0.13.0 verfeinert auf Salbei/Messing/
+  Ochsenblut statt reiner Ampelfarben.
+- Zwei Schriften, selbst gehostet unter `static/fonts/` — IBM Plex Sans für
+  Bedienelemente, Newsreader für Überschriften und grosse Zahlen. Beide als
+  Variable Fonts, zusammen unter 100 KB, keine Schriftart-CDN — folgt aus
+  der bestehenden Content-Security-Policy und der Regel, dass die Anwendung
+  nichts nachlädt. Lizenzen (SIL OFL 1.1) in `NOTICE` ergänzt.
+- Jeder Seitenleisten-Abschnitt jetzt eine eigene Karte statt einer
+  durchlaufenden Spalte mit Trennlinien.
+- Wortmarke in zwei Schriftschnitten ("Anonym" leicht, "isator" kräftig).
+- Dabei ein Layoutfehler gefunden und behoben: Mit allen Karten zusammen
+  übersteigt der Inhalt oft die verfügbare Höhe der Seitenleiste. Ohne
+  Gegenmassnahme drückt Flexbox die grösste Karte (die Statistik) zusammen —
+  mit `overflow: hidden` für die runden Ecken wurde daraus ein unsichtbares
+  Verschwinden statt eines sichtbaren Fehlers. Jede Karte behält jetzt ihre
+  natürliche Höhe, die Seitenleiste scrollt bei Bedarf als Ganzes.
+
+## 0.13.0 — 2026-08-04
+
+Aus dem Praxistest: Konsistenz für von Hand markierte Stellen, eine
+Statistik, farblich erklärte Stufen.
+
+- **Manuelle Markierung gilt jetzt für das ganze Dokument.** Bisher wirkte
+  eine per Auswahl markierte Stelle nur an genau dieser einen Stelle. Wird
+  z. B. "Deggendorf" von Hand als Ort markiert, gilt das jetzt für jedes
+  weitere Vorkommen exakt derselben Zeichenfolge — Gross-/Kleinschreibung
+  eingeschlossen, an Wortgrenzen, ohne bereits vergebene Stellen zu
+  überschreiben. Spiegelt serverseitig, was der Konsistenz-Nachlauf für
+  automatisch erkannte Treffer schon leistet.
+- **Statistik.** Eine aufklappbare Übersicht in der Seitenleiste: Anzahl
+  je Kategorie (erkannt vs. tatsächlich ersetzt), Summe der Angaben und
+  Fundstellen, dazu Zeichenzahl, Seiten und bei Uploads die Dateigrösse.
+- **Stufen farblich gekennzeichnet und erklärt.** Leicht/Standard/Streng
+  tragen jetzt eine eigene Farbe. Standard und Streng erhalten dieselbe
+  erklärende Box, die bisher nur "Leicht" hatte — nicht als Warnung (sie
+  sind keine), sondern als Beschreibung des Mechanismus: was genau ersetzt,
+  vergröbert oder verschoben wird. Bewusst keine Rechtsaussage ("gilt als
+  anonymisiert nach DSGVO"), das kann eine automatische Erkennung nicht
+  zusichern.
+- **Fehlalarm behoben:** "Kontakt" vor einer E-Mail- oder Telefonangabe
+  wurde zur Rolle Patient/in, weil "geboren" der nächstgelegene
+  Rollenmarker war. Der Bezeichner fehlte schlicht in der Stoppliste,
+  dieselbe Fehlerklasse wie zuvor "Tel". Mit "Ansprechpartner(in)" gleich
+  mit behoben.
+- `SECURITY.md` ergänzt (fehlte vollständig) — grenzt eine Sicherheitslücke
+  ausdrücklich von einer Erkennungsschwäche ab, Letztere ist ein
+  Qualitätsmangel, kein Sicherheitsproblem.
+- Versionsbadge im README korrigiert (zeigte noch 0.11.0).
+
 ## 0.12.0 — 2026-08-01
 
 Erkennungsschärfe aus dem Praxistest an echten Arztbriefen: zwei Runden

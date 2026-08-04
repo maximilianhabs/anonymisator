@@ -102,10 +102,15 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   führt. Beim Umbau bleibt zu beachten, dass `/health` weiterhin ohne
   Anmeldung erreichbar sein muss und der Dienst zustandslos bleibt — eine
   Sitzung darf nichts über den Upload festhalten.
-- **Oberfläche modernisieren.** Die Gestaltung wirkt altbacken. Betrifft
-  Typografie, Abstände, Farbwerte und die Anmutung der Bedienelemente, nicht
-  den Aufbau: der Ablauf aus Hochladen, Prüfen und Ausgeben hat sich
-  bewährt und soll erhalten bleiben.
+- **Mobile Nutzung.** Heute nicht für Smartphones ausgelegt — weder die
+  Darstellung (Seitenleiste, Statistik-Karten, Auswahlmenü sind für
+  Zeigergeräte mit viel Breite gebaut) noch die Bedienung (Textauswahl per
+  Fingergeste verhält sich anders als per Maus, das Auswahlmenü müsste sich
+  daran anpassen). Bewusst nur vorgemerkt, nicht umgesetzt: der Ablauf
+  Hochladen → Prüfen → Ausgeben müsste für schmale Bildschirme neu gedacht
+  werden, nicht nur schmaler gequetscht. Zum Hochladen/Einfügen von Text
+  oder Dokumenten sollte das auf einem iPhone oder Android-Gerät genauso
+  gut funktionieren wie am Rechner.
 - **Schreibvarianten zusammenführen.** „Lisbeth" läuft als eigene Person,
   nicht als Variante von „Elisabeth Hartmann". Beide werden ersetzt, bekommen
   aber verschiedene Kürzel. Ein Knopf „mit anderer Gruppe zusammenführen" in
