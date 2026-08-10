@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.14.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.14.1-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 
 Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren Angaben

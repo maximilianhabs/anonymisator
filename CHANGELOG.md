@@ -4,6 +4,25 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.14.1 — 2026-08-10
+
+Absturz bei grossen Dokumenten mit mehreren gleichnamigen Personen behoben.
+
+- Beim Testen mit einem rund 50-seitigen, eingefügten Text kam es zu einem
+  `500 Internal Server Error`, sobald zwei verschiedene Personen denselben
+  Nachnamen trugen und beide ausschliesslich über ihre E-Mail-Adresse
+  bekannt waren (keine Anrede, kein Titel). Ursache: Beim Anlegen einer
+  neuen, aus dem E-Mail-Ortsteil gewonnenen Person wuchs die Menge der
+  bekannten Namen mit, das parallel geführte Nachschlagewörterbuch aber
+  nicht — traf ein zweiter Name auf denselben Nachnamen, schlug der
+  Lookup mit `KeyError` fehl statt ein Ergebnis zu liefern. Wer von zwei
+  gleichnamigen Personen den Nachnamen "gewinnt", bleibt eine bekannte,
+  hingenommene Grenze (siehe Backlog, „Gleiche Nachnamen sauber trennen") —
+  behoben wurde ausschliesslich der Absturz, nicht diese Zuordnungsfrage.
+- Gegengeprüft mit einem eingefügten, vollständig erfundenen Text von
+  rund 155.000 Zeichen (≈ 50 Seiten): Analyse läuft in unter zehn Sekunden
+  durch, keine Zeichen- oder Seitengrenze für eingefügten Text.
+
 ## 0.14.0 — 2026-08-04
 
 Gestaltung überarbeitet: eine Anmutung, die zum Gegenstand passt — ein

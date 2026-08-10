@@ -1287,11 +1287,22 @@ def analysiere(text: str) -> list[Gruppe]:
         ]
         if not funde:
             continue
-        vorhanden.add(name.lower())
-        liste.append(Gruppe(
+        neue_gruppe = Gruppe(
             id=f"e{len(liste)}", typ="PERSON", anzeige=name,
             schluessel=name.lower(), funde=funde,
-        ))
+        )
+        liste.append(neue_gruppe)
+        vorhanden.add(name.lower())
+        # `nach_schluessel` muss mitwachsen: taucht derselbe Nachname aus
+        # einer weiteren E-Mail-Adresse erneut auf (zwei verschiedene
+        # Personen mit demselben Nachnamen — im 50-Seiten-Dokument keine
+        # Seltenheit), griffe der Lookup oben sonst ins Leere, obwohl
+        # `vorhanden` den Namen längst kennt: KeyError statt Ergebnis.
+        # Die Zusammenführung selbst ist eine bekannte, akzeptierte Grenze
+        # (siehe BACKLOG.md, "Gleiche Nachnamen sauber trennen") — hier geht
+        # es nur darum, dass sie nicht abstürzt, sondern sich wie überall
+        # sonst im Code verhält.
+        nach_schluessel[name.lower()] = neue_gruppe
 
     liste = _konsistenz_nachlauf(text, liste)
     for gruppe in liste:

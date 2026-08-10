@@ -270,6 +270,24 @@ for text, teil, mindestens in KONSISTENZ:
            f"{teil!r} wird an allen {mindestens} Stellen erfasst "
            f"(gefunden: {treffer})")
 
+print("\n=== 7d. Zwei Personen, derselbe Nachname, nur per E-Mail bekannt ===")
+# Fand sich beim Testen mit einem ~50-seitigen Dokument: teilen sich zwei
+# Personen einen Nachnamen und sind beide nur über die E-Mail-Adresse
+# eingeführt (keine Anrede, kein Titel), stürzte die Analyse mit einem
+# KeyError ab. Der Grund: die Menge der bekannten Namen ("vorhanden") wuchs
+# bei jeder neuen Gruppe mit, das Nachschlagewörterbuch ("nach_schluessel")
+# aber nicht -- die zweite Person mit demselben Nachnamen traf auf einen
+# Eintrag, der laut Menge existiert, im Wörterbuch aber fehlte. Wer den
+# Nachnamen als Erster bekommt, ist eine bekannte, hingenommene Grenze
+# (siehe BACKLOG.md); hier zaehlt nur, dass die Analyse nicht abstuerzt.
+try:
+    ergebnis = detect.analysiere(
+        "Rückfragen bitte an e.beispiel@musterklinikum.de oder "
+        "k.beispiel@musterklinikum.de richten. Beispiel war zuständig.")
+    pruefe(True, "Zwei E-Mail-Namen mit gleichem Nachnamen stürzen nicht ab")
+except KeyError as exc:
+    pruefe(False, f"Absturz mit KeyError: {exc}")
+
 print("\n=== 8. Belegte und unbelegte Treffer ===")
 belegt = detect.analysiere("Wir danken Frau Dr. Ostermeier für die Zuweisung.")
 pruefe(belegt and all(g.sicher for g in belegt if g.typ == "ARZT"),
