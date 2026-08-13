@@ -299,6 +299,70 @@ orte = [g for g in unbelegt if g.typ == "ORT"]
 pruefe(orte and not orte[0].sicher,
        "Ortsname ohne Kontextmarker gilt als unbelegt")
 
+print("\n=== 9. Getrennt geschriebene Strassennamen ===")
+# "Königsberger Straße 1" — beim Testen mit echten Dokumenten aufgefallen.
+# Die alte Regel verlangte, dass Strassensuffix und Name als ein Wort
+# zusammenklebten ("Ludwigstraße"); getrennt geschriebene Formen sind im
+# Deutschen mindestens so häufig und liessen zuvor die Hausnummer komplett
+# unbeachtet.
+STRASSEN = [
+    ("Königsberger Straße 1", "Königsberger Straße 1"),
+    ("Berliner Str. 5", "Berliner Str. 5"),
+    ("Am Alten Weg 3", "Am Alten Weg 3"),
+]
+for text, muss_ganz in STRASSEN:
+    gruppen = detect.analysiere(text)
+    adressen = [g.anzeige for g in gruppen if g.typ == "ADRESSE"]
+    pruefe(muss_ganz in adressen,
+           f"{muss_ganz!r} vollständig als Adresse erfasst, samt Hausnummer "
+           f"(gefunden: {adressen})")
+
+# Gegenprobe: das Auslösewort allein, ohne folgende Hausnummer, darf nicht
+# reichen — sonst würde jeder Nachname "Berg" oder "Weg" anschlagen.
+for text in ["Herr Berg wurde untersucht.", "Frau Weg stellte sich vor.",
+             "Gesichtsfeld eingeschränkt."]:
+    treffer = [g.anzeige for g in detect.analysiere(text) if g.typ == "ADRESSE"]
+    pruefe(not treffer, f"{text!r} bleibt ohne Adress-Fehlalarm ({treffer})")
+
+print("\n=== 10. Geschlecht — nur mit Beleg, auch dekliniert ===")
+GESCHLECHT_FAELLE = [
+    ("Geschlecht: männlich", "männlich"),
+    ("Geschlecht: w", "w"),
+    ("Die Patientin ist weiblich.", "weiblich"),
+    ("45-jähriger männlicher Patient", "männlicher"),
+    ("ein weibliches Kind", "weibliches"),
+]
+for text, muss in GESCHLECHT_FAELLE:
+    treffer = [g.anzeige for g in detect.analysiere(text) if g.typ == "GESCHLECHT"]
+    pruefe(muss in treffer, f"{muss!r} als Geschlecht erfasst (gefunden: {treffer})")
+
+# Die einbuchstabige Form darf nur mit dem Auslösewort "Geschlecht"/"Sex"
+# greifen — sonst träfe sie jedes einzelne "m" oder "w" im Fliesstext.
+for text in ["m Punkt Meier", "w wie Woche", "Der Wert war m."]:
+    treffer = [g.anzeige for g in detect.analysiere(text) if g.typ == "GESCHLECHT"]
+    pruefe(not treffer, f"{text!r} bleibt ohne Geschlecht-Fehlalarm ({treffer})")
+
+print("\n=== 11. Diagnosecodes — nur der Code, an ein Auslösewort gebunden ===")
+DIAGNOSE_FAELLE = [
+    ("Diagnose: F32.1 Depressive Episode", "F32.1"),
+    ("ICD-10: I63.9", "I63.9"),
+    ("ICD-10-GM: E11.90", "E11.90"),
+    ("OPS: 5-470.0", "5-470.0"),
+    ("DRG: F62B", "F62B"),
+    ("Hauptdiagnose: C34.90", "C34.90"),
+]
+for text, muss in DIAGNOSE_FAELLE:
+    treffer = [g.anzeige for g in detect.analysiere(text) if g.typ == "DIAGNOSECODE"]
+    pruefe(muss in treffer, f"{muss!r} als Diagnosecode erfasst (gefunden: {treffer})")
+
+# Ein freistehendes "[A-Z]\d{2}"-Muster ohne Auslösewort träfe auch
+# "Vitamin B12" — deshalb ausschliesslich an ICD/OPS/DRG/Diagnose gebunden.
+for text in ["Vitamin B12 im Normbereich.",
+             "Diagnose: Depression, kein Code notiert.",
+             "Laborwert D3 erniedrigt."]:
+    treffer = [g.anzeige for g in detect.analysiere(text) if g.typ == "DIAGNOSECODE"]
+    pruefe(not treffer, f"{text!r} bleibt ohne Diagnosecode-Fehlalarm ({treffer})")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

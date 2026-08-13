@@ -61,7 +61,9 @@ STUFEN_INFO = {
             "Namen, Einrichtungen und Anschriften werden ersetzt. Geburtsdatum "
             "und Alter werden auf die Dekade vergröbert, alle übrigen Daten um "
             "denselben zufälligen Zeitraum verschoben — der Abstand zwischen "
-            "zwei Terminen bleibt dadurch ablesbar. Ein blosser Ortsname ohne "
+            "zwei Terminen bleibt dadurch ablesbar. Geschlecht und "
+            "Diagnosecodes (ICD-10, OPS, DRG) werden ebenfalls ersetzt, der "
+            "Diagnosetext selbst bleibt stehen. Ein blosser Ortsname ohne "
             "Adresse bleibt stehen."
         ),
         "warnung": None,
@@ -99,11 +101,19 @@ STUFEN: dict[str, dict[str, str]] = {
         "GEBURTSDATUM": "jahrgang", "DATUM": "behalten",
         "ALTER": "behalten", "ZEITSPANNE": "behalten", "JAHRESZAHL": "behalten",
         "BETRAG": "behalten", "URL": "behalten", "ZAHL": "behalten",
+        # Für die interne Übergabe im Haus ("Leicht") bleiben Geschlecht und
+        # Diagnosecode stehen — beides ist dort gewollter Fachinhalt, kein
+        # Merkmal, das für sich genommen die Anonymität gefährdet. Erst ab
+        # Standard, wo das Dokument das Haus verlässt, greift die
+        # Kombinationsüberlegung: Geschlecht + Alter + Diagnose + Zeitpunkt
+        # kann eine seltene Konstellation eindeutig machen.
+        "GESCHLECHT": "behalten", "DIAGNOSECODE": "behalten",
     },
     "standard": {
         "PATIENT": "ersetzen", "ARZT": "ersetzen", "PERSON": "ersetzen",
         "ORGANISATION": "ersetzen", "ADRESSE": "ersetzen", "ORT": "behalten",
         "GEBURTSDATUM": "dekade", "DATUM": "verschoben",
+        "GESCHLECHT": "ersetzen", "DIAGNOSECODE": "ersetzen",
         # Bewusst ebenfalls vergröbert: eine ausgeschriebene Altersangabe im
         # Text würde das zur Dekade vergröberte Geburtsdatum sonst aushebeln.
         "ALTER": "dekade",
@@ -123,6 +133,7 @@ STUFEN: dict[str, dict[str, str]] = {
         "GEBURTSDATUM": "ersetzen", "DATUM": "ersetzen",
         "ALTER": "ersetzen", "ZEITSPANNE": "ersetzen", "JAHRESZAHL": "ersetzen",
         "BETRAG": "ersetzen", "URL": "ersetzen",
+        "GESCHLECHT": "ersetzen", "DIAGNOSECODE": "ersetzen",
         # Jede Zahl ohne physikalische Einheit: Durchwahl, Piepser, Zimmer,
         # Bett, Kennungen ohne Beschriftung. Messwerte bleiben, weil dort
         # eine Einheit folgt.

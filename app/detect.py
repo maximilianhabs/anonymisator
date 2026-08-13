@@ -69,11 +69,17 @@ KATEGORIEN: dict[str, dict] = {
     "URL":            {"label": "URL",      "stil": "zahl",   "prioritaet": 78, "farbe": "#12a594"},
     "TELEFON":        {"label": "TELEFON",  "stil": "zahl",   "prioritaet": 76, "farbe": "#12a594"},
     "ADRESSE":        {"label": "ADRESSE",  "stil": "zahl",   "prioritaet": 70, "farbe": "#f76b15"},
+    "DIAGNOSECODE":   {"label": "DIAGCODE", "stil": "zahl",   "prioritaet": 72, "farbe": "#ad7f58"},
     "ORGANISATION":   {"label": "ORG",      "stil": "zahl",   "prioritaet": 40, "farbe": "#ffb224"},
-    "ORT":            {"label": "ORT",      "stil": "zahl",   "prioritaet": 35, "farbe": "#ffb224"},
+    # ORT trug bis 2026-08-13 dieselbe Farbe wie ORGANISATION — beim Testen
+    # als Ursache für "ist das jetzt ein Ort oder eine Zahl?" identifiziert.
+    # Jetzt eine eigene Farbe, unabhängig von der zugrunde liegenden Frage,
+    # ob Orte in der Standardstufe stehen bleiben oder nicht.
+    "ORT":            {"label": "ORT",      "stil": "zahl",   "prioritaet": 35, "farbe": "#00a2c7"},
     "DATUM":          {"label": "DATUM",    "stil": "zahl",   "prioritaet": 30, "farbe": "#46a758"},
     "BETRAG":         {"label": "BETRAG",   "stil": "zahl",   "prioritaet": 25, "farbe": "#46a758"},
     "ALTER":          {"label": "ALTER",    "stil": "zahl",   "prioritaet": 34, "farbe": "#46a758"},
+    "GESCHLECHT":     {"label": "GESCHL",   "stil": "zahl",   "prioritaet": 45, "farbe": "#3e63dd"},
     "ZEITSPANNE":     {"label": "ZEITRAUM", "stil": "zahl",   "prioritaet": 33, "farbe": "#46a758"},
     "JAHRESZAHL":     {"label": "JAHR",     "stil": "zahl",   "prioritaet": 20, "farbe": "#46a758"},
     # Niedrigste Priorität überhaupt: jede spezifischere Regel geht vor.
@@ -91,9 +97,10 @@ KATEGORIE_TITEL = {
     "KFZ": "Kfz-Kennzeichen", "HANDELSREGISTER": "Handelsregisternummer",
     "AKTENZEICHEN": "Aktenzeichen", "EMAIL": "E-Mail", "URL": "Web-Adresse",
     "TELEFON": "Telefon/Fax", "ADRESSE": "Anschrift",
+    "DIAGNOSECODE": "Diagnosecode (ICD/OPS/DRG)",
     "ORGANISATION": "Einrichtung / Firma",
     "ORT": "Ort", "DATUM": "Datum", "BETRAG": "Geldbetrag",
-    "ZAHL": "Zahl ohne Einheit",
+    "ZAHL": "Zahl ohne Einheit", "GESCHLECHT": "Geschlecht",
     "ALTER": "Altersangabe", "ZEITSPANNE": "Zeitraum", "JAHRESZAHL": "Jahreszahl",
     "MANUELL": "Manuell ergänzt",
 }
@@ -266,6 +273,21 @@ REGELN: list[tuple[str, str, int]] = [
      r"(?:Aktenzeichen|Az\.|Gesch\.-?\s?Z\.|Geschäftszeichen|Unser\s+Zeichen|Ihr\s+Zeichen)"
      r"\s*:?\s*([A-Za-z0-9][A-Za-z0-9 /\-.]{3,30})", 1),
 
+    # Diagnosecodes (ICD-10-GM, OPS, DRG) — nur der Code, nicht der
+    # Diagnosetext selbst. Der Text ("Depressive Episode") bleibt medizinisch
+    # wertvoll und wird nicht angetastet; der Code allein, kombiniert mit
+    # Alter/Ort/Zeitpunkt, kann bei seltenen Diagnosen re-identifizierend
+    # wirken — dieselbe Überlegung wie bei blossen Ortsnamen. Deshalb nur in
+    # Standard und Streng aktiv (siehe stufen.py), nicht in Leicht.
+    # Jeweils an ein Auslösewort gebunden, nicht frei im Text gesucht: ein
+    # freistehendes "[A-Z]\d{2}" träfe auch "Vitamin B12".
+    ("DIAGNOSECODE",
+     r"(?:ICD-?10?(?:-GM)?|Haupt-?diagnose(?:n)?|Neben-?diagnose(?:n)?|Diagnose(?:n)?)"
+     r"[ \t]*:?[ \t]*([A-Z]\d{2}(?:\.\d{1,2})?!?)\b", 1),
+    ("DIAGNOSECODE",
+     r"OPS(?:-20\d{2})?[ \t]*:?[ \t]*(\d{1,2}-\d{2,3}(?:\.\d{1,2})?)\b", 1),
+    ("DIAGNOSECODE", r"DRG[ \t]*:?[ \t]*([A-Z]\d{2}[A-Z])\b", 1),
+
     # --- Geschäftsverkehr: Rechnungen, Verträge, Behörden -------------------
     # Der Anonymisator wird nicht nur auf Arztbriefe angewandt, sondern auch
     # auf Gutachten, Rechnungen und Schriftverkehr. Diese Nummern sind
@@ -327,9 +349,24 @@ REGELN: list[tuple[str, str, int]] = [
     ("TELEFON", r"\b0\d{2,4}[ \t\-/]\d{2,}[\d \t\-/]{2,}\d\b", 0),
 
     # --- Anschriften --------------------------------------------------------
+    # Zusammengeschrieben ("Ludwigstraße 47", "Kirchweg 4") — das
+    # Gattungswort klebt am Namen, deshalb Kleinschreibung im Wortinnern.
     ("ADRESSE",
      r"\b[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ.\-]*(?:straße|strasse|str\.|weg|allee|platz|gasse"
      r"|ring|damm|ufer|chaussee|steig|hof|berg|feld)[ \t]+\d{1,4}[ \t]*[a-zA-Z]?\b", 0),
+    # Getrennt geschrieben ("Königsberger Straße 1", "Am Alten Weg 3",
+    # "Berliner Str. 5") — mindestens so häufig wie die zusammengeschriebene
+    # Form, bisher aber nicht erfasst: das Sprachmodell rettete zwar meist
+    # den Ortsnamen, liess dabei aber die Hausnummer unbeachtet. Diese Regel
+    # hat höhere Priorität als ORT (siehe KATEGORIEN) und gewinnt deshalb
+    # bei Überlappung — aus einer NER-vermuteten "Königsberger Straße"
+    # (Ort) wird "Königsberger Straße 1" (Adresse). Bis zu zwei
+    # grossgeschriebene Vorworte erlaubt, damit auch "Am Alten Weg" komplett
+    # erfasst wird, nicht nur "Alten Weg".
+    ("ADRESSE",
+     r"\b(?:[A-ZÄÖÜ][a-zäöüß]+[ \t]+){0,2}(?:Straße|Strasse|Str\.|Weg|Allee|Platz"
+     r"|Gasse|Ring|Damm|Ufer|Chaussee|Steig|Hof|Berg|Feld)[ \t]+\d{1,4}"
+     r"[ \t]*[a-zA-Z]?\b", 0),
     ("ADRESSE", r"\b\d{5}[ \t]+[A-ZÄÖÜ][a-zäöüß]+(?:[ \-][A-ZÄÖÜ][a-zäöüß]+)*", 0),
     ("ADRESSE", r"(?:Postfach)[ \t]*:?[ \t]*\d[\d \t]{2,12}", 0),
 
@@ -411,6 +448,20 @@ REGELN: list[tuple[str, str, int]] = [
      r"\b\d{1,3}(?:\s?[-–]\s?|\s+)?(?:jährig\w*|jaehrig\w*)"
      r"|\b\d{1,3}\s*(?:Jahre|J\.)\s*alt"
      r"|(?<=Alter[:\s])\s*\d{1,3}\s*(?:Jahre|J\.?)?", 0),
+    # Geschlecht: allein genommen ein schwaches Merkmal (trifft auf die
+    # halbe Bevölkerung zu), zusammen mit Alter, Ort und Diagnose aber ein
+    # weiterer Baustein der Re-Identifizierung. Nur in Standard und Streng
+    # aktiv (siehe stufen.py), nicht in Leicht. Die ausgeschriebenen Wörter
+    # sind im klinischen Text eindeutig genug, um frei im Fliesstext gesucht
+    # zu werden; die einbuchstabige Kurzform ("m"/"w"/"d") dagegen nur, wenn
+    # ein Feldname wie "Geschlecht:" sie ausdrücklich einleitet — sonst
+    # träfe sie jedes einzelne "m" im Text.
+    # Als Adjektiv vor einem Substantiv dekliniert Deutsch die Endung
+    # ("männlicher Patient", "weibliches Kind") — die blosse Grundform
+    # allein hätte "45-jähriger männlicher Patient" nicht gefangen.
+    ("GESCHLECHT",
+     r"\b(?:männlich|weiblich|divers|intergeschlechtlich)(?:e[rns]?)?\b", 0),
+    ("GESCHLECHT", r"(?:Geschlecht|Sex)[ \t]*:?[ \t]*([mwd])\b", 1),
     ("ZEITSPANNE",
      r"(?:seit|vor|über|innerhalb\s+von|nach)\s+(?:etwa\s+|ca\.\s+|rund\s+)?"
      r"\d{1,3}\s*(?:Jahren|Jahre|Monaten|Monate|Wochen|Tagen|Tage)"
@@ -790,7 +841,12 @@ def _regex_funde(text: str) -> Iterable[Fund]:
             # Nachlaufende Satzzeichen/Leerzeichen nicht mitschwärzen
             gekuerzt = roh.rstrip(" \t.,;:)")
             ende -= len(roh) - len(gekuerzt)
-            if ende - start < 2:
+            # Die Mindestlänge fängt entartete Treffer ab — ausser bei der
+            # einbuchstabigen Geschlechtsabkürzung ("Geschlecht: w"), die
+            # genau deshalb an ein Auslösewort gebunden ist (siehe REGELN):
+            # nicht die Kürze macht sie riskant, das Auslösewort macht sie
+            # sicher.
+            if ende - start < 2 and typ != "GESCHLECHT":
                 continue
             yield Fund(start, ende, text[start:ende], typ, f"regex:{typ.lower()}")
 

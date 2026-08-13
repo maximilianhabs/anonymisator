@@ -4,6 +4,43 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.15.0 — 2026-08-13
+
+Aus dem Praxistest mit mehreren Dokumenten: eine Adresslücke geschlossen,
+zwei neue Kategorien, eine Legende für die Farbcodierung.
+
+**Getrennt geschriebene Strassennamen.** „Königsberger Straße 1" wurde
+bisher nicht als Adresse erkannt — die Regel verlangte, dass Strassenname
+und Hausnummer als ein Wort zusammenkleben („Ludwigstraße 47"). Getrennt
+geschriebene Formen („Königsberger Straße 1", „Am Alten Weg 3", „Berliner
+Str. 5") sind im Deutschen mindestens so häufig und liessen bisher die
+Hausnummer unbeachtet zurück. Betrifft alle drei Stufen, am stärksten
+Standard: dort wird eine korrekt erkannte Adresse ersetzt, ein bloss
+vermuteter Ortsname nicht.
+
+**Zwei neue Kategorien, beide erst ab Standard aktiv (in Leicht bleiben
+sie stehen):**
+- **Geschlecht** — „männlich", „weiblich", „divers", auch dekliniert
+  („männlicher Patient"), sowie die Kurzform „m"/"w"/"d", aber nur direkt
+  nach einem Feldnamen wie „Geschlecht:". Allein ein schwaches Merkmal,
+  zusammen mit Alter, Ort und Diagnose aber ein weiterer Baustein der
+  Re-Identifizierung.
+- **Diagnosecode** — ICD-10(-GM), OPS und DRG, jeweils nur der Code
+  selbst, an ein Auslösewort gebunden („Diagnose:", „ICD-10:", „OPS:",
+  „DRG:"). Der Diagnosetext bleibt unangetastet, er ist medizinisch
+  wertvoll und für sich genommen kein Identifikator. Bewusst an ein
+  Auslösewort gebunden, nicht frei im Text gesucht — ein freistehendes
+  Muster wie `[A-Z]\d{2}` träfe auch „Vitamin B12".
+
+**Farbcodierung überarbeitet.** Ort und Einrichtung teilten sich bisher
+dieselbe Farbe — eine wiederkehrende Quelle für „ist das jetzt ein Ort
+oder eine Zahl?" beim Testen. Ort hat jetzt eine eigene Farbe. Dazu eine
+Legende oberhalb des Dokuments (nur im Tab „Erkannt", wo die
+Unterscheidung Sinn ergibt): kräftig hinterlegt heisst „wird ersetzt",
+gedämpft und gepunktet heisst „bleibt auf dieser Stufe stehen" — bildet
+exakt nach, was im Dokument selbst zu sehen ist, damit die Zuordnung ohne
+Nachdenken gelingt.
+
 ## 0.14.2 — 2026-08-13
 
 Road-to-Public, Phase 1: fünf kleine, unabhängige Korrekturen aus

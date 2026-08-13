@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.14.2-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.15.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 
 Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren Angaben
@@ -203,6 +203,7 @@ sichtbar, ohne neue Analyse.
 | Altersangabe im Text | bleibt | `60–69-jährige` | `[ALTER_1]` |
 | Jahreszahl, Zeitraum | bleibt | bleibt | `[JAHR_1]`, `[ZEITRAUM_1]` |
 | Geldbetrag | `2.108,68 €` | `rund 2.100 €` | `[BETRAG_1]` |
+| Geschlecht, Diagnosecode | bleibt | `[GESCHL_1]`, `[DIAGCODE_1]` | `[GESCHL_1]`, `[DIAGCODE_1]` |
 | Alle Kennnummern | ersetzt | ersetzt | ersetzt |
 
 Die letzte Zeile ist auf allen Stufen starr und umfasst Versicherten-,
@@ -254,6 +255,8 @@ zusammenführen — was gewollt ist, aber verhindert, dass man einen Verlauf
 | Altersangabe | 67-jährige Patientin | `[ALTER_1]` |
 | Zeitraum | seit 3 Jahren | `[ZEITRAUM_1]` |
 | Jahreszahl | seit 1994 | `[JAHR_1]` |
+| Geschlecht *(ab Standard)* | Geschlecht: männlich | `[GESCHL_1]` |
+| Diagnosecode *(ab Standard)* | ICD-10: F32.1, OPS: 5-470.0, DRG: F62B | `[DIAGCODE_1]` |
 | Aktenzeichen, IBAN, Telefon, E-Mail, URL | | |
 
 Aus dem Geschäfts- und Behördenverkehr zusätzlich:

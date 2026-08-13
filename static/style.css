@@ -213,6 +213,30 @@ textarea:focus, input[type=text]:focus {
 .umschalter button.aktiv { background: var(--flaeche); color: var(--text); box-shadow: var(--schatten); }
 .quelle-info { font-size: 12px; color: var(--gedaempft); }
 
+/* Die zwei Muster bilden absichtlich exakt nach, was mark.tr/mark.tr.aus im
+   Dokument selbst zeigen — nicht bloss zwei beliebige Punkte. Wer die
+   Legende einmal gesehen hat, erkennt das Muster im Text sofort wieder,
+   ohne jede Fundstelle einzeln antippen zu müssen. */
+.legende {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 8px 20px; font-size: 11.5px; color: var(--gedaempft);
+  border-bottom: 1px solid var(--rand); background: var(--bg);
+}
+.legende > span { display: flex; align-items: center; gap: 6px; }
+.legende-muster {
+  display: inline-block; width: 22px; height: 13px; border-radius: 3px;
+  flex: none;
+}
+.legende-muster.kraeftig {
+  background: color-mix(in srgb, var(--akzent) 22%, transparent);
+  border-bottom: 2px solid var(--akzent);
+}
+.legende-muster.gedaempft {
+  background: none; border-bottom: 1px dotted var(--rand-stark); opacity: .55;
+}
+.legende-hinweis { color: var(--gedaempft); opacity: .85; }
+@media (max-width: 640px) { .legende-hinweis { display: none; } }
+
 .hinweise:not(:empty) { padding: 10px 20px 0; }
 .hinweise p {
   margin: 0 0 8px; padding: 9px 12px; font-size: 12.5px;

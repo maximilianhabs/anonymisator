@@ -243,6 +243,9 @@ function alleFunde(nurErsetzte) {
 
 function zeichneDokument() {
   const nurErsetzte = Z.modus === 'ergebnis';
+  // Im Ergebnis-Tab steht nur noch der fertige Text — die Unterscheidung
+  // kräftig/gedämpft gibt es dort nicht, die Legende wäre irreführend.
+  $('legende').hidden = nurErsetzte;
   let html = '';
   let pos = 0;
 
