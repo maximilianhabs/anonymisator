@@ -111,22 +111,17 @@ Font-CDN, Telemetrie — jeweils einzeln, mit Ergebnis:
 | Punkt | Befund |
 |---|---|
 | Default-Passwort im Quelltext | **Kein Fund, aber verwechslungsgefährlich.** `docker-compose.yml:97` enthält einen bcrypt-Hash als Ersatzwert. Per SSH gegen den Server geprüft: es ist der dokumentierte Platzhalter für "ein zufälliges Passwort, das niemand kennt" (Kommentar direkt daneben) — Caddy sperrt damit zu, nicht auf. Kein Leck. Bleibt so. |
-| **Reale Serveradresse im Repo** | **Echter Fund.** `DEPLOYMENT.md` nennt `203.0.113.10` neunmal — die tatsächliche, aktive IP eines Servers, auf dem **auch andere private Projekte** liegen (Dienstwerk, EEG-Navigator). Öffentlich einsehbar würde das den Server als Angriffsziel identifizierbar machen, unabhängig vom Anonymisator selbst. |
-| Kliniknamen in Kommentaren | **Echter, kleiner Fund.** `app/detect.py` nennt „Mainkofen" zweimal als Beispiel in Erklärkommentaren zur Regex-Logik. Eine echte, existierende psychiatrische Einrichtung als wiederkehrendes Beispiel widerspricht der eigenen, in `NOTICE` erklärten Regel „alle verwendeten Namen sind frei erfunden". Für die Regex-Erklärung ist der Name beliebig — ein erfundener funktioniert genauso gut. |
+| **Reale Serveradresse im Repo** | ✅ **Behoben (2026-08-13).** Stand in vier Dateien, 15 Stellen (`DEPLOYMENT.md`, `deploy/vorpruefung.sh`, `deploy/dienst.sh`, sogar in diesem Dokument). Durch die Dokumentations-Platzhalteradresse `203.0.113.10` (RFC 5737, reserviert für genau diesen Zweck) ersetzt — **nicht nur im aktuellen Stand, sondern per `git filter-repo` aus der gesamten Commit-Historie und allen acht Tags entfernt**, dann mit `git push --force` auf den Server durchgesetzt. Verifiziert: `git log --all -p` findet die echte IP an keiner Stelle mehr. Bewusst *kein* Neuaufbau der Historie — nur diese eine Zeichenkette wurde ersetzt, alles andere blieb unangetastet. |
+| Kliniknamen in Kommentaren | ✅ **Behoben** (Road-to-Public Phase 1, Commit `b9d2367`). „Mainkofen" in `app/detect.py` durch das bereits im Projekt etablierte fiktive „Auwald" ersetzt. |
 | Font-CDN | **Kein Fund.** Bereits selbst gehostet unter `static/fonts/` (Redesign vom 2026-08-04), keine Anfrage verlässt den Rechner. |
 | Telemetrie | **Kein Fund.** Der Dienst ist zustandslos per Architektur, kein Tracking-Skript im Frontend. |
 | GPL/AGPL-Abhängigkeit in Apache-Projekt | **Kein Fund, bereits durchdacht.** `NOTICE` erklärt die AGPL-Lage von PyMuPDF explizit inklusive der Konsequenz bei Netzwerkbetrieb (§13). Vorbildlich, nicht nachzubessern. |
 
-**Bleibt zu tun:**
-- `DEPLOYMENT.md` vor der Veröffentlichung entweder aus dem öffentlichen
-  Repo ausschliessen (z. B. in eine private Zweitablage verschieben, nur
-  eine generische Kurzanleitung ohne IP im öffentlichen Teil belassen)
-  oder die IP durchgehend durch einen Platzhalter ersetzen
-  (`<server-ip>` oder `dein-server.example`). Die zweite Option ist
-  vorzuziehen — die Anleitung bleibt dann für andere nachvollziehbar.
-- `app/detect.py`: „Mainkofen" durch einen erfundenen Einrichtungsnamen
-  ersetzen (z. B. „Waldheim", bereits an anderer Stelle im Projekt als
-  fiktives Beispiel verwendet). Zwei Zeilen, keine Verhaltensänderung.
+**Bleibt zu tun:** Nichts mehr aus dieser Lehre. Ehrlicher Hinweis zur
+Grenze der Historienbereinigung: Ein bereits vorhandener Klon oder Fork
+des Repositories (falls je einer existierte, während es privat war)
+behielte die alte Historie mit der echten IP. Bei einem bislang privaten
+Repo ohne bekannte Drittklone ist dieses Restrisiko gering.
 
 ### 6. Das Billigste ist oft das Wichtigste
 
@@ -245,27 +240,31 @@ ausdrücklich mit einplanen — Layout-Vorlagen ja, Personendaten nie.
 
 ## Zusammenfassung: was neu ist, was schon stimmt
 
+**Stand 2026-08-13 — Phase 1 und Phase 2 vollständig abgeschlossen.**
+
 **Bereits solide, keine Änderung nötig:**
 Lizenz- und AGPL-Dokumentation, Font-Hosting, fehlende Telemetrie,
 Test-Disziplin gegen Toleranz-Aufweichung, README-Ehrlichkeit über
 Grenzen, SECURITY.md, Export-Hygiene auf Byte-Ebene, Auth-Fallback ist
 fail-closed (nicht das befürchtete Leck).
 
-**Echte, verifizierte Funde — in Prioritätsreihenfolge nach Aufwand:**
-1. Haftungshinweis fehlt im exportierten Dokument selbst (eine Zeile,
-   grösste Wirkung — Lehre 6)
-2. Reale Server-IP in `DEPLOYMENT.md` (Textersatz, vor Veröffentlichung
-   zwingend — Lehre 5)
-3. „Mainkofen" in Code-Kommentaren durch fiktiven Namen ersetzen (zwei
-   Zeilen — Lehre 5)
-4. `CITATION.cff` zeigt Version 0.11.0, aktuell ist 0.14.1 (ein Feld)
-5. Sonderzeichen-Regressionstest dauerhaft in die Testsuite aufnehmen
-   (Lehre 9)
-6. Screenshot/GIF fürs README (Lehre 6, aufwändiger — eigener Schritt)
-7. Goldkorpus mit Ratschen-Logik (Lehre 2, 3, 11 — grösster Einzelposten,
-   aber bereits konzipiert in BACKLOG.md)
-8. Impressum/Datenschutzerklärung (bereits in BACKLOG.md als Pflicht vor
-   öffentlichem Betrieb vermerkt, unabhängig vom Repo-Status)
+**Erledigt:**
+1. ✅ Haftungshinweis steht im exportierten Dokument selbst
+2. ✅ Reale Server-IP — aus allen aktuellen Dateien **und** aus der
+   gesamten Commit-Historie samt Tags entfernt
+3. ✅ „Mainkofen" durch „Auwald" ersetzt
+4. ✅ Sonderzeichen-Regressionstest dauerhaft in der Testsuite
+5. ✅ Volle Historie auf PHI/Secrets geprüft, sauber
+
+**Noch offen, kein Blocker für den Repo-Wechsel:**
+6. `CITATION.cff` erneut veraltet (zeigt 0.14.2, aktuell 0.15.1) — driftet
+   wiederholt, weil es in keiner Routine steckt; siehe Hinweis unten
+7. Screenshot/GIF fürs README — bewusst dem Nutzer überlassen
+8. Goldkorpus mit Ratschen-Logik (Lehre 2, 3, 11 — grösster Einzelposten,
+   Konzept unten ausgearbeitet)
+9. `CONTRIBUTING.md` — neu hinzugekommen, da Beiträge explizit erwünscht
+10. Impressum/Datenschutzerklärung — betrifft den Serverbetrieb, nicht
+    das Repository; erst relevant, wenn der Server reaktiviert wird
 
 ---
 
@@ -296,35 +295,36 @@ gepusht.
 Jeder dieser fünf Punkte war unabhängig, risikolos, und veränderte kein
 Verhalten der Erkennung. Details im CHANGELOG, Abschnitt 0.14.2.
 
-### Phase 2 — Vor jeder Veröffentlichung zwingend
+### Phase 2 — Vor jeder Veröffentlichung zwingend — ✅ abgeschlossen (2026-08-13)
 
-6. `DEPLOYMENT.md` bereinigen: Server-IP durch Platzhalter ersetzen, im
-   ganzen Dokument. Die konkrete IP für den eigenen Gebrauch bleibt in
-   diesem Memory-System hinterlegt, nicht im Repo — dort ist sie ja
-   schon (`reference_server_uebersicht.md` u. ä.).
-7. Einmal `git log --all --diff-filter=A --name-only` über das ganze
-   Repo laufen lassen (nicht nur den aktuellen Stand) und nach PDFs,
-   DOCX, TXT, Screenshots mit Personenbezug suchen — auch wenn
-   `.gitignore` das seit Beginn verhindert haben sollte, ist das der
-   Punkt, an dem man es nachweist statt annimmt (Lehre 1).
-8. `git grep` über die volle Historie nach IPs, internen Hostnamen,
-   E-Mail-Adressen ausserhalb der bereits geprüften Fälle.
+6. ✅ `DEPLOYMENT.md` und die drei weiteren betroffenen Dateien bereinigt,
+   Server-IP durch die Dokumentations-Platzhalteradresse `203.0.113.10`
+   ersetzt — **nicht nur im aktuellen Stand, auch in der gesamten
+   Commit-Historie und allen Tags** (`git filter-repo`, siehe Lehre 5).
+   Die echte IP für den eigenen Gebrauch bleibt im Memory-System
+   hinterlegt, nicht im Repo.
+7. ✅ `git log --all --diff-filter=A --name-only` über das ganze Repo
+   geprüft — keine PDFs, DOCX, TXT oder Screenshots mit Personenbezug in
+   der Historie gefunden.
+8. ✅ Volle Historie nach IPs, internen Hostnamen, Passwörtern und
+   API-Schlüsseln durchsucht — ausser der jetzt behobenen Server-IP kein
+   weiterer Fund.
 
 ### Phase 3 — Vertrauenswürdigkeit sichtbar machen
 
-9. Screenshot oder kurzes GIF der Prüfansicht fürs README erzeugen. Der
-   Weg vom 2026-08-04 scheiterte daran, dass ein im Werkzeug erzeugter
-   Screenshot nicht auf die Platte geschrieben werden konnte — Weg über
-   `mcp__Claude_Code_iOS_Simulator` entfällt (kein iOS-Projekt), aber ein
-   Screenshot lässt sich auch über die Bash-Kommandozeile mit einem
-   Werkzeug wie `screencapture` (macOS, systemeigen) vom offenen
-   Browserfenster ziehen, dateibasiert, ohne das Browser-Werkzeug selbst
-   zu bitten, etwas zu speichern, was es nicht speichern kann.
+9. **Screenshot/GIF fürs README — bewusst dem Nutzer überlassen,** zum
+   Schluss vor der Veröffentlichung. Kein technisches Hindernis mehr im
+   Weg (macOS `screencapture` funktioniert dateibasiert), aber die
+   Bildauswahl selbst ist eine gestalterische Entscheidung.
 10. Goldkorpus bauen (siehe BACKLOG.md, Abschnitt „Erkennungsgüte
     messen" — dort bereits vollständig konzipiert: 20–30 Briefe,
     Randfallklassen, getrennte Recall-/Präzisionsauswertung). Mit
     Ratschen-Logik: `tests/test_goldkorpus.py` schlägt fehl, sobald der
     Recall gegenüber dem letzten commiteten Stand sinkt.
+11. `CONTRIBUTING.md` — jetzt zusätzlich sinnvoll, weil das Projekt
+    explizit für Beiträge geöffnet werden soll. Die Muster-vs-Wortliste-
+    Entscheidungsregel aus `app/detect.py` gehört dort verlinkt oder
+    zusammengefasst.
 11. Impressum und Datenschutzerklärung (bereits in BACKLOG.md
     konzipiert, Vorlagen aus anderen eigenen Projekten vorhanden) — wird
     erst wirksam, wenn der Server wieder läuft, aber kann unabhängig vom
