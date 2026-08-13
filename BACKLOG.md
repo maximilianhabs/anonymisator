@@ -150,8 +150,22 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   eine Stufe konkret tut, bevor man sie wählt.
 - **Eigene Begriffslisten.** Wiederkehrende Namen (Kolleginnen und Kollegen,
   Stationen, Zuweiser) einmal hinterlegen, statt sie in jedem Dokument über
-  „Zusätzlich ersetzen" nachzutragen. Muss lokal bleiben und darf nie ins
+  „Zusätzlich ersetzen" nachzutragen — heute wirkt das nur für das eine
+  offene Dokument, nicht dauerhaft. Muss lokal bleiben und darf nie ins
   Repository geraten.
+
+  Mit der geplanten Veröffentlichung wird das wichtiger, nicht unwichtiger:
+  Sobald andere das Werkzeug selbst installieren, braucht jede Praxis, jede
+  Klinik ihre eigene, private Liste — Kolleginnen, Stationen und Zuweiser
+  unterscheiden sich von Standort zu Standort. Eine Voraussetzung dafür,
+  falls umgesetzt: die Datei darf niemals eine Vorlage im Repository sein,
+  auch keine leere mit Beispieleinträgen — sonst landet beim ersten
+  unbedachten `git add -A` einer dritten Person echte Information darin.
+  Ein `.gitignore`-Eintrag reicht dafür allein nicht — eine ungewollte
+  Änderung an dieser einen Zeile hebt den Schutz sofort auf. Sicherer: die
+  Datei ausserhalb des Repository-Verzeichnisses ablegen (z. B. im
+  Nutzerverzeichnis), damit ein Commit sie strukturell gar nicht erreichen
+  kann, unabhängig von `.gitignore`.
 - **Stapelverarbeitung.** Mehrere Dateien nacheinander mit derselben Stufe
   und denselben Entscheidungen. Sinnvoll erst, wenn der Review-Schritt dabei
   erhalten bleibt — ohne ihn wäre es genau der falsche Komfort.

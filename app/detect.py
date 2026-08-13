@@ -9,6 +9,45 @@ Zwei Schichten, die sich gegenseitig absichern:
 
 Grundhaltung: lieber ein Fehlalarm zu viel als ein übersehener Name. Alles
 Gefundene landet im Review und kann dort abgewählt werden.
+
+--------------------------------------------------------------------------
+Muster oder Wortliste? Die Entscheidung bei jedem neuen Fund
+--------------------------------------------------------------------------
+spaCy erzeugt regelmässig Fehlalarme (Fachbegriffe, Medikamente,
+Formularfelder, die wie Namen aussehen). Jeder Fund wirft dieselbe Frage
+auf, bevor irgendetwas geändert wird:
+
+    Folgt der Fehler einem MUSTER, oder ist er ein EINZELFALL aus einer
+    kleinen, geschlossenen Menge?
+
+Folgt er einem Muster — eine Regelmässigkeit in Form, Endung oder
+Umgebung, die sich auf viele künftige Fälle überträgt —, gehört die Lösung
+in eine der bestehenden Mustergruppen, nicht in eine Wortliste:
+
+  - Wortendung/-baustein: `_MED_ENDUNGEN`, `_MED_GRUNDWOERTER` (Suffixe wie
+    "-itis", "-blut" — ein Eintrag deckt tausende mögliche Komposita ab)
+  - Umgebung/Position im Satz: `_DOSIS_FOLGT` (ein Name unmittelbar vor
+    einer Dosierung ist ein Medikament, gleich welches — "Ebrantil 25 mg"
+    und "Novalgin 500 mg" fielen beide durch dieselbe eine Regel, ohne dass
+    ein Markenname eingetragen wurde)
+  - Grossschreibung, Wortgrenzen, Titel-Anker: siehe `_NAMENSTEIL`,
+    `_NAME_GROSS`, `_TITELKETTE`
+
+Ein Muster deckt eine ganze *Klasse* künftiger Fälle ab, ohne dass jeder
+Einzelfall eingetragen werden muss — deshalb hier immer die erste Wahl.
+
+Ist der Fehler dagegen ein Einzelfall aus einer kleinen, tatsächlich
+begrenzten Menge — deutsche Klinik-Fachrichtungen, Formularfeld-Namen wie
+"Aufnahmegrund", gängige Abkürzungen —, ist eine Wortliste
+(`_STOPP_ANATOMIE`, `_STOPP_MEDIZIN`, `_STOPP_ALLGEMEIN`) die richtige,
+ehrliche Lösung. Diese Mengen sind endlich und wachsen langsam gegen eine
+Grenze; das unterscheidet sie von unbegrenzten Mengen wie Medikamenten-
+Markennamen oder Nachnamen, für die eine Liste nie vollständig würde.
+
+Die Probe für "unbegrenzt": Könnte in den nächsten fünf Jahren ein
+komplett neues Wort aus dieser Kategorie auftauchen, das mit den
+bisherigen nichts zu tun hat (ein neues Medikament, ein neuer Nachname)?
+Wenn ja, ist es eine unbegrenzte Menge — Muster suchen, nicht eintragen.
 """
 
 from __future__ import annotations
