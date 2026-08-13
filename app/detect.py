@@ -423,7 +423,12 @@ REGELN: list[tuple[str, str, int]] = [
      r"\b(?:[A-ZÄÖÜ][a-zäöüß]+[ \t]+){0,2}(?:Straße|Strasse|Str\.|Weg|Allee|Platz"
      r"|Gasse|Ring|Damm|Ufer|Chaussee|Steig|Hof|Berg|Feld)[ \t]+\d{1,4}"
      r"[ \t]*[a-zA-Z]?\b", 0),
-    ("ADRESSE", r"\b\d{5}[ \t]+[A-ZÄÖÜ][a-zäöüß]+(?:[ \-][A-ZÄÖÜ][a-zäöüß]+)*", 0),
+    # Der Ortsname nach der PLZ verlangte bisher Binnenkleinschreibung und
+    # überging deshalb Briefköpfe in Versalien ("94469 DEGGENDORF") — ohne
+    # PLZ davor fängt das Sprachmodell einen Versal-Ortsnamen meist noch ab,
+    # mit PLZ griff bisher gar keine Regel.
+    ("ADRESSE",
+     r"\b\d{5}[ \t]+[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ]+(?:[ \-][A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ]+)*", 0),
     ("ADRESSE", r"(?:Postfach)[ \t]*:?[ \t]*\d[\d \t]{2,12}", 0),
 
     # --- Einrichtungen ------------------------------------------------------
@@ -700,6 +705,9 @@ _MED_ENDUNGEN = (
     "statin", "sartan", "pril", "olol", "azol", "tidin", "profen",
     "cillin", "mycin", "floxacin", "gliptin", "glitazon", "parin",
     "xaban", "timib", "tinib", "zumab", "ximab", "mumab", "zepam",
+    # Antikonvulsiva: Racetame ("Levetiracetam", "Piracetam") und
+    # Succinimide ("Ethosuximid") — beide kamen als Person/Behandler an.
+    "acetam", "uximid",
 )
 
 # Grundwörter am Ende eines Kompositums. Deutsche Zusammensetzungen tragen
@@ -728,6 +736,7 @@ _MED_GRUNDWOERTER = (
     "ätiologie", "genese", "anamnese", "medikation", "dosierung",
     "beschwerde", "beschwerden", "schmerz", "schmerzen", "defizit",
     "defizite", "ausfall", "ausfälle", "karenz", "schutz", "verlauf",
+    "trauma", "traumata", "verletzung", "verletzungen",
     # Eponyme: Zeichen, Tests und Skalen tragen den Namen ihres
     # Erstbeschreibers. "Lasègue-Zeichen" oder "Schellong-Test" enthalten
     # damit formal einen Personennamen, sind aber Fachbegriffe und keine

@@ -4,6 +4,24 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.15.2 — 2026-08-13
+
+Drei weitere bestätigte Funde aus derselben Praxistest-Runde.
+
+- **Zwei weitere Wirkstoffstämme ergänzt:** Ethosuximid (Succinimid) und
+  die Levetiracetam-Familie (Racetam) kamen als Person bzw. Behandler an.
+  Wie schon bei Ebrantil und den zuvor ergänzten Stämmen: der Wirkstoff-
+  stamm wird erkannt, nicht der einzelne Markenname.
+- **„Sturztraumata" als eigenständiger Fund** — Kompositum aus „Sturz"
+  und der Pluralform von „Trauma", bisher nicht als Fachbegriff erkannt.
+- **Postleitzahl mit Ort in Versalien** — „94469 DEGGENDORF" wurde nicht
+  erfasst, obwohl derselbe Ortsname ohne PLZ meist noch vom Sprachmodell
+  gefangen wurde. Die PLZ+Ort-Regel verlangte bislang Binnenkleinschreibung.
+
+Zwei weitere gemeldete Fälle (zwei Vornamen bzw. Nachnamen, ein
+Medikament in Kombination mit "i.v.") liessen sich trotz zahlreicher
+Kontextvarianten nicht nachstellen und bleiben offen.
+
 ## 0.15.1 — 2026-08-13
 
 Aus einer weiteren Praxistest-Runde: eine hochprioritäre Erkennungslücke

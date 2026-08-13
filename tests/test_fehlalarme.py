@@ -416,6 +416,26 @@ grund = detect.analysiere("Herr Grund wurde aufgenommen.")
 pruefe(any("Grund" in f.text for g in grund for f in g.funde),
        "Der Nachname 'Grund' bleibt mit Anrede weiterhin erkannt")
 
+print("\n=== 15. Weitere Medikamente und ein Trauma-Fachbegriff ===")
+# Ethosuximid (Succinimid) und Levetiracetam-Familie (Racetam) kamen als
+# Person bzw. Behandler an -- INN-Wirkstoffstamm ergaenzt, analog zu den
+# bereits abgedeckten Stämmen. "Sturztraumata" (Kompositum, Pluralform von
+# Trauma) als eigenständiger Fund.
+for text in ["Ethosuximid wurde angesetzt.", "Unter Ethosuximid gute Anfallskontrolle.",
+             "Zustand nach Sturztraumata im Kindesalter."]:
+    treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde]
+    pruefe(not treffer, f"{text!r} bleibt ohne Fehlalarm ({treffer})")
+
+print("\n=== 16. Postleitzahl mit Ort in Versalien ===")
+# "94469 DEGGENDORF" -- die PLZ+Ort-Regel verlangte bisher
+# Binnenkleinschreibung und uebersah Briefkoepfe in Versalien, obwohl
+# derselbe Ortsname ohne PLZ meist noch vom Sprachmodell gefangen wurde.
+for text, muss in [("94469 DEGGENDORF", "94469 DEGGENDORF"),
+                    ("94469 Deggendorf", "94469 Deggendorf")]:
+    treffer = [f.text for g in detect.analysiere(text) for f in g.funde
+               if g.typ == "ADRESSE"]
+    pruefe(muss in treffer, f"{muss!r} als Adresse erfasst (gefunden: {treffer})")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")
