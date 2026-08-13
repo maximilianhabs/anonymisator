@@ -4,6 +4,27 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.15.1 — 2026-08-13
+
+Aus einer weiteren Praxistest-Runde: eine hochprioritäre Erkennungslücke
+geschlossen, ein Medikamenten-Fehlalarm strukturell behoben.
+
+- **„geb." leitet jetzt auch einen Geburtsnamen ein, nicht nur ein Datum.**
+  „Frau Müller, geb. Schuster" wurde bisher gar nicht erfasst — die
+  einzige Regel über „geb." verlangte zwingend ein folgendes Datum. Beide
+  Formen schliessen sich an derselben Stelle gegenseitig aus.
+- **Medikamente mit Dosierung gelten nicht mehr als Person.** Markennamen
+  wie „Ebrantil" sind für das Sprachmodell namensförmig und wurden
+  teils sogar als Behandler eingestuft. Eine Liste aller Markennamen wäre
+  unbegrenzt; stattdessen ein strukturelles Merkmal: eine unmittelbar
+  folgende Dosierung („Ebrantil 25 mg") macht den Fund zum Medikament,
+  unabhängig vom konkreten Namen.
+- Zwei beiläufig gefundene Fehlalarme behoben: „Aufnahmegrund" (der
+  Feldbezeichner selbst) als Person, „Schwindel" (ein Symptom) als Ort.
+
+Mehrere gemeldete Fälle liessen sich trotz zahlreicher Kontextvarianten
+nicht nachstellen und bleiben offen, bis der genaue Originaltext vorliegt.
+
 ## 0.15.0 — 2026-08-13
 
 Aus dem Praxistest mit mehreren Dokumenten: eine Adresslücke geschlossen,

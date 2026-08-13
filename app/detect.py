@@ -193,6 +193,16 @@ _EINHEITEN = (
 _MESSWERT_ENTHALTEN = re.compile(
     rf"\d(?:[.,]\d+)?[ \t]?(?:{_EINHEITEN})(?![A-Za-zÄÖÜäöü0-9])")
 
+# Direkt gefolgt von einer Dosierung ("Ebrantil 25 mg") ist ein Treffer ein
+# Medikamentenname, keine Person — Markennamen wie "Ebrantil" sind für das
+# Sprachmodell namensförmig und werden regelmässig als Person getaggt, oft
+# sogar als Behandler (der nächstgelegene Rollenmarker entscheidet). Eine
+# vollständige Liste aller Markennamen wäre unbegrenzt und ohnehin nie
+# abschliessend; die Dosierung direkt danach ist dagegen ein verlässliches,
+# strukturelles Merkmal, unabhängig vom konkreten Namen.
+_DOSIS_FOLGT = re.compile(
+    rf"^[ \t]+\d+(?:[.,]\d+)?[ \t]*(?:{_EINHEITEN})(?![A-Za-zÄÖÜäöü0-9])")
+
 # Lookahead: optionales Leerzeichen, dann eine Einheit, danach kein
 # Wortzeichen mehr (sonst würde "mg" auch in "mgxyz" passen).
 #
@@ -260,6 +270,13 @@ REGELN: list[tuple[str, str, int]] = [
     # ohne dass "geb. Jahrgang 1958" oder "geb. 60–69 J." dabei herauskommt.
     ("GEBURTSDATUM",
      rf"(?:geb\.|geboren\s+am|Geburtsdatum|Geb\.[-\s]?Dat(?:um)?\.?|GebDat|\*)\s*:?\s*{_DATUM}", 0),
+    # "geb." leitet nicht nur ein Datum ein, sondern ebenso häufig den
+    # Geburtsnamen ("Frau Müller, geb. Schuster") — bisher unabgedeckt, weil
+    # die Regel darüber ausschliesslich auf ein Datum prüfte. Beide Formen
+    # schliessen sich an derselben Stelle gegenseitig aus (ein Datum ist nie
+    # gleichzeitig ein Name), eine Überschneidung der beiden Regeln entsteht
+    # deshalb nicht.
+    ("PERSON", rf"(?:geb\.|geborene?)[ \t]+({_NAMENSTEIL})", 1),
     ("VERSICHERTENNR",
      rf"(?:Versicherten{_NR}|KVNR|Vers\.-?Nr\.?|Krankenversicherten-?nummer)"
      r"\s*:?\s*([A-Z]\s?\d[\d\s]{7,12}\d)", 1),
@@ -563,7 +580,12 @@ _STOPP_MEDIZIN = {
     "kardiologie", "onkologie", "orthopädie", "urologie", "gynäkologie",
     "mrt", "ct", "eeg", "ekg", "emg", "nlg", "ssep", "meg", "pet", "spect",
     "gutachten", "sachverständiger", "epilepsie", "hypertonie", "diabetes",
-    "demenz", "migräne", "apoplex", "insult",
+    "demenz", "migräne", "apoplex", "insult", "schwindel",
+    # Feldbezeichner aus dem Dokumentkopf, als Ganzes: "aufnahme" allein war
+    # schon Stoppwort, das zusammengesetzte "Aufnahmegrund" traf die Liste
+    # aber nicht — beim Praxistest als eigenständiger Fund aufgefallen.
+    "aufnahmegrund", "diagnosegrund", "entlassungsgrund",
+    "behandlungsgrund", "einweisungsgrund",
 }
 _STOPP_ALLGEMEIN = {
     # Bezeichner aus Briefköpfen. Sie stehen unmittelbar vor der Angabe, die
@@ -870,6 +892,8 @@ def _ner_funde(text: str) -> Iterable[Fund]:
         # Sprachmodell wiederholt für Ortsnamen gehalten — eine physikalische
         # Einheit im Treffer schliesst das aus.
         if _MESSWERT_ENTHALTEN.search(wert):
+            continue
+        if _DOSIS_FOLGT.match(text[ent.end_char:ent.end_char + 20]):
             continue
         # Ohne einen einzigen Grossbuchstaben ist es kein Eigenname. Im
         # Deutschen trägt jeder Name, Ort und Firmenname eine Majuskel;

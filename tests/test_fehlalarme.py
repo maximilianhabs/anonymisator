@@ -363,6 +363,59 @@ for text in ["Vitamin B12 im Normbereich.",
     treffer = [g.anzeige for g in detect.analysiere(text) if g.typ == "DIAGNOSECODE"]
     pruefe(not treffer, f"{text!r} bleibt ohne Diagnosecode-Fehlalarm ({treffer})")
 
+print("\n=== 12. 'geb.' leitet auch einen Geburtsnamen ein, nicht nur ein Datum ===")
+# "Frau Müller, geb. Schuster" -- bisher unabgedeckt, weil die einzige
+# Regel über "geb." zwingend ein Datum verlangte. Geburtsname und
+# Geburtsdatum schliessen sich an derselben Stelle gegenseitig aus.
+for text, muss in [
+    ("Herr Müller, geb. Schuster, wurde aufgenommen.", "Schuster"),
+    ("Die Patientin, geb. Schuster, wohnhaft in Musterstadt.", "Schuster"),
+]:
+    treffer = [f.text for g in detect.analysiere(text) for f in g.funde]
+    pruefe(muss in treffer, f"{muss!r} als Geburtsname erfasst (gefunden: {treffer})")
+
+# Ein echtes Geburtsdatum an derselben Stelle darf weiterhin als Datum
+# gelten, nicht als vermeintlicher Name.
+datum = detect.analysiere("Geburtsdatum: 22.07.1958")
+pruefe(any(g.typ == "GEBURTSDATUM" for g in datum),
+       "'geb.'-Familie erkennt weiterhin echte Geburtsdaten")
+
+print("\n=== 13. Medikamentennamen mit Dosierung sind keine Person ===")
+# "Ebrantil 25 mg" -- Markennamen sind für das Sprachmodell namensförmig,
+# oft sogar als Behandler eingestuft. Eine Liste aller Markennamen wäre
+# unbegrenzt; die direkt folgende Dosierung ist ein verlässliches
+# strukturelles Merkmal.
+for text in ["Ebrantil 25 mg i.v. verabreicht.", "Novalgin 500 mg gegeben.",
+             "Unter Ebrantil 25mg Blutdrucksenkung erreicht."]:
+    treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde
+               if g.typ in ("PERSON", "ARZT", "PATIENT")]
+    pruefe(not treffer, f"{text!r} bleibt ohne Medikamenten-Fehlalarm ({treffer})")
+
+# Ohne Dosierung bleibt die Heuristik naturgemäss wirkungslos -- das ist
+# hier keine Prüfung, sondern nur die Abgrenzung dokumentiert.
+
+# Ein echter Name mit einer Altersangabe daneben darf nicht verschwinden:
+# "Jahre" steht nicht auf der Einheitenliste, die Heuristik darf hier
+# nicht greifen.
+alter = detect.analysiere("Herr Weissbach, 25 Jahre alt, wurde aufgenommen.")
+pruefe(any("Weissbach" in f.text for g in alter for f in g.funde),
+       "Ein echter Name bleibt trotz folgender Altersangabe erkannt")
+
+print("\n=== 14. Feldbezeichner und Symptome, beiläufig beim Testen gefunden ===")
+# "Aufnahmegrund" (das Wort selbst) als Person, "Schwindel" als Ort --
+# unabhängig von den oben gemeldeten Fällen aufgefallen.
+for text in ["Aufnahmegrund: Sturz.", "Diagnosegrund: Schwindel.",
+             "Sie berichtet über Schwindel und Übelkeit."]:
+    treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde]
+    pruefe(not treffer, f"{text!r} bleibt ohne Fehlalarm ({treffer})")
+
+# Ein echter Nachname, der zufällig gleich "Grund" lautet, muss mit Anrede
+# weiterhin erkannt werden -- die neuen Stoppwörter sind Komposita
+# ("Aufnahmegrund"), kein allgemeiner Filter auf "Grund".
+grund = detect.analysiere("Herr Grund wurde aufgenommen.")
+pruefe(any("Grund" in f.text for g in grund for f in g.funde),
+       "Der Nachname 'Grund' bleibt mit Anrede weiterhin erkannt")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")
