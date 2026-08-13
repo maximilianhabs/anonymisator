@@ -35,13 +35,24 @@ def ersetze(text: str, ersetzungen: list[dict]) -> str:
 # Die Stufe gehört in den Vermerk: wer das Dokument später in die Hand nimmt,
 # muss erkennen können, ob er ein anonymisiertes oder ein pseudonymisiertes
 # Dokument vor sich hat. "Leicht" bleibt personenbezogen.
+#
+# Der Haftungshinweis stand bisher nur im Bestätigungsdialog vor dem Export
+# (static/app.js) — den sieht niemand mehr, sobald die Datei die Anwendung
+# verlassen hat. Wer sie Monate später weiterreicht, ausdruckt oder
+# archiviert, hat nur noch das, was im Dokument selbst steht. Deshalb gehört
+# der Satz hierher, nicht nur in den Dialog.
 _VERMERK = {
     "leicht": "Pseudonymisiert (Stufe leicht) am {datum} — enthält weiterhin "
-              "Personenbezug, vertraulich behandeln.",
+              "Personenbezug, vertraulich behandeln. Vollständigkeit der "
+              "Pseudonymisierung ist nicht garantiert.",
     "standard": "Anonymisiert (Stufe Standard) am {datum} — automatisch "
-                "erkannt und manuell geprüft.",
+                "erkannt und manuell geprüft. Vollständigkeit ist nicht "
+                "garantiert, die Verantwortung für die Weitergabe liegt "
+                "beim Absender.",
     "streng": "Anonymisiert (Stufe streng, ohne Zeitbezug) am {datum} — "
-              "automatisch erkannt und manuell geprüft.",
+              "automatisch erkannt und manuell geprüft. Vollständigkeit ist "
+              "nicht garantiert, die Verantwortung für die Weitergabe liegt "
+              "beim Absender.",
 }
 
 

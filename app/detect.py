@@ -221,7 +221,7 @@ _EINR_NACHSATZ = (
 # Briefköpfe stehen häufig durchgehend in Versalien, und dort ist keine der
 # bisherigen Regeln zuständig: die Muster oben verlangen Binnenkleinschreibung
 # ("Bezirksklinik", Nachsatz "[A-ZÄÖÜ][a-zäöüß]{2,}"), und das Sprachmodell
-# ist bei Grossschreibung unzuverlässig — "BEZIRKSKLINIKUM MAINKOFEN" in der
+# ist bei Grossschreibung unzuverlässig — "BEZIRKSKLINIKUM AUWALD" in der
 # Unterschriftszeile hat es gar nicht erst getaggt. Genau dort steht der
 # Absender: ein Briefkopf ohne erkannte Einrichtung ist der Fehler, der am
 # meisten kostet.
@@ -306,7 +306,7 @@ REGELN: list[tuple[str, str, int]] = [
     # Deutsches Kfz-Kennzeichen — in Unfallgutachten ein direkter Identifikator
     ("KFZ", r"\b[A-ZÄÖÜ]{1,3}[-–][ ]?[A-Z]{1,2}[ ]?\d{1,4}[ ]?[EH]?\b", 0),
     # Das @ ist der Anker, nicht der Zusammenhang. In Briefköpfen bricht die
-    # Adresse regelmässig um — "t.schmidt-wilcke\n@mainkofen.de" —, weil der
+    # Adresse regelmässig um — "t.schmidt-wilcke\n@auwald.de" —, weil der
     # Satz sie am Spaltenrand trennt. Eine Regel, die Zusammenhang verlangt,
     # sieht dort nichts, und übrig bleibt der Klarname im Ortsteil.
     #
@@ -1247,7 +1247,7 @@ def analysiere(text: str) -> list[Gruppe]:
     # Trägt ein Treffer ein Gattungswort für ein Haus, ist er eine
     # Einrichtung — auch wenn das Sprachmodell ihn für einen Ort oder eine
     # Person gehalten hat. "Sankt-Josef-Krankenhaus" und "Neurozentrum
-    # Mainkofen" kamen beide als Ort an, und Orte bleiben in der
+    # Auwald" kamen beide als Ort an, und Orte bleiben in der
     # Standardstufe stehen. Die behandelnde Einrichtung ist aber ein
     # Hinweis auf die Person: wer sie kennt, hat das Feld erheblich
     # eingegrenzt. Deshalb wiegt das Gattungswort schwerer.

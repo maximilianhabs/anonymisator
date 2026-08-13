@@ -277,20 +277,24 @@ unabhängig entschieden. „Öffentlich" heisst hier: das GitHub-Repository.
 
 ### Phase 1 — Sofort erledigbar, geringes Risiko (vor jeder weiteren Prüfung)
 
-1. `app/export.py`: `_VERMERK`-Texte um den Haftungssatz erweitern.
-   Danach `test_export_hygiene.py` erweitern, um zu prüfen, dass der
-   Zusatz in jeder Exportform (TXT/DOCX/PDF) tatsächlich ankommt.
-2. `app/detect.py`: „Mainkofen" in den zwei Kommentarzeilen durch einen
-   erfundenen Namen ersetzen.
-3. `CITATION.cff`: Version und Datum auf den aktuellen Stand heben.
-4. Den eben durchgeführten Sonderzeichen-Test als festen Fall in
-   `tests/test_export_hygiene.py` aufnehmen.
-5. `BACKLOG.md`, Abschnitt „Bewusst nicht vorgesehen": Vermerk ergänzen,
-   dass die Punkte geprüft und bewusst abgelehnt sind.
+**✅ Erledigt am 2026-08-13** (0.14.2). Alle fünf Punkte umgesetzt,
+gegengeprüft (Testsuite grün, Live-Probe gegen den laufenden Dienst) und
+gepusht.
 
-Jeder dieser fünf Punkte ist unabhängig, risikolos, und verändert kein
-Verhalten der Erkennung. Lässt sich in einer Sitzung erledigen und
-committen.
+1. ✅ `app/export.py`: `_VERMERK`-Texte um den Haftungssatz erweitert.
+   `test_export_hygiene.py` erweitert — prüft jetzt, dass der Zusatz in
+   jeder Exportform (TXT/DOCX/PDF) tatsächlich ankommt.
+2. ✅ `app/detect.py`: „Mainkofen" ersetzt — tatsächlich **drei**
+   Fundstellen, nicht zwei wie hier ursprünglich vermutet
+   (`grep -ni mainkofen` beim Umsetzen genauer geprüft als beim Planen).
+   Ersetzt durch die im Projekt bereits etablierte „Klinik am Auwald".
+3. ✅ `CITATION.cff`: Version und Datum auf 0.14.2 / 2026-08-13 gehoben.
+4. ✅ Sonderzeichen-Rundlauf (ä ö ü ß) als fester Fall in
+   `tests/test_export_hygiene.py`, für alle drei Exportformate.
+5. ✅ `BACKLOG.md`, Abschnitt „Bewusst nicht vorgesehen": Vermerk ergänzt.
+
+Jeder dieser fünf Punkte war unabhängig, risikolos, und veränderte kein
+Verhalten der Erkennung. Details im CHANGELOG, Abschnitt 0.14.2.
 
 ### Phase 2 — Vor jeder Veröffentlichung zwingend
 

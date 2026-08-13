@@ -128,6 +128,37 @@ for name in KLARNAMEN:
     pruefe(name not in textlayer, f"Textlayer ohne {name!r}")
 pruefe("[PATIENT_A]" in textlayer, "Pseudonyme stehen im Textlayer")
 
+print("\n=== Sonderzeichen und Haftungshinweis, in jeder Exportform ===")
+# Eine andere Review-Serie fand hier einen Bug: ein polnischer Name kam als
+# "G■sior" statt "Gąsior" aus dem PDF zurück — die Schrift kannte das
+# Zeichen nicht, unbemerkt, weil kein Test je die erzeugte Datei tatsächlich
+# gelesen hat. Deutsche Umlaute und ß liegen zwar innerhalb der von
+# ReportLabs Helvetica abgedeckten Kodierung (WinAnsi), aber "sollte
+# funktionieren" ist keine Prüfung. Hier wird die Datei erzeugt und
+# zurückgelesen, nicht nur die Erzeugung selbst geprüft.
+SONDERZEICHEN = "Prüfung: Größe, Straße, Übermässig, Ärztin Müller, ß ä ö ü Ä Ö Ü."
+
+txt_sz = export.als_txt(SONDERZEICHEN, mit_kopfzeile=True, stufe="standard").decode("utf-8")
+pruefe(SONDERZEICHEN in txt_sz, "TXT: Sonderzeichen unverändert zurückgelesen")
+
+docx_sz = export.als_docx(SONDERZEICHEN, mit_kopfzeile=True, stufe="standard")
+with zipfile.ZipFile(BytesIO(docx_sz)) as archiv:
+    dokument_sz = archiv.read("word/document.xml").decode("utf-8", "replace")
+pruefe(SONDERZEICHEN in dokument_sz, "DOCX: Sonderzeichen unverändert zurückgelesen")
+
+pdf_sz = export.als_pdf(SONDERZEICHEN, mit_kopfzeile=True, stufe="standard")
+with fitz.open(stream=pdf_sz, filetype="pdf") as doc:
+    textlayer_sz = "\n".join(seite.get_text() for seite in doc)
+pruefe(SONDERZEICHEN in textlayer_sz, "PDF: Sonderzeichen unverändert zurückgelesen")
+
+# Der Haftungshinweis stand bisher nur im Bestätigungsdialog vor dem Export
+# (static/app.js) — nie im Dokument selbst. Wer die Datei weiterreicht,
+# ohne dass je wieder jemand die Anwendung öffnet, hatte diesen Satz nie vor
+# Augen. Diese Prüfung stellt sicher, dass er nicht wieder verschwindet.
+for was, roh in [("TXT", txt_sz), ("DOCX", dokument_sz), ("PDF", textlayer_sz)]:
+    pruefe("nicht garantiert" in roh,
+           f"{was}: Haftungshinweis steht im Dokument, nicht nur im Dialog")
+
 print("\n=== Gegenprobe: der Prüfaufbau greift überhaupt ===")
 # Ohne diese Probe wäre nicht gesagt, dass die Suche funktioniert und nicht
 # jede Datei blind für sauber erklärt.

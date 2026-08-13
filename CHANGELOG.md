@@ -4,6 +4,33 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.14.2 — 2026-08-13
+
+Road-to-Public, Phase 1: fünf kleine, unabhängige Korrekturen aus
+`ROAD_TO_PUBLIC.md`.
+
+- **Haftungshinweis steht jetzt im exportierten Dokument selbst**, nicht
+  mehr nur im einmaligen Bestätigungsdialog vor dem Export. Wer eine Datei
+  Monate später weitergibt, ausdruckt oder archiviert, sieht den Hinweis
+  weiterhin — bisher stand er ausschliesslich im Browser-Dialog, den
+  niemand mehr sieht, sobald das Dokument die Anwendung verlassen hat.
+  Gilt für alle drei Formate (TXT/DOCX/PDF), da sie sich denselben Vermerk
+  teilen.
+- Ein real existierender Einrichtungsname („Mainkofen") in
+  Erklärkommentaren zu Regex-Regeln durch die im Projekt bereits
+  etablierte fiktive „Klinik am Auwald" ersetzt — passend zur eigenen, in
+  `NOTICE` erklärten Regel, dass alle verwendeten Namen frei erfunden
+  sind.
+- `CITATION.cff` zeigte noch Version 0.11.0 vom 2026-07-31, aktualisiert
+  auf den tatsächlichen Stand.
+- Sonderzeichen-Rundlauf (ä ö ü ß Ä Ö Ü) durch alle drei Exportformate
+  jetzt fester Bestandteil von `test_export_hygiene.py`, nicht mehr nur
+  einmalig von Hand geprüft.
+- `BACKLOG.md`: Der Abschnitt „Bewusst nicht vorgesehen" trägt jetzt den
+  Vermerk, dass die dortigen Punkte geprüft und bewusst abgelehnt sind —
+  damit sie nach der Veröffentlichung nicht bei jedem externen Vorschlag
+  neu verhandelt werden müssen.
+
 ## 0.14.1 — 2026-08-10
 
 Absturz bei grossen Dokumenten mit mehreren gleichnamigen Personen behoben.

@@ -213,6 +213,12 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 
 ## Bewusst nicht vorgesehen
 
+Jeder Punkt hier wurde geprüft und mit Begründung abgelehnt — nicht
+übersehen oder aufgeschoben. Wer einen dieser Punkte erneut vorschlägt
+(intern oder als Issue nach der Veröffentlichung), findet die Begründung
+hier; sie gilt, bis sich die zugrunde liegende Voraussetzung ändert, nicht
+bis jemand sie zum ersten Mal wieder aufwirft.
+
 - **Cloud oder externe Schnittstelle.** Das Werkzeug verarbeitet Arztbriefe
   und Gutachten; nichts davon darf den Rechner verlassen. Der Server bindet
   nur an 127.0.0.1 und bleibt zustandslos.
