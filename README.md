@@ -3,6 +3,7 @@
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-0.16.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
+[![CI](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml/badge.svg)](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml)
 
 > **English:** A local, fully offline tool that removes personally
 > identifiable information from German-language medical letters, reports,
@@ -32,6 +33,19 @@ Der Schwerpunkt liegt auf medizinischen Unterlagen — Arztbriefe, Befunde,
 Gutachten. Rechnungen, Verträge und Behördenschreiben werden ebenso
 abgedeckt: Rechnungs- und Kundennummern, Kontoverbindungen, Steuernummern,
 Kfz-Kennzeichen und Geldbeträge sind eigene Kategorien.
+
+## Schnellstart
+
+```bash
+git clone https://github.com/maximilianhabs/anonymisator.git
+cd anonymisator
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+./start.sh
+```
+
+Öffnet den Browser unter `http://127.0.0.1:5302`. Voraussetzungen, OCR-
+Unterstützung und die getestete Umgebung stehen unter
+[Einrichtung](#einrichtung).
 
 ## Was mit dem Dokument geschieht
 
@@ -590,15 +604,22 @@ prüft mehrere hundert Wörter reinen Befundtext, der keine schützenswerte
 Angabe enthält, und verlangt null Treffer — bei gleichzeitiger Gegenprobe,
 dass echte Namen, Orte und Einrichtungen erhalten bleiben.
 
-Für die **Trefferquote** gilt das nicht. Es gibt bislang keine Messung an
-einem annotierten Prüfsatz. Die Beurteilung
-beruht darauf, dass die Testdokumente nach jeder Änderung durchgelesen werden.
+Für die **Trefferquote** gibt es seit 0.16.0 einen Anfang:
+[`tests/goldkorpus/`](tests/goldkorpus/) enthält frei erfundene Briefe mit
+von Hand geprüfter Ground Truth (was gefunden werden soll), ausgewertet
+getrennt nach **Recall** (was fehlt — der gefährliche Fehler) und
+**Präzision** (was zu viel ist — der nur lästige Fehler).
+[`tests/test_goldkorpus.py`](tests/test_goldkorpus.py) läuft bei jeder
+Änderung mit und schlägt fehl, sobald einer der beiden Werte gegenüber
+einem festgeschriebenen Stand sinkt.
 
-Was das heisst: Die Aussage „findet Namen, Anschriften und Kennnummern" ist
-belegt in dem Sinne, dass es an den mitgelieferten Beispielen nachweislich
-funktioniert. Eine Aussage wie „findet 98 Prozent aller Personennamen" wird
-hier bewusst **nicht** getroffen, weil sie nicht gemessen wurde. Eine solche
-Messung steht im [Backlog](BACKLOG.md).
+**Ehrlich zur Grösse:** aktuell sind es drei Briefe, nicht dreihundert.
+Das reicht, um eine Ratsche gegen Rückschritte zu betreiben — es reicht
+nicht für eine belastbare Prozentzahl über die gesamte Bandbreite
+deutscher Arztbriefe. Eine Aussage wie „findet 98 Prozent aller
+Personennamen" wird hier bewusst **nicht** getroffen. Geplanter Ausbau
+und die noch fehlenden Randfallklassen (OCR-Verstümmelungen, zitierte
+Fremdbefunde, Tabellen/Versalsatz) stehen im [Backlog](BACKLOG.md).
 
 Wer das Werkzeug in einem Zusammenhang einsetzt, in dem eine belastbare Zahl
 gebraucht wird — etwa als Verfahrensschritt in einem Datenschutzkonzept —,
