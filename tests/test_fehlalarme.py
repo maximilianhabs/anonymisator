@@ -487,6 +487,78 @@ for text, darf_nicht_enthalten in [
     pruefe(not any(darf_nicht_enthalten in a for a in arzt3),
            f"{text!r} -- Einrichtung bleibt ausserhalb des Arztnamens (gefunden: {arzt3})")
 
+print("\n=== 19. Verwandtschaftswörter, auch im Genitiv ===")
+# "dem Vater des Patienten" kam unbelegt als Person an -- die NER-
+# Stoppliste hatte Verwandtschaftswörter nie, nur die Regex-Schicht kannte
+# sie ueber _KEIN_NAME. Gefunden im Goldkorpus (fremdbefund_zitat.txt).
+for text in ["Anamnestisch berichtet die Mutter des Patienten.",
+             "Laut Angaben des Vaters bestand die Symptomatik bereits Wochen.",
+             "Die Schwester begleitete die Patientin zur Aufnahme.",
+             "Der Ehemann war während der gesamten Behandlung anwesend."]:
+    treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde]
+    pruefe(not treffer, f"{text!r} bleibt ohne Fehlalarm ({treffer})")
+
+print("\n=== 20. PLZ + Grosseinheiten-Kürzel wird nicht zur Adresse ===")
+# "20000 IE" (Internationale Einheiten, z. B. Vitamin D3) erfuellte die
+# PLZ+Ort-Regel aus 0.15.2 (Versalien) ungewollt mit -- "IE" ist zwei
+# Grossbuchstaben und damit ein gueltiger, wenn auch zu kurzer Versal-
+# Ortsname. Gefunden im Goldkorpus (tabelle_medikation.txt).
+for text in ["Vitamin D3           20000 IE      1x/Woche",
+             "Gegeben wurden 20000 IE Vitamin D3."]:
+    treffer = [f.text for g in detect.analysiere(text) for f in g.funde if g.typ == "ADRESSE"]
+    pruefe(not treffer, f"{text!r} bleibt ohne Adress-Fehlalarm (gefunden: {treffer})")
+
+# Gegenprobe: ein kurzer, aber echter Versal-Ortsname mit PLZ bleibt erkannt.
+passau = [f.text for g in detect.analysiere("94032 PASSAU") for f in g.funde
+          if g.typ == "ADRESSE"]
+pruefe("94032 PASSAU" in passau,
+       f"Ein echter Versal-Ortsname mit PLZ bleibt erkannt (gefunden: {passau})")
+
+print("\n=== 21. Versal-Einrichtung ohne zusammengesetztes Präfix ===")
+# _EINRICHTUNG_VERSAL verlangte bisher immer mindestens einen Buchstaben
+# vor dem Kopfwort -- der frass dabei den Anfang des Kopfworts selbst auf,
+# wenn keine Zusammensetzung vorlag ("KLINIK" wurde zu "K" + "LINIK",
+# Letzteres passt zu keinem Muster). Nur zusammengesetzte Präfixformen wie
+# "BEZIRKSKLINIKUM" funktionierten -- die häufigere, einfache Form nie.
+# Gefunden im Goldkorpus (versalsatz_mehrspaltig.txt).
+for text, muss in [
+    ("KLINIK AM AUWALD", "KLINIK AM AUWALD"),
+    ("KLINIKUM MUSTERSTADT", "KLINIKUM MUSTERSTADT"),
+    ("KRANKENHAUS DEGGENDORF", "KRANKENHAUS DEGGENDORF"),
+]:
+    treffer = [f.text for g in detect.analysiere(text) for f in g.funde
+               if g.typ == "ORGANISATION"]
+    pruefe(muss in treffer, f"{text!r} vollständig als Einrichtung erfasst "
+           f"(gefunden: {treffer})")
+
+# Gegenprobe: zwei durch eine grosse Lücke getrennte Spalten (kopiert aus
+# einem zweispaltigen PDF-Kopf) dürfen nicht zu einem Einrichtungsnamen
+# verschmelzen.
+zweispaltig = [f.text for g in detect.analysiere(
+    "KLINIK AM AUWALD                              ANSPRECHPARTNERIN: FRAU HUBER"
+) for f in g.funde if g.typ == "ORGANISATION"]
+pruefe(zweispaltig == ["KLINIK AM AUWALD"],
+       f"Rechte Spalte bleibt ausserhalb des Einrichtungsnamens (gefunden: {zweispaltig})")
+
+# Auch der zusammengeschriebene Strassenname in Versalien wird jetzt als
+# Adresse erkannt, nicht mehr fälschlich als Einrichtung.
+strasse = [(g.typ, f.text) for g in detect.analysiere("LUDWIGSTRASSE 47, 94032 PASSAU")
+           for f in g.funde]
+pruefe(("ADRESSE", "LUDWIGSTRASSE 47") in strasse,
+       f"Versal-Strassenname als Adresse erfasst (gefunden: {strasse})")
+
+print("\n=== 22. Virustyp mit angehängter Zahl, ein weiterer Wirkstoffstamm ===")
+# "HSV-1" kam unbelegt als Organisation an -- _ist_abkuerzung() entfernte
+# Bindestriche, aber keine Ziffern, bevor sie auf reine Buchstaben prüfte;
+# die angehängte "1" liess die Prüfung scheitern. "Aciclovir" (und
+# Verwandte auf -clovir) kamen unbelegt als Person an, INN-Endung fehlte.
+# Gefunden im Goldkorpus (diagnose_entzuendlich.txt).
+for text in ["PCR auf HSV-1 fiel positiv aus.", "HHV-6 wurde nachgewiesen.",
+             "Unter Aciclovir intravenös zeigte sich Besserung.",
+             "Valaciclovir wurde angesetzt."]:
+    treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde]
+    pruefe(not treffer, f"{text!r} bleibt ohne Fehlalarm ({treffer})")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

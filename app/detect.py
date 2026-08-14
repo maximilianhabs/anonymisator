@@ -311,10 +311,27 @@ _EINR_KOPF_VERSAL = (
 # Vor- und Nachsilben gehören zum Wort: BEZIRKS|KLINIKUM, KLINIK|EN.
 _EINRICHTUNG_VERSAL = (
     r"(?<![\wÄÖÜäöüß])"
-    rf"[A-ZÄÖÜ][A-ZÄÖÜß\-]*?{_EINR_KOPF_VERSAL}[A-ZÄÖÜß]*"
+    # Der Präfix ist optional: ohne das Fragezeichen konnte "KLINIK AM
+    # AUWALD" nie treffen, weil der verpflichtende erste Buchstabe stets
+    # den Anfang von KLINIK selbst auffraß und für das Kopfwort nur noch
+    # "LINIK" übrig liess -- nur zusammengesetzte Präfixformen wie
+    # "BEZIRKSKLINIKUM" funktionierten. Genau die häufigere, nicht
+    # zusammengesetzte Form war seit Einführung dieser Regel (0.12.0)
+    # unentdeckt. Gefunden im Goldkorpus (versalsatz_mehrspaltig.txt).
+    rf"(?:[A-ZÄÖÜ][A-ZÄÖÜß\-]*?)?{_EINR_KOPF_VERSAL}[A-ZÄÖÜß]*"
     # Der Ortsname dahinter, ebenfalls in Versalien. Nur [ \t]: an der
     # Zeilengrenze ist Schluss, sonst verschluckt der Treffer den Umbruch.
-    r"(?:[ \t]+(?!GMBH|GGMBH|AG|KG|E\.[ \t]?V)[A-ZÄÖÜ][A-ZÄÖÜß\-]{2,}){0,2}"
+    # Kurze Bindewörter (AM, IM, ...) sind eine eigene Alternative, analog
+    # zu _EINR_NACHSATZ -- ohne sie riss "KLINIK AM AUWALD" nach "KLINIK"
+    # ab, weil "AM" die Mindestlänge 3 der zweiten Alternative verfehlt.
+    # Höchstens drei Leerzeichen zwischen den Wörtern, nicht [ \t]+: aus
+    # dem Kopierergebnis einer zweispaltigen PDF-Seite (Anschrift links,
+    # Ansprechpartner rechts) steht in derselben Zeile eine grosse
+    # Lücke zwischen den Spalten -- ohne Schranke zog der Treffer die
+    # rechte Spalte mit in den Einrichtungsnamen hinein. Gefunden im
+    # Goldkorpus (versalsatz_mehrspaltig.txt).
+    r"(?:[ \t]{1,3}(?:AM|IM|IN|ZU|FÜR|AN[ \t]DER|ST\.)[ \t]{1,3}[A-ZÄÖÜ][A-ZÄÖÜß\-]+"
+    r"|[ \t]{1,3}(?!GMBH|GGMBH|AG|KG|E\.[ \t]?V)[A-ZÄÖÜ][A-ZÄÖÜß\-]{2,}){0,2}"
     r"(?![\wÄÖÜäöüß])")
 
 # Nummernbezeichnungen kommen in jeder erdenklichen Schreibweise vor:
@@ -429,8 +446,14 @@ REGELN: list[tuple[str, str, int]] = [
     # --- Anschriften --------------------------------------------------------
     # Zusammengeschrieben ("Ludwigstraße 47", "Kirchweg 4") — das
     # Gattungswort klebt am Namen, deshalb Kleinschreibung im Wortinnern.
+    # Das Suffix selbst gross-/kleinschreibungsunabhängig (?i:...): in
+    # Versal-Briefköpfen steht auch die zusammengeschriebene Form komplett
+    # in Grossbuchstaben ("LUDWIGSTRASSE 47") -- ohne das griff bisher
+    # keine Regel, der Treffer fiel stattdessen der Einrichtungserkennung
+    # zu. Die Pflicht-Ziffernfolge direkt danach hält das Risiko klein.
+    # Gefunden im Goldkorpus (versalsatz_mehrspaltig.txt).
     ("ADRESSE",
-     r"\b[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ.\-]*(?:straße|strasse|str\.|weg|allee|platz|gasse"
+     r"\b[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ.\-]*(?i:straße|strasse|str\.|weg|allee|platz|gasse"
      r"|ring|damm|ufer|chaussee|steig|hof|berg|feld)[ \t]+\d{1,4}[ \t]*[a-zA-Z]?\b", 0),
     # Getrennt geschrieben ("Königsberger Straße 1", "Am Alten Weg 3",
     # "Berliner Str. 5") — mindestens so häufig wie die zusammengeschriebene
@@ -448,9 +471,13 @@ REGELN: list[tuple[str, str, int]] = [
     # Der Ortsname nach der PLZ verlangte bisher Binnenkleinschreibung und
     # überging deshalb Briefköpfe in Versalien ("94469 DEGGENDORF") — ohne
     # PLZ davor fängt das Sprachmodell einen Versal-Ortsnamen meist noch ab,
-    # mit PLZ griff bisher gar keine Regel.
+    # mit PLZ griff bisher gar keine Regel. Mindestens zwei weitere
+    # Buchstaben nach dem ersten (Mindestlänge 3) — sonst griff das Muster
+    # auch bei Grosseinheiten-Kürzeln direkt hinter einer fünfstelligen
+    # Zahl ("20000 IE" wurde zur Adresse "20000 IE"), gefunden im
+    # Goldkorpus (tabelle_medikation.txt).
     ("ADRESSE",
-     r"\b\d{5}[ \t]+[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ]+(?:[ \-][A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ]+)*", 0),
+     r"\b\d{5}[ \t]+[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ]{2,}(?:[ \-][A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ]+)*", 0),
     ("ADRESSE", r"(?:Postfach)[ \t]*:?[ \t]*\d[\d \t]{2,12}", 0),
 
     # --- Einrichtungen ------------------------------------------------------
@@ -691,6 +718,14 @@ _STOPP_ALLGEMEIN = {
     "sonntag", "links", "rechts", "beidseits", "temporal", "frontal",
     "parietal", "okzipital", "zentral", "medial", "lateral", "distal",
     "proximal", "kranial", "kaudal", "ventral", "dorsal",
+    # Verwandtschaftsbezeichnungen. In _KEIN_NAME schon für die Regex-Schicht
+    # gesperrt ("Herr Vater" wird nicht zum Namen "Vater"), fehlten hier aber
+    # für die NER-Schicht -- "dem Vater des Patienten" kam unbelegt als
+    # Person an. Genitivform ("Vaters") fängt die bestehende Plural-s-Logik
+    # in _stoppwort_einzeln automatisch mit ab.
+    "sohn", "tochter", "ehemann", "ehefrau", "mutter", "vater", "bruder",
+    "schwester", "eltern", "angehörige", "angehöriger", "angehörigen",
+    "betreuer", "betreuerin",
 }
 _STOPP = _STOPP_ANATOMIE | _STOPP_MEDIZIN | _STOPP_ALLGEMEIN
 
@@ -739,6 +774,13 @@ _MED_ENDUNGEN = (
     # Antikonvulsiva: Racetame ("Levetiracetam", "Piracetam") und
     # Succinimide ("Ethosuximid") — beide kamen als Person/Behandler an.
     "acetam", "uximid",
+    # Virostatika der Guanosin-Analoga-Klasse ("Aciclovir", "Valaciclovir",
+    # "Famciclovir") — kamen unbelegt als Person an. Gefunden im Goldkorpus
+    # (diagnose_entzuendlich.txt).
+    "clovir",
+    # Alkylanz "Temozolomid" (Glioblastom-Standardtherapie) — kam unbelegt
+    # als Person an. Gefunden im Goldkorpus (diagnose_hirntumor.txt).
+    "zolomid",
 )
 
 # Grundwörter am Ende eines Kompositums. Deutsche Zusammensetzungen tragen
@@ -863,9 +905,14 @@ def _ist_abkuerzung(wert: str) -> bool:
     """Reine Grossbuchstabenfolge — im Befund fast immer ein Fachkürzel.
 
     ANA, ANCA, TSH, MAG, CRP, EEG. Krankenkassen sind die Ausnahme und
-    stehen deshalb in einer eigenen Liste.
+    stehen deshalb in einer eigenen Liste. Eine angehängte Zahl fällt vorher
+    weg: Virustypen tragen sie als festen Bestandteil (HSV-1, HHV-6,
+    HPV-16), ohne das schlug die reine Alpha-Prüfung fehl und "HSV-1" kam
+    unbelegt als Organisation an (gefunden im Goldkorpus,
+    diagnose_entzuendlich.txt).
     """
     kern = re.sub(r"[-.\s]", "", wert)
+    kern = re.sub(r"\d+$", "", kern)
     if not (2 <= len(kern) <= 6) or not kern.isalpha():
         return False
     return kern.isupper() and kern.lower() not in _ECHTE_ABKUERZUNGEN

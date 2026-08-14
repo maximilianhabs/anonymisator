@@ -1,0 +1,15 @@
+{
+  "beschreibung": "Simuliert typische OCR-Verstümmelungen (rn→m, l→I, fehlende Umlaute) direkt in den identifizierenden Angaben. Trotz Korruption werden alle Angaben weiterhin vollständig erkannt -- die Muster reagieren robust auf diese Fehlerklasse, solange die Grossschreibungsstruktur erhalten bleibt.",
+  "funde": [
+    {"typ": "ORGANISATION", "text": "Klinik am Auwald"},
+    {"typ": "PATIENT", "text": "Sabine Wamecke"},
+    {"typ": "GEBURTSDATUM", "text": "geboren am 17.05.1982"},
+    {"typ": "ADRESSE", "text": "Muhlweg 8"},
+    {"typ": "ADRESSE", "text": "94036 Passau"},
+    {"typ": "GESCHLECHT", "text": "weiblich"},
+    {"typ": "DIAGNOSECODE", "text": "G51.0"},
+    {"typ": "DATUM", "text": "04.02.2026"},
+    {"typ": "TELEFON", "text": "0851 445566"},
+    {"typ": "ARZT", "text": "IIse Brandt"}
+  ]
+}

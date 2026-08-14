@@ -1,13 +1,41 @@
 {
+  "diagnose_entzuendlich": {
+    "praezision": 1.0,
+    "recall": 1.0
+  },
+  "diagnose_hirntumor": {
+    "praezision": 0.9090909090909091,
+    "recall": 1.0
+  },
   "doppelname_praefix": {
     "praezision": 1.0,
+    "recall": 1.0
+  },
+  "fremdbefund_zitat": {
+    "praezision": 1.0,
+    "recall": 1.0
+  },
+  "kfz_unfallgutachten": {
+    "praezision": 0.8823529411764706,
     "recall": 1.0
   },
   "nichtdeutscher_name_fachbegriff": {
     "praezision": 1.0,
     "recall": 1.0
   },
+  "ocr_verstuemmelt": {
+    "praezision": 1.0,
+    "recall": 1.0
+  },
   "ortsname_als_name": {
+    "praezision": 1.0,
+    "recall": 1.0
+  },
+  "tabelle_medikation": {
+    "praezision": 1.0,
+    "recall": 1.0
+  },
+  "versalsatz_mehrspaltig": {
     "praezision": 1.0,
     "recall": 1.0
   }

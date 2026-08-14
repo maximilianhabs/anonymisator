@@ -1,0 +1,15 @@
+{
+  "beschreibung": "Hirntumor-Diagnosegruppe (Glioblastom), bisher nicht im Goldkorpus vertreten. Bekannter, nicht reproduzierbarer Fehlalarm bleibt bewusst ausserhalb der Erwartung: 'perifokalem Ödem' kommt im vollen Dokumentkontext unbelegt als ORT an, liess sich isoliert nicht nachstellen (klassische NER-Kontext-Sensitivität, siehe feedback_anonymisator_erkennung). Der Fund wird trotzdem ersetzt, unbelegte Treffer sind kein Sicherheitsproblem.",
+  "funde": [
+    {"typ": "ORGANISATION", "text": "Klinik am Auwald"},
+    {"typ": "PATIENT", "text": "Rüdiger Lindqvist"},
+    {"typ": "GEBURTSDATUM", "text": "geboren am 19.07.1957"},
+    {"typ": "ADRESSE", "text": "Further Straße 40"},
+    {"typ": "ADRESSE", "text": "94209 Regen"},
+    {"typ": "GESCHLECHT", "text": "männlich"},
+    {"typ": "DIAGNOSECODE", "text": "C71.9"},
+    {"typ": "DATUM", "text": "21.02.2026"},
+    {"typ": "TELEFON", "text": "09921 112233"},
+    {"typ": "ARZT", "text": "Susanne Brandstetter"}
+  ]
+}

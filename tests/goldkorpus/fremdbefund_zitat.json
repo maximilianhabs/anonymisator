@@ -1,0 +1,18 @@
+{
+  "beschreibung": "Zitierter Fremdbefund mit zweitem Behandler, zweiter Einrichtung und drittem Patienten (dem Vater, gleicher Nachname wie der Hauptpatient). Bekannte, bereits dokumentierte Grenze: welcher der beiden 'Vogt' den blossen Nachnamen 'gewinnt', ist nicht definiert (siehe CHANGELOG 0.14.1) -- beide werden trotzdem ersetzt.",
+  "funde": [
+    {"typ": "ORGANISATION", "text": "Klinik am Auwald"},
+    {"typ": "PATIENT", "text": "Elias Vogt"},
+    {"typ": "GEBURTSDATUM", "text": "geboren am 03.09.1994"},
+    {"typ": "ADRESSE", "text": "Further Straße 15"},
+    {"typ": "ADRESSE", "text": "94209 Regen"},
+    {"typ": "GESCHLECHT", "text": "männlich"},
+    {"typ": "DIAGNOSECODE", "text": "G11.4"},
+    {"typ": "PATIENT", "text": "Manfred Vogt"},
+    {"typ": "ARZT", "text": "Thomas Bruckner"},
+    {"typ": "ORGANISATION", "text": "Klinikum Ingolstadt"},
+    {"typ": "JAHRESZAHL", "text": "2019"},
+    {"typ": "TELEFON", "text": "09921 778899"},
+    {"typ": "ARZT", "text": "Antonia Reithmeier"}
+  ]
+}

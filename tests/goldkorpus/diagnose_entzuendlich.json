@@ -1,0 +1,14 @@
+{
+  "beschreibung": "Entzündlich/erregerbedingte Diagnosegruppe (Enzephalitis), bisher nicht im Goldkorpus vertreten. Enthält einen Virustyp mit angehängter Zahl (HSV-1) und einen Wirkstoff (Aciclovir), beide Fachbegriffe.",
+  "funde": [
+    {"typ": "ORGANISATION", "text": "Klinik am Auwald"},
+    {"typ": "PATIENT", "text": "Melanie Öztürk"},
+    {"typ": "GEBURTSDATUM", "text": "geboren am 30.01.2001"},
+    {"typ": "ADRESSE", "text": "Bahnhofstraße 6"},
+    {"typ": "ADRESSE", "text": "94469 Deggendorf"},
+    {"typ": "GESCHLECHT", "text": "weiblich"},
+    {"typ": "DIAGNOSECODE", "text": "G04.9"},
+    {"typ": "TELEFON", "text": "0991 667788"},
+    {"typ": "ARZT", "text": "Wolfgang Huber"}
+  ]
+}

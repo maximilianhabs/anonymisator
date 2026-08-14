@@ -1,0 +1,16 @@
+{
+  "beschreibung": "Zweispaltiger Briefkopf in Versalien (Anschrift links, Ansprechpartnerin/Durchwahl rechts, durch eine grosse Lücke getrennt statt durch einen Zeilenumbruch -- wie beim Kopieren aus einer mehrspaltigen PDF-Seite). Prüft, dass Einrichtungsname und Strassenname trotz Versalschreibung erkannt werden, ohne die rechte Spalte mit hineinzuziehen.",
+  "funde": [
+    {"typ": "ORGANISATION", "text": "KLINIK AM AUWALD"},
+    {"typ": "TELEFON", "text": "0851 4409-233"},
+    {"typ": "ADRESSE", "text": "LUDWIGSTRASSE 47"},
+    {"typ": "ADRESSE", "text": "94032 PASSAU"},
+    {"typ": "TELEFON", "text": "0851 4409-299"},
+    {"typ": "PATIENT", "text": "Tobias Rehm"},
+    {"typ": "GEBURTSDATUM", "text": "geboren am 28.04.1963"},
+    {"typ": "ADRESSE", "text": "Further Straße 21"},
+    {"typ": "GESCHLECHT", "text": "männlich"},
+    {"typ": "DIAGNOSECODE", "text": "G61.0"},
+    {"typ": "ARZT", "text": "Katharina Sailer"}
+  ]
+}

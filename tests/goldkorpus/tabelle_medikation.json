@@ -1,0 +1,14 @@
+{
+  "beschreibung": "Medikationstabelle mit spaltenausgerichteten Dosierungen (grosse Lücken statt Tabulatoren). Prüft, dass eine Dosierung mit fünfstelliger Zahl (20000 IE) nicht fälschlich als PLZ+Ort-Adresse gelesen wird.",
+  "funde": [
+    {"typ": "ORGANISATION", "text": "Klinik am Auwald"},
+    {"typ": "PATIENT", "text": "Nadine Falkner"},
+    {"typ": "GEBURTSDATUM", "text": "geboren am 11.12.1991"},
+    {"typ": "ADRESSE", "text": "Further Straße 3"},
+    {"typ": "ADRESSE", "text": "94481 Grafenau"},
+    {"typ": "GESCHLECHT", "text": "weiblich"},
+    {"typ": "DIAGNOSECODE", "text": "G35"},
+    {"typ": "TELEFON", "text": "08552 334455"},
+    {"typ": "ARZT", "text": "Felix Ahrens"}
+  ]
+}
