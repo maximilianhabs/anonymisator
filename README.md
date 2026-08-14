@@ -132,7 +132,13 @@ Für den Produktivbetrieb ist dieser Weg nicht gedacht.
 
 ## Beispiel
 
-Eingang — ein frei erfundener Arztbrief:
+![Prüfansicht: ein frei erfundener Arztbrief mit farbig markierten Fundstellen, Legende, Stufenwahl und Statistik](docs/screenshots/pruefansicht.jpg)
+
+Die Eingabe — Datei per Drag & Drop oder Text einfügen:
+
+![Startseite mit Eingabefeld](docs/screenshots/eingabe.jpg)
+
+Als Text, dasselbe Beispiel — ein frei erfundener Arztbrief:
 
 ```
 Neurologische Klinik am Auwald
