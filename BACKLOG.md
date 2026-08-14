@@ -169,30 +169,47 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 - **Stapelverarbeitung.** Mehrere Dateien nacheinander mit derselben Stufe
   und denselben Entscheidungen. Sinnvoll erst, wenn der Review-Schritt dabei
   erhalten bleibt — ohne ihn wäre es genau der falsche Komfort.
-- **Erkennungsgüte messen.** Ein kleiner Satz von Hand annotierter, frei
-  erfundener Dokumente, gegen den sich Trefferquote und Fehlalarme beziffern
-  lassen. Heute beruht die Beurteilung auf Durchlesen. **Das ist die
-  wichtigste offene Lücke** — jede Aussage über die Erkennungsleistung ist
-  bis dahin eine Vermutung, und ein Rückschritt beim Recall bliebe
-  unbemerkt, weil die vorhandenen Tests nur prüfen, was *nicht* gefunden
-  werden darf.
+- **Erkennungsgüte messen.** 🚧 Begonnen (2026-08-14), `tests/test_goldkorpus.py`
+  läuft bereits mit drei Briefen in CI. Ein kleiner Satz von Hand annotierter,
+  frei erfundener Dokumente, gegen den sich Trefferquote und Fehlalarme
+  beziffern lassen — vorher beruhte die Beurteilung nur auf Durchlesen.
 
-  Umsetzung: 20 bis 30 vollständig erfundene Briefe, jeder mit einer
-  Randfallklasse, die heute nicht abgedeckt ist:
-  - Doppelnamen und Namen mit Präfix („van der Berg", „Di Lorenzo")
-  - nichtdeutsche Namen, auch solche, die als Fachbegriff lesbar sind
-  - Namen, die zugleich Ortsnamen sind („Frau Hamburg")
-  - OCR-typische Verstümmelungen (`rn`→`m`, `l`↔`I`, fehlende Umlaute)
-  - zitierte Fremdbefunde mit zweitem Behandler und drittem Patienten
-  - Tabellen, Versalsatz, mehrspaltige Briefköpfe
+  Umsetzung: **Ziel 20 bis 30** vollständig erfundene Briefe (Stand: 3), jeder
+  mit einer Randfallklasse:
+  - ✅ Doppelnamen und Namen mit Präfix („van der Berg") —
+    `doppelname_praefix` — deckte dabei einen echten Fund auf: die
+    Namenskette riss bei „van der" ab, Arztnamen wie „Petra van der
+    Berg-Ostermann" wurden nur bis zum Vornamen erkannt. Behoben in
+    `app/detect.py` (`_NAMENSPARTIKEL`), siehe CHANGELOG.
+  - ✅ nichtdeutsche Namen, die zugleich Fachbegriff lesbar sind —
+    `nichtdeutscher_name_fachbegriff` (Nachname „Kolik" neben dem
+    Diagnosewort „Nierenkolik" im selben Brief)
+  - ✅ Namen, die zugleich Ortsnamen sind — `ortsname_als_name`
+    („Frau Hamburg" neben einer echten Ortsangabe „Klinikum Bremen")
+  - ⬜ OCR-typische Verstümmelungen (`rn`→`m`, `l`↔`I`, fehlende Umlaute)
+  - ⬜ zitierte Fremdbefunde mit zweitem Behandler und drittem Patienten
+  - ⬜ Tabellen, Versalsatz, mehrspaltige Briefköpfe
+  - ⬜ weitere Diagnosegruppen (bisher nur TIA, Kopfschmerz, Parkinson)
 
-  Format: Rohtext plus eine Liste erwarteter Spannen `(start, ende, typ)` je
-  Datei, keine externe Bibliothek. Ausgewertet wird getrennt nach
-  **Recall je Kategorie** (was fehlt) und **Präzision** (was zu viel ist) —
-  ein einzelner F-Wert würde genau die Asymmetrie verwischen, auf die es
-  hier ankommt: ein übersehener Name wiegt schwerer als ein Fehlalarm.
-  Läuft als `tests/test_goldkorpus.py` bei jedem Durchlauf mit und meldet
-  eine Verschlechterung gegenüber einem festgeschriebenen Stand.
+  Format je Dokument: `<slug>.txt` (Brief) + `<slug>.json`
+  (`{"beschreibung": ..., "funde": [{"typ": ..., "text": ...}, ...]}`) —
+  bewusst **ohne Positions-Spannen**, nur Text+Typ-Paare je erwarteter
+  Fundstelle. Robuster gegenüber kleinen Textänderungen, keine externe
+  Bibliothek nötig. Ausgewertet wird getrennt nach **Recall** (was fehlt)
+  und **Präzision** (was zu viel ist) — ein einzelner F-Wert würde genau
+  die Asymmetrie verwischen, auf die es hier ankommt: ein übersehener Name
+  wiegt schwerer als ein Fehlalarm.
+
+  Ratsche: der Stand liegt in `tests/goldkorpus_stand.json` (Recall/
+  Präzision je Dokument), `tests/test_goldkorpus.py` schlägt fehl, sobald
+  einer der beiden Werte gegenüber diesem Stand sinkt. Eine Verbesserung
+  wird nicht automatisch übernommen — `--stand-aktualisieren` schreibt den
+  neuen Stand, der dann bewusst mitcommittet wird.
+
+  Orientierung für Aufbau und Stil kam aus *Arztbriefe in der Neurologie*
+  (Schmidt-Wilcke/Sturm, Springer 2023) — nur zur Struktur, kein Satz
+  daraus übernommen: das Buch ist urheberrechtlich geschützt, alle Briefe
+  hier sind komplette Neuschöpfungen.
 
   Alle Inhalte müssen erfunden sein und dürfen keinem realen Fall
   nachgebildet werden — das Korpus liegt im öffentlichen Repository.
@@ -213,6 +230,15 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   soll in solchen Bereichen keine Sicherheit vortäuschen (Typ bleibt
   `PERSON`, statt zu raten), und der Review soll die Stellen gebündelt
   anzeigen, weil dort die Zuordnung erfahrungsgemäss geprüft gehört.
+
+- **Kurze englische Projektbeschreibung.** ✅ Erledigt (2026-08-14). Repo-
+  Oberfläche, Regeln und README bleiben bewusst Deutsch — das Werkzeug ist
+  für deutschsprachige Dokumente gebaut — aber ein kurzer englischer Absatz
+  direkt unter dem Titel im README erklärt jetzt, was das Werkzeug tut und
+  dass die Erkennungslogik (Muster-vs-Wortliste-Prinzip in `app/detect.py`)
+  auf andere Sprachen übertragbar wäre. GitHub-„About"-Feld ebenfalls auf
+  Englisch gesetzt. Kein Umbau auf eine zweisprachige README-Struktur —
+  nur eine kurze Einstiegsbrücke für internationale Leser.
 
 ## Später
 

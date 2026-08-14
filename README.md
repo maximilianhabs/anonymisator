@@ -1,8 +1,18 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.15.3-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.16.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
+
+> **English:** A local, fully offline tool that removes personally
+> identifiable information from German-language medical letters, reports,
+> invoices and official correspondence. Detection combines rule-based
+> patterns with a statistical German NER model — nothing leaves the
+> machine, nothing is stored. Built specifically for German text, but the
+> [pattern-vs-wordlist principle](app/detect.py) behind the detection
+> rules is language-agnostic and could be adapted to other languages. The
+> rest of this README is in German, since that's the tool's working
+> language.
 
 Werkzeug, das deutschsprachige Dokumente von personenbeziehbaren Angaben
 befreit. Bedienung im Browser, Verarbeitung ausschliesslich auf dem Rechner,
