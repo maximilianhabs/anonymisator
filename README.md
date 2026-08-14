@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.16.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.18.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 [![CI](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml/badge.svg)](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml)
 
@@ -220,7 +220,9 @@ anonymisiert ergibt verschiedene Datumsangaben.
 
 Die Stufe ändert nicht, **was** gefunden wird, sondern **was damit geschieht**.
 Die Erkennung läuft immer auf voller Schärfe; der Wechsel ist deshalb sofort
-sichtbar, ohne neue Analyse.
+sichtbar, ohne neue Analyse. Dieselbe Übersicht steht seit 0.18.0 auch in
+der Anwendung selbst, ausklappbar in der Seitenleiste unter „Alle Stufen
+im Vergleich" — bevor man sich für eine Stufe entscheidet.
 
 | Kategorie | Leicht | Standard | Streng |
 |---|---|---|---|
@@ -613,13 +615,16 @@ getrennt nach **Recall** (was fehlt — der gefährliche Fehler) und
 Änderung mit und schlägt fehl, sobald einer der beiden Werte gegenüber
 einem festgeschriebenen Stand sinkt.
 
-**Ehrlich zur Grösse:** aktuell sind es drei Briefe, nicht dreihundert.
+**Ehrlich zur Grösse:** aktuell sind es zehn Briefe, nicht dreihundert.
 Das reicht, um eine Ratsche gegen Rückschritte zu betreiben — es reicht
 nicht für eine belastbare Prozentzahl über die gesamte Bandbreite
 deutscher Arztbriefe. Eine Aussage wie „findet 98 Prozent aller
-Personennamen" wird hier bewusst **nicht** getroffen. Geplanter Ausbau
-und die noch fehlenden Randfallklassen (OCR-Verstümmelungen, zitierte
-Fremdbefunde, Tabellen/Versalsatz) stehen im [Backlog](BACKLOG.md).
+Personennamen" wird hier bewusst **nicht** getroffen. Die zehn Briefe
+decken bereits die in `BACKLOG.md` genannten Randfallklassen ab
+(Doppelnamen mit Präfix, nichtdeutsche Namen, Ortsnamen als Nachname,
+OCR-Verstümmelungen, zitierte Fremdbefunde, Tabellen, Versalsatz mit
+mehrspaltigem Kopf) sowie ein Nicht-Arztbrief-Dokument; weiterer Ausbau
+auf mehr Diagnosevielfalt steht im [Backlog](BACKLOG.md).
 
 Wer das Werkzeug in einem Zusammenhang einsetzt, in dem eine belastbare Zahl
 gebraucht wird — etwa als Verfahrensschritt in einem Datenschutzkonzept —,

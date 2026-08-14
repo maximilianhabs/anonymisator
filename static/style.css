@@ -387,6 +387,27 @@ mark.ers {
   color: var(--gedaempft);
 }
 
+/* ---------------------------------------------------------- Stufenmatrix */
+#stufenmatrix-inhalt { overflow-x: auto; }
+.stufenmatrix-tabelle {
+  width: 100%; border-collapse: collapse; font-size: 11px;
+}
+.stufenmatrix-tabelle th, .stufenmatrix-tabelle td {
+  text-align: left; padding: 6px 5px; vertical-align: top;
+  border-bottom: 1px solid var(--rand);
+}
+.stufenmatrix-tabelle thead th {
+  color: var(--gedaempft); font-weight: 600; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .03em;
+}
+/* Die Spalte der gerade gewählten Stufe bleibt auch hier hervorgehoben —
+   dieselbe Idee wie bei den Stufenknöpfen, damit die Matrix erkennbar auf
+   die aktuelle Wahl bezogen bleibt, nicht nur eine losgelöste Tabelle ist. */
+.stufenmatrix-tabelle td.aktiv, .stufenmatrix-tabelle th.aktiv {
+  background: var(--bg); font-weight: 600; color: var(--text);
+}
+.stufenmatrix-tabelle td:first-child { color: var(--gedaempft); font-weight: 500; }
+
 .warnung {
   background: var(--warn-bg); border-color: var(--warn-rand);
   font-size: 12.5px;

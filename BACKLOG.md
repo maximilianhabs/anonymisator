@@ -145,9 +145,25 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 
 ## Nützlich
 
-- **Stufenmatrix im Programm sichtbar machen.** Heute steht sie nur im
-  README. Eine ausklappbare Übersicht in der Seitenleiste würde zeigen, was
-  eine Stufe konkret tut, bevor man sie wählt.
+- **Fundquelle im Tooltip anzeigen.** ✅ Erledigt (2026-08-14). Der Tooltip
+  über einer Fundstelle zeigt jetzt Kategorie, Quelle ("Regelbasiert" /
+  "Sprachmodell" / "Sprachmodell, unbelegt" / "Konsistenz-Nachlauf" /
+  "Manuell markiert") und Ersatz in einer Zeile (`quelleKurz()` in
+  `static/app.js`). Keine Backend-Änderung nötig, `Fund.quelle` wurde
+  schon vorher mitgeschickt. Grenze bleibt: unterscheidet nur "regelbasiert"
+  von "Sprachmodell", nicht die einzelne Regel unter den z. B. vier
+  ADRESSE-Mustern — dafür bräuchte jede der rund 80 REGELN-Zeilen einen
+  eigenen Namen, das ist bewusst nicht vorgesehen (siehe unten).
+
+- **Stufenmatrix im Programm sichtbar machen.** ✅ Erledigt (2026-08-14).
+  Ausklappbare Übersicht "Alle Stufen im Vergleich" in der Seitenleiste
+  (`zeichneStufenmatrix()` in `static/app.js`), direkt aus `Z.stufen`/
+  `Z.kategorien` aufgebaut statt als Textkopie der README-Tabelle gepflegt
+  — bleibt dadurch automatisch in Sync mit `stufen.py`. Kategorien, die auf
+  allen drei Stufen ohnehin immer ersetzt werden (Kennnummern, Telefon,
+  E-Mail), fasst eine Sammelzeile zusammen, aus den Daten selbst
+  abgelesen statt `_DIREKT` in JS zu duplizieren. Die Spalte der gerade
+  gewählten Stufe ist hervorgehoben. In Chrome (hell/dunkel) geprüft.
 - **Eigene Begriffslisten.** Wiederkehrende Namen (Kolleginnen und Kollegen,
   Stationen, Zuweiser) einmal hinterlegen, statt sie in jedem Dokument über
   „Zusätzlich ersetzen" nachzutragen — heute wirkt das nur für das eine
@@ -169,13 +185,14 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 - **Stapelverarbeitung.** Mehrere Dateien nacheinander mit derselben Stufe
   und denselben Entscheidungen. Sinnvoll erst, wenn der Review-Schritt dabei
   erhalten bleibt — ohne ihn wäre es genau der falsche Komfort.
-- **Erkennungsgüte messen.** 🚧 Begonnen (2026-08-14), `tests/test_goldkorpus.py`
-  läuft bereits mit drei Briefen in CI. Ein kleiner Satz von Hand annotierter,
+- **Erkennungsgüte messen.** 🚧 Läuft (2026-08-14), `tests/test_goldkorpus.py`
+  läuft mit zehn Briefen in CI. Ein kleiner Satz von Hand annotierter,
   frei erfundener Dokumente, gegen den sich Trefferquote und Fehlalarme
   beziffern lassen — vorher beruhte die Beurteilung nur auf Durchlesen.
 
-  Umsetzung: **Ziel 20 bis 30** vollständig erfundene Briefe (Stand: 3), jeder
-  mit einer Randfallklasse:
+  Umsetzung: **Ziel 20 bis 30** vollständig erfundene Briefe (Stand: 10),
+  jeder mit einer Randfallklasse. Alle ursprünglich genannten Randfallklassen
+  sind jetzt abgedeckt:
   - ✅ Doppelnamen und Namen mit Präfix („van der Berg") —
     `doppelname_praefix` — deckte dabei einen echten Fund auf: die
     Namenskette riss bei „van der" ab, Arztnamen wie „Petra van der
@@ -186,10 +203,39 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
     Diagnosewort „Nierenkolik" im selben Brief)
   - ✅ Namen, die zugleich Ortsnamen sind — `ortsname_als_name`
     („Frau Hamburg" neben einer echten Ortsangabe „Klinikum Bremen")
-  - ⬜ OCR-typische Verstümmelungen (`rn`→`m`, `l`↔`I`, fehlende Umlaute)
-  - ⬜ zitierte Fremdbefunde mit zweitem Behandler und drittem Patienten
-  - ⬜ Tabellen, Versalsatz, mehrspaltige Briefköpfe
-  - ⬜ weitere Diagnosegruppen (bisher nur TIA, Kopfschmerz, Parkinson)
+  - ✅ OCR-typische Verstümmelungen — `ocr_verstuemmelt` (`rn`→`m`, `l`→`I`,
+    fehlende Umlaute in Name/Adresse/Arztname; alle blieben trotzdem
+    vollständig erkannt)
+  - ✅ zitierter Fremdbefund mit zweitem Behandler und drittem Patienten —
+    `fremdbefund_zitat`; deckte auf, dass Verwandtschaftswörter
+    ("Vaters") in der NER-Stoppliste fehlten
+  - ✅ Medikationstabelle — `tabelle_medikation`; deckte auf, dass eine
+    fünfstellige Dosierung mit Einheitenkürzel ("20000 IE") fälschlich
+    als PLZ+Ort-Adresse gelesen wurde
+  - ✅ Versalsatz mit mehrspaltigem Briefkopf — `versalsatz_mehrspaltig`;
+    deckte gleich drei Funde auf: Versal-Einrichtungen ohne
+    zusammengesetztes Präfix ("KLINIK AM AUWALD") wurden nie erkannt,
+    kurze Bindewörter rissen die Namenskette ab, und ohne Lückenbreiten-
+    Schranke zog der Treffer die zweite Spalte eines kopierten,
+    mehrspaltigen PDF-Kopfs mit hinein; zusammengeschriebene Versal-
+    Strassennamen ("LUDWIGSTRASSE 47") fielen zusätzlich durch
+  - ✅ drei weitere Diagnosegruppen — `diagnose_entzuendlich` (Enzephalitis;
+    deckte auf, dass Virustypen mit angehängter Zahl wie "HSV-1" in
+    `_ist_abkuerzung()` an der Ziffer scheiterten), `diagnose_hirntumor`
+    (Glioblastom; INN-Endung „zolomid" ergänzt), `kfz_unfallgutachten`
+    (ein Nicht-Arztbrief-Dokument: Aktenzeichen, Kfz-Kennzeichen,
+    Versicherungspolice, Geldbeträge)
+
+  Zwei gefundene Fehlalarme bewusst **nicht** behoben, dokumentiert statt
+  versteckt (kein Privatsphäre-Risiko, beide werden trotzdem ersetzt):
+  „perifokalem Ödem" als ORT (isoliert nicht reproduzierbar, klassische
+  NER-Kontext-Sensitivität) und eine doppelte, leicht inkonsistente
+  Erfassung der Sachverständigen in `kfz_unfallgutachten` (Titel
+  „Dipl.-Ing." wird von keiner ARZT-Regel erkannt) — Details in den
+  jeweiligen `.json`-Dateien im Korpus.
+
+  Noch offen für weiteren Ausbau in Richtung 20–30: mehr Diagnosevielfalt
+  über die jetzt vertretenen zehn Fälle hinaus.
 
   Format je Dokument: `<slug>.txt` (Brief) + `<slug>.json`
   (`{"beschreibung": ..., "funde": [{"typ": ..., "text": ...}, ...]}`) —
@@ -266,3 +312,29 @@ bis jemand sie zum ersten Mal wieder aufwirft.
   Prozent Trefferquote. Der Prüfschritt ist kein Komfort, sondern der Kern.
 - **Zuordnungstabelle automatisch speichern.** Sie hebt die Anonymisierung
   auf und wird deshalb nur auf ausdrückliche Bestätigung erzeugt.
+- **Multi-Core-Batchverarbeitung für grosse Dokumentmengen** (2026-08-14,
+  externes Feedback). Widerspricht dem Kernprinzip: der manuelle
+  Prüfschritt vor jedem Export ist kein Komfort, sondern der
+  Sicherheitsmechanismus selbst (siehe „Für wen" im README, „Ausdrücklich
+  nicht gedacht als … unbeaufsichtigte Stapelverarbeitung"). Eine
+  Batch-Engine, die diesen Schritt umgeht, wäre kein Performance-Feature,
+  sondern ein Sicherheitsrückschritt.
+- **Reversible Pseudonymisierung über HMAC/Secret-Key-Vault** (2026-08-14,
+  externes Feedback). Die konsistenten Platzhalter (`[PATIENT_A]`,
+  `[ARZT_1]`) gibt es schon, ohne einen Schlüssel speichern zu müssen. Ein
+  Secret Key, der eine Rückführung auf die echte Identität erlaubt, wäre
+  ein gespeichertes Geheimnis — widerspricht der zustandslosen
+  „nichts wird gespeichert"-Zusicherung, auf der das gesamte
+  Vertrauensmodell des Werkzeugs beruht.
+- **Erkennungsregeln nach YAML/JSON auslagern** (2026-08-14, externes
+  Feedback). Jede Regel in `app/detect.py` trägt einen Kommentar, der
+  erklärt, warum sie existiert und welchen realen Fehlalarm sie behebt —
+  diese Begründung ist der eigentliche Audit-Trail des Projekts. Eine
+  Auslagerung in eine Konfigurationsdatei würde Muster von ihrer
+  Begründung trennen und Fachfremden erlauben, Regeln zu ändern, ohne die
+  in `CONTRIBUTING.md` vorgeschriebene Pflicht zu einem Positiv- und
+  Negativtest je neuer Regel einzuhalten.
+- **Formale Pipeline-/Protocol-Architektur** (2026-08-14, externes
+  Feedback). Für ein Solo-gepflegtes Projekt dieser Grösse (vier
+  Verarbeitungsschritte: Extraktion, Erkennung, Stufen, Export) wäre eine
+  generische Plugin-Architektur eine Abstraktion ohne aktuellen Bedarf.

@@ -28,6 +28,21 @@ const BUCHSTABEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 // IBAN gibt es nichts umzustellen.
 const UMSTELLBAR = new Set(['PATIENT', 'ARZT', 'PERSON', 'ORGANISATION', 'ORT', 'ADRESSE', 'MANUELL']);
 
+// Kurzform je Behandlung für die Stufenmatrix (Backlog "Stufenmatrix im
+// Programm sichtbar machen"). Kurztext für die schmale Seitenleiste,
+// ausführliche Erklärung als Tooltip -- dieselbe Zurückhaltung wie in
+// STUFEN_INFO.erlaeuterung, keine Rechtsaussage.
+const BEHANDLUNG_KURZ = {
+  behalten: ['bleibt', 'Bleibt unverändert stehen.'],
+  initialen: ['Initialen', 'Wird zu Initialen, z. B. „E. H.“'],
+  jahrgang: ['Jahrgang', 'Wird zum Jahrgang, z. B. „Jahrgang 1958“.'],
+  dekade: ['Dekade', 'Wird zur Lebensdekade, z. B. „60–69 J.“'],
+  verschoben: ['verschoben', 'Wird um einen dokumentweit einheitlichen Zeitraum verschoben.'],
+  nur_ort: ['nur Ort', 'Ort und Postleitzahl bleiben, die Strasse fällt weg.'],
+  gerundet: ['gerundet', 'Wird auf zwei signifikante Stellen gerundet, z. B. „rund 2.100 €“.'],
+  ersetzen: null, // wird je Kategorie mit dem echten Platzhalter gefüllt
+};
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const farbe = (typ) => (Z.kategorien[typ] || {}).farbe || '#888';
@@ -233,12 +248,25 @@ function alleFunde(nurErsetzte) {
     if (nurErsetzte && !ersetzt) continue;
     for (const fund of gruppe.funde) {
       liste.push({
-        ...fund, gid: gruppe.id, typ: gruppe.typ,
+        ...fund, gid: gruppe.id, typ: gruppe.typ, sicher: gruppe.sicher,
         ersetzt, ersatz: ersatzFuer(gruppe, fund),
       });
     }
   }
   return liste.sort((a, b) => a.start - b.start);
+}
+
+/**
+ * Kurzform der Fundquelle für den Tooltip — macht sichtbar, was intern
+ * längst feststeht (Fund.quelle, seit je vom Server mitgeschickt), aber
+ * bisher nirgends in der Oberfläche ankam.
+ */
+function quelleKurz(fund) {
+  if (fund.quelle === 'ner') return fund.sicher ? 'Sprachmodell' : 'Sprachmodell, unbelegt';
+  if (fund.quelle === 'nachlauf') return 'Konsistenz-Nachlauf';
+  if ((fund.quelle || '').startsWith('regex:')) return 'Regelbasiert';
+  if (fund.quelle === 'manuell' || (fund.quelle || '').startsWith('auswahl')) return 'Manuell markiert';
+  return fund.quelle || '';
 }
 
 function zeichneDokument() {
@@ -257,7 +285,8 @@ function zeichneDokument() {
     } else {
       // Gestrichelt heisst: erkannt, aber auf dieser Stufe nicht ersetzt —
       // entweder abgewählt oder von der Stufe auf "behalten" gesetzt.
-      const titel = `${Z.kategorien[fund.typ].titel}${fund.ersetzt ? ` → ${fund.ersatz}` : ' — bleibt stehen'}`;
+      const titel = `${Z.kategorien[fund.typ].titel} · ${quelleKurz(fund)}`
+        + `${fund.ersetzt ? ` → ${fund.ersatz}` : ' — bleibt stehen'}`;
       html += `<mark class="tr${fund.ersetzt ? '' : ' aus'}" data-g="${fund.gid}" `
         + `style="--c:${farbe(fund.typ)}" title="${esc(titel)}"`
         + `>${esc(Z.text.slice(fund.start, fund.ende))}</mark>`;
@@ -342,6 +371,57 @@ function zeichneStufen() {
   const warnung = $('stufen-warnung');
   warnung.hidden = !info.warnung;
   if (info.warnung) warnung.textContent = info.warnung;
+}
+
+/**
+ * Übersicht "was tut welche Stufe mit welcher Kategorie" — bisher nur im
+ * README, hier direkt aus Z.stufen/Z.kategorien aufgebaut statt als eigene
+ * Textkopie gepflegt. Bleibt dadurch automatisch in Sync mit der Matrix in
+ * stufen.py, ohne dass README und Oberfläche auseinanderlaufen können.
+ *
+ * Kategorien, die auf allen drei Stufen ohnehin immer ersetzt werden
+ * (Kennnummern, Telefon, E-Mail …), werden zu einer Sammelzeile
+ * zusammengefasst — genau die Gruppe, die stufen.py selbst als _DIREKT
+ * führt, hier aber ohne die Liste zu duplizieren: die Regel "auf jeder
+ * Stufe ersetzen" wird direkt aus den Daten abgelesen.
+ */
+function zeichneStufenmatrix() {
+  const ziel = $('stufenmatrix-inhalt');
+  if (!ziel || !Z.stufenReihenfolge.length) return;
+
+  const immerErsetzt = [];
+  const zeilen = [];
+  for (const [typ, kat] of Object.entries(Z.kategorien)) {
+    if (typ === 'MANUELL') continue; // keine erkannte Kategorie, sondern Handmarkierung
+    const werte = Z.stufenReihenfolge.map((s) => (Z.stufen[s] || {})[typ] || 'ersetzen');
+    if (werte.every((w) => w === 'ersetzen')) {
+      immerErsetzt.push(kat.titel);
+      continue;
+    }
+    zeilen.push({ titel: kat.titel, label: kat.label, werte });
+  }
+
+  const kopf = Z.stufenReihenfolge.map((s) =>
+    `<th class="${s === Z.stufe ? 'aktiv' : ''}">${esc(Z.stufenInfo[s].titel)}</th>`).join('');
+
+  const zelle = (behandlung, label) => {
+    const [kurz, erklaerung] = BEHANDLUNG_KURZ[behandlung]
+      ?? [`[${label}_1]`, `Wird durch ein Pseudonym ersetzt, z. B. „[${label}_1]“.`];
+    return `<span title="${esc(erklaerung)}">${esc(kurz)}</span>`;
+  };
+
+  const reihen = zeilen.map((z) => `<tr><td>${esc(z.titel)}</td>`
+    + z.werte.map((w, i) => `<td class="${Z.stufenReihenfolge[i] === Z.stufe ? 'aktiv' : ''}">`
+      + `${zelle(w, z.label)}</td>`).join('') + '</tr>').join('');
+
+  const sammelreihe = immerErsetzt.length
+    ? `<tr><td title="${esc(immerErsetzt.join(', '))}">Kennnummern, Telefon, E-Mail</td>`
+      + Z.stufenReihenfolge.map((s) => `<td class="${s === Z.stufe ? 'aktiv' : ''}">ersetzt</td>`).join('')
+      + '</tr>'
+    : '';
+
+  ziel.innerHTML = `<table class="stufenmatrix-tabelle"><thead><tr><th></th>${kopf}</tr></thead>`
+    + `<tbody>${reihen}${sammelreihe}</tbody></table>`;
 }
 
 function zeichneBilanz() {
@@ -572,6 +652,7 @@ function zeichneStatistik() {
 
 function zeichneAlles() {
   zeichneStufen();
+  zeichneStufenmatrix();
   zeichneDokument();
   zeichneSeitenleiste();
   zeichneBilanz();

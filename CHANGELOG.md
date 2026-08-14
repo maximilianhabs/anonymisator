@@ -4,6 +4,67 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.18.0 — 2026-08-14
+
+Zwei Quick Wins aus einer externen Durchsicht der Oberfläche — die übrigen
+Vorschläge dieser Runde beschrieben grösstenteils bereits Vorhandenes
+(FastAPI, Docker, Regex-Precompile) oder widersprachen bewussten
+Design-Entscheidungen (siehe `BACKLOG.md`, „Bewusst nicht vorgesehen").
+
+- **Fundquelle im Tooltip.** Beim Überfahren einer markierten Stelle zeigt
+  der Tooltip jetzt zusätzlich, wie der Fund zustande kam — regelbasiert,
+  Sprachmodell (ggf. „unbelegt"), Konsistenz-Nachlauf oder manuell markiert.
+  Die Information gab es serverseitig schon vorher (`Fund.quelle`), nur die
+  Oberfläche zeigte sie nirgends an.
+- **„Alle Stufen im Vergleich".** Neue ausklappbare Übersicht in der
+  Seitenleiste, direkt neben der Stufenwahl: eine Tabelle, was jede der drei
+  Stufen mit jeder Kategorie tut — bisher stand das nur im README. Aus
+  denselben Daten aufgebaut, die auch die Stufenwahl selbst speist, bleibt
+  dadurch automatisch mit `stufen.py` in Sync.
+
+## 0.17.0 — 2026-08-14
+
+Goldkorpus von 3 auf 10 Briefe erweitert — alle in `BACKLOG.md` genannten
+Randfallklassen jetzt abgedeckt (OCR-Verstümmelung, zitierter Fremdbefund,
+Medikationstabelle, Versalsatz mit mehrspaltigem Kopf), dazu drei weitere
+Diagnosegruppen und ein Nicht-Arztbrief-Dokument (Kfz-Unfallgutachten).
+Jeder neue Brief einzeln gegen die Erkennung geprüft, bevor er aufgenommen
+wurde — dabei acht echte Funde:
+
+- **Verwandtschaftswörter fehlten in der NER-Stoppliste.** "Vaters" (Genitiv)
+  kam unbelegt als Person an — `_KEIN_NAME` kannte Vater/Mutter/Bruder/
+  Schwester/Sohn/Tochter/Ehemann/Ehefrau/Eltern/Angehörige/Betreuer nur für
+  die Regex-Schicht, nicht für die NER-Schicht.
+- **PLZ + Grosseinheiten-Kürzel wurde zur Adresse.** "20000 IE" (Vitamin D3)
+  erfüllte die PLZ+Ort-Regel aus 0.15.2 (Versalien) ungewollt — "IE" ist
+  zwei Grossbuchstaben und damit ein gültiger, nur zu kurzer Versal-Ortsname.
+  Mindestlänge auf drei Zeichen angehoben.
+- **Versal-Einrichtungen ohne zusammengesetztes Präfix wurden nie erkannt.**
+  "KLINIK AM AUWALD" oder "KLINIKUM MUSTERSTADT" fielen durch — nur
+  zusammengesetzte Präfixformen wie "BEZIRKSKLINIKUM" funktionierten, weil
+  der bisher verpflichtende erste Buchstabe stets den Anfang des Kopfworts
+  selbst mit auffraß. Der häufigere, einfache Fall war seit Einführung der
+  Regel (0.12.0) unentdeckt.
+- **Kurze Bindewörter ("AM", "IM" …) rissen Versal-Einrichtungsnamen ab**,
+  und ohne Schranke bei der Lückenbreite zog ein zu grosszügiges Muster
+  danach die zweite Spalte eines kopierten, mehrspaltigen Briefkopfs mit
+  hinein. Beides in derselben Regel behoben.
+- **Zusammengeschriebene Strassennamen in Versalien** ("LUDWIGSTRASSE 47")
+  wurden von keiner Adressregel erfasst, weil das Suffix nur kleingeschrieben
+  geprüft wurde — sie fielen stattdessen der Einrichtungserkennung zu.
+- **Virustyp mit angehängter Zahl** ("HSV-1", "HHV-6") kam unbelegt als
+  Organisation an: `_ist_abkuerzung()` entfernte Bindestriche, aber keine
+  Ziffern, bevor sie auf reine Buchstaben prüfte.
+- **Zwei weitere INN-Wirkstoffstämme ergänzt:** "-clovir" (Aciclovir und
+  verwandte Virostatika) und "zolomid" (Temozolomid) — beide kamen unbelegt
+  als Person an.
+
+Details und Fallstricke in `feedback_anonymisator_erkennung.md` (Memory)
+sowie als Kommentar direkt an der jeweiligen Regel in `app/detect.py`.
+Zwei Funde bewusst nicht behoben, weil nicht reproduzierbar bzw. ohne
+Privatsphäre-Risiko: siehe `tests/goldkorpus/diagnose_hirntumor.json` und
+`kfz_unfallgutachten.json`.
+
 ## 0.16.0 — 2026-08-14
 
 Erster Schritt beim Goldkorpus (`tests/goldkorpus/`, `tests/test_goldkorpus.py`):
