@@ -436,6 +436,27 @@ for text, muss in [("94469 DEGGENDORF", "94469 DEGGENDORF"),
                if g.typ == "ADRESSE"]
     pruefe(muss in treffer, f"{muss!r} als Adresse erfasst (gefunden: {treffer})")
 
+print("\n=== 17. Modalitäten, gleich wie geschrieben ===")
+# EEG/MRT/CT u. a. waren als einzelnes Wort schon Stoppwort, nicht aber als
+# Mehrzahl ("EEGs"), Kompositum ("Verlaufslabor", "Chefarztvisite") oder
+# mit Bindestrich-Zusatz ("EEG-Kontrollen"). "CT Hals/Thorax" scheiterte
+# am Schrägstrich, der bisher kein Worttrenner war.
+for text in ["Die EEGs zeigten unauffällige Befunde.",
+             "cMRT ohne pathologischen Befund.",
+             "EEG-Kontrollen wurden durchgeführt.",
+             "Verlaufslabor unauffällig.",
+             "Procedere: CT Hals/Thorax, Verlaufslabor.",
+             "MRTs im Verlauf unauffällig.",
+             "Chefarztvisite am Montag."]:
+    treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde]
+    pruefe(not treffer, f"{text!r} bleibt ohne Fehlalarm ({treffer})")
+
+# Gegenprobe: ein echter Name bleibt erkannt, auch wenn er zufällig auf
+# ein Wort aus der neuen Mehrzahl-/Schrägstrich-Logik trifft.
+kraft = detect.analysiere("Herr Kraft wurde untersucht.")
+pruefe(any("Kraft" in f.text for g in kraft for f in g.funde),
+       "Ein echter Nachname bleibt trotz der neuen Regeln erkannt")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

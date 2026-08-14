@@ -4,6 +4,25 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.15.3 — 2026-08-14
+
+Bildgebende Modalitäten (EEG, MRT, CT u. a.) wurden je nach Schreibweise
+weiterhin fälschlich markiert — die Grundform war als Stoppwort erfasst,
+ihre Abwandlungen nicht.
+
+- **Mehrzahl mit angehängtem „s"** („EEGs", „MRTs") — Abkürzungen werden
+  im Deutschen wie Lehnwörter pluralisiert, das galt bisher nicht als
+  dieselbe Angabe wie die Einzahl.
+- **Zusammengesetzt statt getrennt** („Verlaufslabor", „Chefarztvisite") —
+  dieselben Wörter, die einzeln oder mit Bindestrich schon erkannt wurden,
+  fielen als Kompositum-Ende durch.
+- **Modalität mit Ortskürzel** („cMRT" für kraniell) — als eigene, kleine
+  und tatsächlich abgeschlossene Menge ergänzt.
+- **Schrägstrich als Worttrenner** — „CT Hals/Thorax" scheiterte daran,
+  dass „/" bisher keine erkannte Trennstelle war.
+
+5 neue Fälle in `test_fehlalarme.py`, mit Gegenprobe gegen echte Namen.
+
 ## 0.15.2 — 2026-08-13
 
 Drei weitere bestätigte Funde aus derselben Praxistest-Runde.

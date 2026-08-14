@@ -623,8 +623,17 @@ _STOPP_MEDIZIN = {
     "radiologie", "neurologie", "psychiatrie", "chirurgie", "innere",
     "kardiologie", "onkologie", "orthopädie", "urologie", "gynäkologie",
     "mrt", "ct", "eeg", "ekg", "emg", "nlg", "ssep", "meg", "pet", "spect",
+    # Modalitäten mit Ortsangabe ("cMRT" = kraniell, "cCT") -- eine kleine,
+    # feste Menge in der deutschen Radiologie, keine, die mitwachsen würde.
+    "cmrt", "cct", "mra", "cta",
     "gutachten", "sachverständiger", "epilepsie", "hypertonie", "diabetes",
     "demenz", "migräne", "apoplex", "insult", "schwindel",
+    # Körperregionen, wie sie hinter einer Modalität stehen ("CT
+    # Hals/Thorax", "MRT Kopf") -- ergänzt "kopf"/"hals" u. a. in
+    # _MED_GRUNDWOERTER, die dort nur Kompositum-Enden abdecken, nicht das
+    # freistehende Wort.
+    "hals", "thorax", "abdomen", "nativ",
+    "kontrolle", "kontrollen", "visite",
     # Feldbezeichner aus dem Dokumentkopf, als Ganzes: "aufnahme" allein war
     # schon Stoppwort, das zusammengesetzte "Aufnahmegrund" traf die Liste
     # aber nicht — beim Praxistest als eigenständiger Fund aufgefallen.
@@ -737,6 +746,11 @@ _MED_GRUNDWOERTER = (
     "beschwerde", "beschwerden", "schmerz", "schmerzen", "defizit",
     "defizite", "ausfall", "ausfälle", "karenz", "schutz", "verlauf",
     "trauma", "traumata", "verletzung", "verletzungen",
+    # Glued statt getrennt geschrieben ("Verlaufslabor", "Chefarztvisite")
+    # -- dieselben Wörter, die als eigenständiges Wort oder mit Bindestrich
+    # bereits als Stoppwort gelten (siehe _STOPP_MEDIZIN), fängt hier auch
+    # ihre Kompositum-Form am Wortende.
+    "labor", "visite",
     # Eponyme: Zeichen, Tests und Skalen tragen den Namen ihres
     # Erstbeschreibers. "Lasègue-Zeichen" oder "Schellong-Test" enthalten
     # damit formal einen Personennamen, sind aber Fachbegriffe und keine
@@ -892,13 +906,27 @@ def _ist_stoppwort(wert: str) -> bool:
     gegriffen.
     """
     bereinigt = wert.strip(" .,;:-").lower()
-    if bereinigt in _STOPP:
+    if _stoppwort_einzeln(bereinigt):
         return True
-    # Auch die einzelnen Bestandteile von Satzzeichen befreien: "Dr." und
-    # "med." tragen ihren Punkt mit und würden sonst nie zur Liste passen.
-    teile = [t.strip(".,;:-") for t in re.split(r"[\s\-]+", bereinigt)]
+    # Auch die einzelnen Bestandteile von Satzzeichen und Schrägstrich
+    # befreien: "Dr." trägt seinen Punkt mit, "CT Hals/Thorax" trennt seine
+    # beiden Körperregionen nur durch "/" — beides würde die Liste sonst
+    # nie erreichen.
+    teile = [t.strip(".,;:-") for t in re.split(r"[\s\-/]+", bereinigt)]
     teile = [t for t in teile if t and not any(z.isdigit() for z in t)]
-    return bool(teile) and all(t in _STOPP for t in teile)
+    return bool(teile) and all(_stoppwort_einzeln(t) for t in teile)
+
+
+def _stoppwort_einzeln(wort: str) -> bool:
+    """Ein Wort, direkt oder als Mehrzahl mit angehängtem 's'.
+
+    Abkürzungen wie "EEG"/"MRT" werden im Deutschen wie englische Lehnwörter
+    pluralisiert ("die EEGs", "mehrere MRTs") — ohne diese Ausnahme träfe
+    die Stoppliste die Einzahl, aber nie die im Befund häufigere Mehrzahl.
+    """
+    if wort in _STOPP:
+        return True
+    return len(wort) > 1 and wort.endswith("s") and wort[:-1] in _STOPP
 
 
 def _regex_funde(text: str) -> Iterable[Fund]:
