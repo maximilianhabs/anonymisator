@@ -256,13 +256,15 @@ fail-closed (nicht das befürchtete Leck).
 4. ✅ Sonderzeichen-Regressionstest dauerhaft in der Testsuite
 5. ✅ Volle Historie auf PHI/Secrets geprüft, sauber
 
+**Seither ebenfalls erledigt:**
+6. ✅ `CITATION.cff` läuft jetzt mit jedem Versionssprung mit (0.15.3)
+7. ✅ Screenshots im README — zwei Bilder des Nutzers, mit dem unten
+   verlinkten Beispielbrief aufgenommen und vorher gegen den Server geprüft
+8. ✅ `CONTRIBUTING.md` — fertig, verlinkt die Muster-vs-Wortliste-Regel
+
 **Noch offen, kein Blocker für den Repo-Wechsel:**
-6. `CITATION.cff` erneut veraltet (zeigt 0.14.2, aktuell 0.15.1) — driftet
-   wiederholt, weil es in keiner Routine steckt; siehe Hinweis unten
-7. Screenshot/GIF fürs README — bewusst dem Nutzer überlassen
-8. Goldkorpus mit Ratschen-Logik (Lehre 2, 3, 11 — grösster Einzelposten,
+9. Goldkorpus mit Ratschen-Logik (Lehre 2, 3, 11 — grösster Einzelposten,
    Konzept unten ausgearbeitet)
-9. `CONTRIBUTING.md` — neu hinzugekommen, da Beiträge explizit erwünscht
 10. Impressum/Datenschutzerklärung — betrifft den Serverbetrieb, nicht
     das Repository; erst relevant, wenn der Server reaktiviert wird
 
@@ -312,20 +314,21 @@ Verhalten der Erkennung. Details im CHANGELOG, Abschnitt 0.14.2.
 
 ### Phase 3 — Vertrauenswürdigkeit sichtbar machen
 
-9. **Screenshot/GIF fürs README — bewusst dem Nutzer überlassen,** zum
-   Schluss vor der Veröffentlichung. Kein technisches Hindernis mehr im
-   Weg (macOS `screencapture` funktioniert dateibasiert), aber die
-   Bildauswahl selbst ist eine gestalterische Entscheidung.
+9. ✅ **Screenshots im README** — vom Nutzer selbst mit einem von mir
+   bereitgestellten, gegen den laufenden Server verifizierten
+   Beispielbrief (Max Mustermann) aufgenommen, in `docs/screenshots/`
+   abgelegt und im README unter „Beispiel" eingebettet (Commit `00a30cb`,
+   CI grün).
 10. Goldkorpus bauen (siehe BACKLOG.md, Abschnitt „Erkennungsgüte
     messen" — dort bereits vollständig konzipiert: 20–30 Briefe,
     Randfallklassen, getrennte Recall-/Präzisionsauswertung). Mit
     Ratschen-Logik: `tests/test_goldkorpus.py` schlägt fehl, sobald der
     Recall gegenüber dem letzten commiteten Stand sinkt.
-11. `CONTRIBUTING.md` — jetzt zusätzlich sinnvoll, weil das Projekt
-    explizit für Beiträge geöffnet werden soll. Die Muster-vs-Wortliste-
-    Entscheidungsregel aus `app/detect.py` gehört dort verlinkt oder
-    zusammengefasst.
-11. Impressum und Datenschutzerklärung (bereits in BACKLOG.md
+11. ✅ `CONTRIBUTING.md` — fertig. Enthält die eine Regel vor allen
+    anderen (nie echte Dokumente/Namen einreichen), Bug-/Security-Meldewege,
+    die Muster-vs-Wortliste-Entscheidungsregel aus `app/detect.py`
+    verlinkt, und die Vor-PR-Checkliste.
+12. Impressum und Datenschutzerklärung (bereits in BACKLOG.md
     konzipiert, Vorlagen aus anderen eigenen Projekten vorhanden) — wird
     erst wirksam, wenn der Server wieder läuft, aber kann unabhängig vom
     Repo-Status vorbereitet werden.
