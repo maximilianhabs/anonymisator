@@ -1,0 +1,14 @@
+{
+  "beschreibung": "Nachname (Kolik), der zugleich ein Fachbegriff ist; derselbe Fachbegriff kommt im Fliesstext auch als Diagnosewort vor (Nierenkolik).",
+  "funde": [
+    {"typ": "ORGANISATION", "text": "Klinik am Auwald"},
+    {"typ": "PATIENT", "text": "Dragan Kolik"},
+    {"typ": "GEBURTSDATUM", "text": "geboren am 09.11.1975"},
+    {"typ": "ADRESSE", "text": "Amselweg 4"},
+    {"typ": "ADRESSE", "text": "94481 Grafenau"},
+    {"typ": "GESCHLECHT", "text": "männlich"},
+    {"typ": "DIAGNOSECODE", "text": "R51"},
+    {"typ": "TELEFON", "text": "0991 234567"},
+    {"typ": "ARZT", "text": "Sanela Kolik"}
+  ]
+}

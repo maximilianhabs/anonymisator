@@ -1,0 +1,14 @@
+{
+  "doppelname_praefix": {
+    "praezision": 1.0,
+    "recall": 1.0
+  },
+  "nichtdeutscher_name_fachbegriff": {
+    "praezision": 1.0,
+    "recall": 1.0
+  },
+  "ortsname_als_name": {
+    "praezision": 1.0,
+    "recall": 1.0
+  }
+}

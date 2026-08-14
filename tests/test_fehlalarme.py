@@ -457,6 +457,36 @@ kraft = detect.analysiere("Herr Kraft wurde untersucht.")
 pruefe(any("Kraft" in f.text for g in kraft for f in g.funde),
        "Ein echter Nachname bleibt trotz der neuen Regeln erkannt")
 
+print("\n=== 18. Namenspartikel \"van der\"/\"van den\" in Arztnamen ===")
+# "Dr. med. Petra van der Berg-Ostermann" wurde bisher nur bis zum
+# Vornamen erkannt ("Petra") -- die Namenskette riss an "van" ab, weil
+# das Muster nur grossgeschriebene Namensteile verkettete. Gefunden beim
+# Bau des Goldkorpus (tests/goldkorpus/doppelname_praefix.txt).
+brief = ("Mit freundlichen Grüßen\n\nDr. med. Petra van der Berg-Ostermann\n"
+         "Fachärztin für Neurologie")
+arzt = [f.text for g in detect.analysiere(brief) for f in g.funde if g.typ == "ARZT"]
+pruefe("Petra van der Berg-Ostermann" in arzt,
+       f"Arztname mit 'van der' vollständig erfasst (gefunden: {arzt})")
+
+brief2 = "Dr. med. Habib van den Berg berichtet."
+arzt2 = [f.text for g in detect.analysiere(brief2) for f in g.funde if g.typ == "ARZT"]
+pruefe("Habib van den Berg" in arzt2,
+       f"Arztname mit 'van den' vollständig erfasst (gefunden: {arzt2})")
+
+# Gegenprobe: "von der"/"von"/"der" bleiben bewusst KEINE freistehenden
+# Partikel -- das sind die häufigsten Wörter der deutschen Sprache und
+# stehen in Arztbriefen ständig vor einer Einrichtung, nicht vor einem
+# weiteren Namensteil. Ohne diese Schranke würde "Dr. Schmidt von der
+# Uniklinik Regensburg" die Klinik in den Arztnamen hineinziehen.
+for text, darf_nicht_enthalten in [
+    ("Dr. Schmidt von der Uniklinik Regensburg überwiesen.", "Uniklinik"),
+    ("Dr. med. Habib von der Nachfolgerin übernommen.", "Nachfolgerin"),
+    ("Prof. Dr. med. Weißbach vom Klinikum Deggendorf überwiesen.", "Klinikum"),
+]:
+    arzt3 = [f.text for g in detect.analysiere(text) for f in g.funde if g.typ == "ARZT"]
+    pruefe(not any(darf_nicht_enthalten in a for a in arzt3),
+           f"{text!r} -- Einrichtung bleibt ausserhalb des Arztnamens (gefunden: {arzt3})")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

@@ -189,6 +189,28 @@ _NAME_GROSS = _KEIN_NAME + r"(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]{3,})"
 _NAMENSTEIL_NACH_TITEL = (
     _NAME_GROSS + r"(?:-(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]{2,}))?")
 
+# Niederländische/italienische Namenspartikel: stehen zwischen Vor- und
+# Nachname, sind selbst kleingeschrieben und würden ohne diese Liste die
+# Namenskette abreissen lassen ("Petra van der Berg-Ostermann" wurde
+# bisher nur als "Petra" erkannt).
+#
+# "der", "den" und "von" bewusst NICHT als freistehende Partikel — das
+# sind die häufigsten Wörter der deutschen Sprache und stehen in
+# Arztbriefen ständig als Präposition/Artikel vor einer Einrichtung
+# ("Dr. Schmidt von der Uniklinik Regensburg"). Als freies Partikel
+# hätten sie die Klinik in den Arztnamen hineingezogen. Nur als feste
+# Verbindung nach "van" zugelassen ("van der", "van den") — dort ist die
+# Kombination eindeutig ein niederländischer Namensteil, keine deutsche
+# Präposition.
+_NAMENSPARTIKEL = r"(?:van[ \t]+(?:der|den)|van|de|di|la|le|dos|ter|ten|het|al)"
+
+
+def _mehrteiliger_name(namensteil: str, max_partikel: int = 2) -> str:
+    """Namensteil, dem optional ein weiterer Namensteil plus bis zu
+    `max_partikel` Partikelwörter vorausgehen dürfen ("van der Berg")."""
+    return (rf"(?:{namensteil}[ \t]+(?:{_NAMENSPARTIKEL}[ \t]+){{0,{max_partikel}}})?"
+            rf"{namensteil}")
+
 # Akademische Zusätze, die zwischen Titel und Namen stehen können, ohne
 # selbst ein Name zu sein. Gross- und Kleinschreibung gemischt, weil
 # Briefköpfe "MED." und Fliesstext "med." schreibt.
@@ -315,7 +337,7 @@ REGELN: list[tuple[str, str, int]] = [
     # schliessen sich an derselben Stelle gegenseitig aus (ein Datum ist nie
     # gleichzeitig ein Name), eine Überschneidung der beiden Regeln entsteht
     # deshalb nicht.
-    ("PERSON", rf"(?:geb\.|geborene?)[ \t]+({_NAMENSTEIL})", 1),
+    ("PERSON", rf"(?:geb\.|geborene?)[ \t]+({_mehrteiliger_name(_NAMENSTEIL)})", 1),
     ("VERSICHERTENNR",
      rf"(?:Versicherten{_NR}|KVNR|Vers\.-?Nr\.?|Krankenversicherten-?nummer)"
      r"\s*:?\s*([A-Z]\s?\d[\d\s]{7,12}\d)", 1),
@@ -465,7 +487,7 @@ REGELN: list[tuple[str, str, int]] = [
      rf"[ \t]*:[ \t]*({_NAMENSTEIL},[ \t]*{_NAMENSTEIL})", 1),
 
     ("PERSON",
-     rf"(?:Herr|Herrn|Frau|Hr\.|Fr\.)\s+{_TITEL}((?:{_NAMENSTEIL}\s+)?{_NAMENSTEIL})", 1),
+     rf"(?:Herr|Herrn|Frau|Hr\.|Fr\.)\s+{_TITEL}({_mehrteiliger_name(_NAMENSTEIL)})", 1),
     # Der akademische Titel ist einer der stärksten Belege überhaupt: was
     # danach steht und wie ein Name aussieht, ist einer. Deshalb wird die
     # ganze Titelkette übersprungen — "Prof. Dr. med. habil." — und der
@@ -473,12 +495,12 @@ REGELN: list[tuple[str, str, int]] = [
     ("ARZT",
      rf"(?i:dr|prof|oa|oä|ca|cha|chefarzt|chefärztin|oberarzt|oberärztin)\.?[ \t]+"
      rf"{_TITELKETTE}"
-     rf"((?:{_NAMENSTEIL_NACH_TITEL}[ \t]+)?{_NAMENSTEIL_NACH_TITEL})", 1),
+     rf"({_mehrteiliger_name(_NAMENSTEIL_NACH_TITEL)})", 1),
 
     # Initialen statt ausgeschriebenem Vornamen: "Dr. med. K. Weißbach".
     ("ARZT",
      rf"(?i:dr|prof|oa|oä|ca|cha)\.?[ \t]+{_TITELKETTE}"
-     rf"((?:[A-ZÄÖÜ]\.[ \t]*){{1,3}}{_NAMENSTEIL_NACH_TITEL})", 1),
+     rf"((?:[A-ZÄÖÜ]\.[ \t]*){{1,3}}{_mehrteiliger_name(_NAMENSTEIL_NACH_TITEL)})", 1),
 
     # --- Freistehende Zahlen ------------------------------------------------
     # Der Grundsatz: Eine Zahl mit physikalischer Einheit ist ein Messwert und

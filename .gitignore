@@ -17,6 +17,10 @@ __pycache__/
 *.rtf
 *.txt
 !requirements.txt
+# Goldkorpus-Briefe sind frei erfunden und gehören bewusst ins Repo (siehe
+# CONTRIBUTING.md) -- kein echtes Dokument, deshalb eine gezielte Ausnahme
+# statt die generelle Sperre aufzuweichen.
+!tests/goldkorpus/*.txt
 
 # Zuordnungstabellen enthalten Klarnamen im Klartext.
 *ZUORDNUNG*

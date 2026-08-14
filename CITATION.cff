@@ -19,8 +19,8 @@ authors:
     # ORCID kann hier ergänzt werden:
     # orcid: "https://orcid.org/0000-0000-0000-0000"
 repository-code: "https://github.com/maximilianhabs/anonymisator"
-version: "0.15.3"
-date-released: "2026-08-13"
+version: "0.16.0"
+date-released: "2026-08-14"
 license: Apache-2.0
 keywords:
   - de-identification

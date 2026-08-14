@@ -4,6 +4,26 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.16.0 — 2026-08-14
+
+Erster Schritt beim Goldkorpus (`tests/goldkorpus/`, `tests/test_goldkorpus.py`):
+ein kleiner Satz frei erfundener Briefe mit von Hand geprüfter Ground Truth,
+ausgewertet getrennt nach Recall und Präzision, mit Ratsche gegen einen
+committeten Stand. Details und offene Randfallklassen in `BACKLOG.md`.
+
+Beim Bau des ersten Briefs (Doppelname mit Präfix) ein echter Fund:
+
+- **Arztnamen mit „van der"/„van den" wurden nur bis zum Vornamen erkannt**
+  („Petra van der Berg-Ostermann" → nur „Petra"). Die Namenskette riss an
+  jedem kleingeschriebenen Wort ab. Behoben über eine kleine, geschlossene
+  Partikelliste (`_NAMENSPARTIKEL`) — bewusst ohne „von"/„der"/„den" als
+  freistehende Partikel, das sind die häufigsten Wörter der deutschen
+  Sprache und stehen in Arztbriefen ständig vor einer Einrichtung, nicht
+  vor einem Namensteil („Dr. Schmidt von der Uniklinik Regensburg" darf
+  die Klinik nicht in den Namen ziehen). Nur als feste Verbindung nach
+  „van" zugelassen. Regressionstest in `test_fehlalarme.py`, Abschnitt 18,
+  mit Positiv- und Gegenprobe.
+
 ## 0.15.3 — 2026-08-14
 
 Bildgebende Modalitäten (EEG, MRT, CT u. a.) wurden je nach Schreibweise

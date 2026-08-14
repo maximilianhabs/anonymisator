@@ -1,0 +1,15 @@
+{
+  "beschreibung": "Nachname (Hamburg), der zugleich ein bekannter deutscher Ortsname ist; ein echter Ortsname (Bremen, als Teil eines Klinikennamens) kommt im selben Brief vor.",
+  "funde": [
+    {"typ": "ORGANISATION", "text": "Klinik am Auwald"},
+    {"typ": "PATIENT", "text": "Erika Hamburg"},
+    {"typ": "GEBURTSDATUM", "text": "geboren am 22.06.1949"},
+    {"typ": "ADRESSE", "text": "Fliederweg 9"},
+    {"typ": "ADRESSE", "text": "94474 Vilshofen"},
+    {"typ": "GESCHLECHT", "text": "weiblich"},
+    {"typ": "DIAGNOSECODE", "text": "G20.9"},
+    {"typ": "ORGANISATION", "text": "Klinikum Bremen"},
+    {"typ": "TELEFON", "text": "08541 987654"},
+    {"typ": "ARZT", "text": "Johannes Berger"}
+  ]
+}

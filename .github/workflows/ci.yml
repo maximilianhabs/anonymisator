@@ -37,7 +37,7 @@ jobs:
         run: |
           for datei in test_erkennung test_stufen test_formatierung \
                        test_dokumenttypen test_dokumentarten test_fehlalarme \
-                       test_export_hygiene; do
+                       test_export_hygiene test_goldkorpus; do
             echo "── $datei"
             python "tests/$datei.py"
           done

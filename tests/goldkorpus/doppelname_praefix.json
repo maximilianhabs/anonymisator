@@ -1,0 +1,15 @@
+{
+  "beschreibung": "Doppelname mit niederländischem Präfix, bei Patient und Arzt.",
+  "funde": [
+    {"typ": "ORGANISATION", "text": "Klinik am Auwald"},
+    {"typ": "PATIENT", "text": "Klaas van der Berg"},
+    {"typ": "GEBURTSDATUM", "text": "geboren am 14.03.1958"},
+    {"typ": "ADRESSE", "text": "Bergstraße 22"},
+    {"typ": "ADRESSE", "text": "94469 Deggendorf"},
+    {"typ": "GESCHLECHT", "text": "männlich"},
+    {"typ": "DIAGNOSECODE", "text": "G45.9"},
+    {"typ": "DATUM", "text": "02.02.2026"},
+    {"typ": "TELEFON", "text": "0991 456789"},
+    {"typ": "ARZT", "text": "Petra van der Berg-Ostermann"}
+  ]
+}
