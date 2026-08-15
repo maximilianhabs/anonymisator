@@ -584,9 +584,17 @@ REGELN: list[tuple[str, str, int]] = [
     # sehr wohl wiedererkennbar.
     # Kein \b hinter dem Währungszeichen: "€" ist kein Wortzeichen, dort kann
     # eine Wortgrenze nie greifen — das Muster hätte nur bei "EUR" gezogen.
+    #
+    # Die führende Zifferngruppe ist absichtlich \d+ und nicht \d{1,3}: eine
+    # vierstellige Zahl ganz ohne Tausendertrennzeichen ("2050,75 €", in
+    # DRG-Entgeltnachweisen üblich) verlor mit der Dreier-Schranke ihre erste
+    # Ziffer -- der Regex-Motor rutschte einfach eine Stelle weiter, bis
+    # "050,75 €" irgendwo passte, statt "2050,75 €" komplett zu fassen. Bei
+    # echt gruppierten Zahlen ("2.050,75 €") ändert \d+ nichts: vor dem "."
+    # steht ohnehin nur die erste, kurze Zifferngruppe.
     ("BETRAG",
-     r"(?:€|EUR|CHF|USD|\$)\s?\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})?(?![\d,.])"
-     r"|\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})?\s?(?:€|EUR|Euro|CHF|USD)"
+     r"(?:€|EUR|CHF|USD|\$)\s?\d+(?:[.\s]\d{3})*(?:,\d{2})?(?![\d,.])"
+     r"|\d+(?:[.\s]\d{3})*(?:,\d{2})?\s?(?:€|EUR|Euro|CHF|USD)"
      r"(?![A-Za-zÄÖÜäöüß])", 0),
 
     # --- Datum zuletzt: generischer als Geburtsdatum ------------------------
@@ -726,6 +734,11 @@ _STOPP_ALLGEMEIN = {
     "sohn", "tochter", "ehemann", "ehefrau", "mutter", "vater", "bruder",
     "schwester", "eltern", "angehörige", "angehöriger", "angehörigen",
     "betreuer", "betreuerin",
+    # "Gültig(es/e/er/en)" beginnt in DRG-Entgeltnachweisen und ähnlichen
+    # Formularen regelmässig einen Feldkommentar ("Gültiges Geschlecht.
+    # Nicht für Grouping verwendet") und ist dadurch grossgeschrieben --
+    # kam unbelegt als Person an.
+    "gültig", "gültige", "gültiger", "gültiges", "gültigen",
 }
 _STOPP = _STOPP_ANATOMIE | _STOPP_MEDIZIN | _STOPP_ALLGEMEIN
 

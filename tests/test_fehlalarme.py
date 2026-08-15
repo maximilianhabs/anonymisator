@@ -559,6 +559,29 @@ for text in ["PCR auf HSV-1 fiel positiv aus.", "HHV-6 wurde nachgewiesen.",
     treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde]
     pruefe(not treffer, f"{text!r} bleibt ohne Fehlalarm ({treffer})")
 
+print("\n=== 23. Vierstellige Geldbeträge ohne Tausendertrennzeichen ===")
+# "2050,75 €" (in DRG-Entgeltnachweisen ueblich, kein "2.050,75 €") verlor
+# die erste Ziffer -- die alte Regel begrenzte die fuehrende Zifferngruppe
+# auf hoechstens drei Stellen, der Regex-Motor rutschte deshalb eine
+# Stelle weiter, bis "050,75 €" irgendwo passte. Gefunden vom Nutzer beim
+# Testen eines echten DRG-Entgeltnachweises.
+for text, muss in [
+    ("2050,75 €", "2050,75 €"),
+    ("12345,00 €", "12345,00 €"),
+    ("2.050,75 €", "2.050,75 €"),  # Gegenprobe: echt gruppierte Zahl unveraendert
+]:
+    treffer = [f.text for g in detect.analysiere(text) for f in g.funde if g.typ == "BETRAG"]
+    pruefe(muss in treffer, f"{text!r} vollständig als Betrag erfasst (gefunden: {treffer})")
+
+print("\n=== 24. 'Gültig(es/e/er/en)' als Feldkommentar ===")
+# "Gültiges Geschlecht. Nicht für Grouping verwendet" -- Satzanfang in
+# einem DRG-Entgeltnachweis, "Gültiges" kam unbelegt als Person an.
+for text in ["Gültiges Geschlecht. Nicht für Grouping verwendet.",
+             "Gültiges Alter. Nicht für Grouping verwendet.",
+             "Gültige ICD-Angabe."]:
+    treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde]
+    pruefe(not treffer, f"{text!r} bleibt ohne Fehlalarm ({treffer})")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

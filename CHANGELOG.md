@@ -4,6 +4,69 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.20.0 — 2026-08-15
+
+Zwei Funde aus einem echten Testlauf mit einem DRG-Entgeltnachweis, vom
+Nutzer per Screenshot gemeldet.
+
+- **Vierstellige Geldbeträge ohne Tausendertrennzeichen verloren die erste
+  Ziffer.** "2050,75 €" (in Entgeltnachweisen üblich, kein "2.050,75 €")
+  kam nur als "050,75 €" an. Ursache: die führende Zifferngruppe war auf
+  höchstens drei Stellen begrenzt (`\d{1,3}`) — ohne folgendes
+  Tausendertrennzeichen rutschte der Regex-Motor einfach eine Stelle
+  weiter, bis irgendwo ein kürzeres Fenster passte. Grenze jetzt offen
+  (`\d+`); bei echt gruppierten Zahlen ("2.050,75 €") ändert sich nichts,
+  vor dem Punkt steht ohnehin nur die kurze erste Gruppe.
+- **"Gültiges"/"Gültige" als Feldkommentar kam unbelegt als Person an.**
+  DRG-Entgeltnachweise beginnen Feldkommentare regelmässig so ("Gültiges
+  Geschlecht. Nicht für Grouping verwendet") — grossgeschrieben durch die
+  Satzanfangsposition, nicht durch einen Eigennamen. Alle Deklinations-
+  formen als Stoppwort ergänzt.
+
+3 neue Fälle in `test_fehlalarme.py`, mit Gegenprobe gegen eine echt
+gruppierte Zahl.
+
+## 0.19.0 — 2026-08-15
+
+Mobile-Optimierung: Bedienung auf Smartphone und kleinem Tablet. Die
+Darstellung stapelte dank bestehender Breakpoints (640/780/1000px) schon
+vorher brauchbar — das eigentliche Problem war die Bedienung. Sechs
+konkrete Funde, jeder einzeln im Browser (Chrome-Emulation, 375/393/768px,
+hell und dunkel) geprüft:
+
+- **Touch-Ziele waren real zu klein.** Die Fund-Checkbox in der Prüfliste
+  war gemessen nur 13×13px gross — das meistgenutzte Bedienelement der
+  ganzen Anwendung. Mehrere Buttons lagen bei 26–32px. Neue Regel über
+  `@media (pointer: coarse)`, nicht über Bildschirmbreite: reagiert auf
+  Fingerbedienung unabhängig von der Displaygrösse, ein schmales
+  Desktop-Fenster mit Maus bleibt unverändert dicht. Checkbox jetzt 22px,
+  alle Buttons/Tabs mindestens 44px (Apple HIG / Material Design).
+- **Tooltip-only-Information ohne Touch-Äquivalent.** Die Begründung, warum
+  ein Fund "unbelegt" ist, und die Erklärung je Stufenmatrix-Zelle steckten
+  ausschliesslich im `title`-Attribut — kein Hover auf dem Finger. Neues,
+  wiederverwendbares Info-Popover (nach Vorbild des bestehenden
+  Auswahl-Menüs), per Tap auf das "?"-Zeichen bzw. eine Stufenmatrix-Zelle.
+  Das "?" ist jetzt ein echtes Element mit eigenem Tap-Ziel statt eines
+  `::after`-Pseudoelements.
+- **"Zusätzlich markieren" war durchgehend mausorientiert.** Die
+  Positionierung des Auswahl-Menüs hatte keine Kollisionsprüfung gegen den
+  rechten/unteren Bildschirmrand, und das Schliessen hing an einem reinen
+  `mousedown`-Listener. Neuer gemeinsamer Helfer `positionGeklemmt()` (auch
+  vom neuen Info-Popover genutzt): klemmt an den Viewport, klappt bei
+  fehlendem Platz nach oben statt unten. Schliessen zusätzlich an
+  `touchstart` gebunden.
+- **iOS-Zoom-Falle.** Das Eingabefeld für Text und das Feld „Zusätzlich
+  ersetzen" hatten 13px Schrift — unter Safaris 16px-Schwelle zoomt iOS
+  beim Fokussieren automatisch hinein. Auf 16px angehoben.
+- **Verschachteltes Scrollen.** Fundliste und Dokumentansicht hatten auf
+  schmalen Bildschirmen eine eigene, begrenzte Scroll-Höhe — auf einem
+  Touch-Gerät die klassische Scroll-Falle, ein Wisch bewegt nur die
+  kleine Box statt der ganzen Seite. Diese Begrenzung gilt jetzt nur noch
+  mit Maus/Trackpad (`pointer: fine`); auf Touch-Geräten scrollt die ganze
+  Seite als Ganzes.
+
+Kein Python/Backend betroffen, bestehende Testsuite unverändert grün.
+
 ## 0.18.0 — 2026-08-14
 
 Zwei Quick Wins aus einer externen Durchsicht der Oberfläche — die übrigen

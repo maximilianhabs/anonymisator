@@ -102,15 +102,23 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   führt. Beim Umbau bleibt zu beachten, dass `/health` weiterhin ohne
   Anmeldung erreichbar sein muss und der Dienst zustandslos bleibt — eine
   Sitzung darf nichts über den Upload festhalten.
-- **Mobile Nutzung.** Heute nicht für Smartphones ausgelegt — weder die
-  Darstellung (Seitenleiste, Statistik-Karten, Auswahlmenü sind für
-  Zeigergeräte mit viel Breite gebaut) noch die Bedienung (Textauswahl per
-  Fingergeste verhält sich anders als per Maus, das Auswahlmenü müsste sich
-  daran anpassen). Bewusst nur vorgemerkt, nicht umgesetzt: der Ablauf
-  Hochladen → Prüfen → Ausgeben müsste für schmale Bildschirme neu gedacht
-  werden, nicht nur schmaler gequetscht. Zum Hochladen/Einfügen von Text
-  oder Dokumenten sollte das auf einem iPhone oder Android-Gerät genauso
-  gut funktionieren wie am Rechner.
+- **Mobile Nutzung.** ✅ Grösstenteils erledigt (2026-08-15). Die Darstellung
+  stapelte dank bestehender Breakpoints (640/780/1000px) schon vorher
+  brauchbar auf schmalen Bildschirmen — das eigentliche Problem war die
+  Bedienung: Touch-Ziele wie die Fund-Checkbox waren real nur 13×13px
+  gross, mehrere Erklärungen (warum ein Fund "unbelegt" ist, was eine
+  Stufenmatrix-Zelle bedeutet) steckten ausschliesslich in title-Tooltips
+  ohne Touch-Äquivalent, das "Zusätzlich markieren"-Menü hatte keine
+  Kollisionsprüfung gegen den Bildschirmrand und schloss sich nur über
+  `mousedown`, zwei Eingabefelder lösten Safaris automatischen Zoom aus,
+  und Fundliste/Dokument hatten auf Touch ein verschachteltes
+  Scroll-Verhalten. Alles behoben, per `@media (pointer: coarse)` gezielt
+  auf Fingerbedienung statt nur auf Bildschirmbreite reagierend — ein
+  schmales Desktop-Fenster mit Maus bleibt unverändert dicht. Details in
+  CHANGELOG. **Offen, bewusst separat:** Anmeldung über Basic Auth bleibt
+  auf mobilen Browsern unzuverlässig (siehe „Anmeldung ohne Benutzernamen"
+  oben) — betrifft den Serverbetrieb, nicht die lokale Nutzung, und ist
+  ein eigenständiges Problem.
 - **Schreibvarianten zusammenführen.** „Lisbeth" läuft als eigene Person,
   nicht als Variante von „Elisabeth Hartmann". Beide werden ersetzt, bekommen
   aber verschiedene Kürzel. Ein Knopf „mit anderer Gruppe zusammenführen" in
