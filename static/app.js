@@ -517,14 +517,31 @@ function zeileFuer(gruppe) {
   name.className = 'name' + (gruppe.sicher ? '' : ' unbelegt');
   name.textContent = gruppe.anzeige;
   const zusatz = gruppe.varianten.filter((v) => v !== gruppe.anzeige);
-  const hinweis = gruppe.sicher
-    ? ''
-    : '\n\nNur vom Sprachmodell vorgeschlagen — ohne Anrede, Titel oder '
-      + 'sonstigen Beleg. Wird ersetzt, lohnt aber einen Blick.';
-  name.title = (zusatz.length
+  name.title = zusatz.length
     ? `Auch als: ${zusatz.join(', ')}\n(klicken: erste Fundstelle zeigen)`
-    : 'Klicken: erste Fundstelle im Text zeigen') + hinweis;
+    : 'Klicken: erste Fundstelle im Text zeigen';
   name.onclick = () => zeigeFundstelle(gruppe);
+
+  // Die Begründung für "unbelegt" steckte bisher ausschliesslich im
+  // title-Tooltip von `name` -- ohne Hover auf dem Finger unerreichbar. Das
+  // "?" ist deshalb ein echtes, eigenes Element mit eigenem Tap-Ziel statt
+  // eines ::after-Pseudoelements, dazu stopPropagation, damit der Tap nicht
+  // gleichzeitig zeigeFundstelle() über name.onclick auslöst.
+  if (!gruppe.sicher) {
+    const hinweis = 'Nur vom Sprachmodell vorgeschlagen — ohne Anrede, Titel '
+      + 'oder sonstigen Beleg. Wird ersetzt, lohnt aber einen Blick.';
+    const marke = document.createElement('button');
+    marke.type = 'button';
+    marke.className = 'unbelegt-marke';
+    marke.textContent = '?';
+    marke.title = hinweis;
+    marke.setAttribute('aria-label', 'Warum unbelegt?');
+    marke.onclick = (ev) => {
+      ev.stopPropagation();
+      infoPopoverZeigen(hinweis, marke.getBoundingClientRect());
+    };
+    name.appendChild(marke);
+  }
 
   const anzahl = document.createElement('span');
   anzahl.className = 'anzahl';
@@ -670,6 +687,40 @@ function zeichneAlles() {
 
 let auswahlBereich = null;
 
+/**
+ * Klemmt die Position einer fixierten Karte (Auswahl-Menü, Info-Popover) an
+ * den Viewport. Ohne das ragt eine Karte nahe am rechten oder unteren Rand
+ * über den Bildschirm hinaus — auf einem 375px breiten Telefon reicht dafür
+ * schon eine Auswahl in der rechten Hälfte einer Zeile. `box` muss beim
+ * Aufruf bereits sichtbar sein (hidden = false), sonst liefern
+ * offsetWidth/-Height 0.
+ */
+function positionGeklemmt(ankerRect, box, abstand = 6) {
+  const breite = box.offsetWidth;
+  const hoehe = box.offsetHeight;
+  const left = Math.max(8, Math.min(ankerRect.left, window.innerWidth - breite - 8));
+  let top = ankerRect.bottom + abstand;
+  if (top + hoehe > window.innerHeight - 8) {
+    top = ankerRect.top - hoehe - abstand; // zu wenig Platz darunter: oberhalb anzeigen
+  }
+  return { left, top: Math.max(8, top) };
+}
+
+/** Kleines Erklärkärtchen für Inhalte, die sonst nur im title-Tooltip
+ *  stecken — kein Hover auf dem Finger, siehe positionGeklemmt(). */
+function infoPopoverZeigen(text, ankerRect) {
+  const box = $('info-popover');
+  $('info-popover-text').textContent = text;
+  box.hidden = false;
+  const { left, top } = positionGeklemmt(ankerRect, box);
+  box.style.left = `${left}px`;
+  box.style.top = `${top}px`;
+}
+
+function infoPopoverVerstecken() {
+  $('info-popover').hidden = true;
+}
+
 /** Rechnet eine Auswahl im gerenderten HTML auf Zeichenpositionen im Text um. */
 function auswahlZuBereich(auswahl) {
   const dok = $('dokument');
@@ -712,8 +763,9 @@ function auswahlMenueZeigen() {
 
   const rechteck = auswahl.getRangeAt(0).getBoundingClientRect();
   menue.hidden = false;
-  menue.style.left = `${Math.max(8, rechteck.left)}px`;
-  menue.style.top = `${rechteck.bottom + 6}px`;
+  const { left, top } = positionGeklemmt(rechteck, menue);
+  menue.style.left = `${left}px`;
+  menue.style.top = `${top}px`;
 }
 
 /**
@@ -1012,6 +1064,16 @@ function start() {
     zeichneAlles();
   });
 
+  // Stufenmatrix-Zellen tragen ihre Erklärung nur im title-Tooltip (kein
+  // Hover auf dem Finger) -- ein Tap zeigt dieselbe Erklärung im
+  // Info-Popover. Delegiert auf den Container, weil zeichneStufenmatrix()
+  // den Inhalt bei jedem Redraw komplett neu aufbaut.
+  $('stufenmatrix-inhalt').addEventListener('click', (ev) => {
+    const zelle = ev.target.closest('[title]');
+    if (!zelle) return;
+    infoPopoverZeigen(zelle.title, zelle.getBoundingClientRect());
+  });
+
   $('knopf-begriff').onclick = begriffHinzufuegen;
 
   // Auswahl im Text: Menü einblenden, sobald etwas markiert ist.
@@ -1021,10 +1083,16 @@ function start() {
     window._auswahlZeit = setTimeout(auswahlMenueZeigen, 120);
   });
   $('auswahl-hinzu').onclick = auswahlUebernehmen;
-  // Klick ausserhalb schliesst das Menü, ohne die Auswahl zu übernehmen.
-  document.addEventListener('mousedown', (e) => {
+  // Klick/Tap ausserhalb schliesst Auswahl-Menü und Info-Popover, ohne die
+  // Auswahl zu übernehmen. touchstart zusätzlich zu mousedown: nach einer
+  // nativen Touch-Textauswahl (mit Lupe/Griffen des Betriebssystems) ist
+  // nicht garantiert, dass ein synthetisches mousedown rechtzeitig feuert.
+  const ausserhalbSchliessen = (e) => {
     if (!$('auswahl-menue').contains(e.target)) $('auswahl-menue').hidden = true;
-  });
+    if (!$('info-popover').contains(e.target)) infoPopoverVerstecken();
+  };
+  document.addEventListener('mousedown', ausserhalbSchliessen);
+  document.addEventListener('touchstart', ausserhalbSchliessen);
   $('eigener-begriff').addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') begriffHinzufuegen();
   });
