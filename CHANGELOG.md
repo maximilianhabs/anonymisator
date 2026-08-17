@@ -4,6 +4,39 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.22.0 — 2026-08-17
+
+Einrichtung als zweistufiger Assistent, statt den grossen
+Sprachmodell-Download still in einem `pip install` verschwinden zu
+lassen — Fortsetzung von 0.21.1.
+
+- `requirements.txt` in `requirements-core.txt` (Grundgerüst) und
+  `requirements-model.txt` (nur das 542-MB-Sprachmodell) aufgeteilt.
+  `requirements.txt` bindet beide für den bisherigen Ein-Schritt-Weg
+  (CI, `pip-audit`, erfahrene Nutzer) weiterhin per `-r` zusammen ein.
+- Neues `einrichten.sh`: installiert beide Teile nacheinander und meldet
+  sich dazwischen klar zu Wort — „[1/2] Grundgerüst … fertig" →
+  „[2/2] Jetzt kommt das Sprachmodell, der grösste Schritt". `start.sh`,
+  README und CONTRIBUTING.md verweisen jetzt darauf.
+- `Dockerfile`: dieselbe Aufteilung, zusätzlich mit einem echten
+  Cache-Vorteil beim Server-Bau — dazu ein selbst gefundener und vor dem
+  Ausliefern korrigierter Denkfehler: Docker verwirft beim Bau den
+  Zwischenspeicher jeder Schicht, sobald eine *vorangehende* Schicht sich
+  ändert, unabhängig von der eigenen Eingabedatei. Die ursprünglich
+  geplante Reihenfolge (Grundgerüst zuerst) hätte deshalb bei jeder
+  kleinen Kernabhängigkeits-Änderung trotzdem das 542-MB-Modell-Layer
+  verworfen — das Gegenteil des Ziels. Mit umgekehrter Reihenfolge
+  (Modell zuerst) durch einen echten `docker build`-Test verifiziert:
+  eine reine Kern-Änderung lässt das Modell-Layer jetzt tatsächlich im
+  Zwischenspeicher. Details in `BACKLOG.md`.
+- `.dockerignore` **und** `.gitignore` um die beiden neuen Dateien ergänzt
+  — beide sperren pauschal `*.txt` und hatten bisher nur für
+  `requirements.txt` eine Ausnahme; ohne die Ergänzung wären
+  `requirements-core.txt`/`requirements-model.txt` weder ins Abbild noch
+  ins Repository gelangt. Vor dem Commit bemerkt, nicht danach.
+
+Kein Python-Code betroffen, bestehende Testsuite unverändert grün.
+
 ## 0.21.1 — 2026-08-17
 
 Feedback aus der Community: die Einrichtung dauert für manche „ein bis

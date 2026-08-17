@@ -34,11 +34,25 @@ ENV PATH="/opt/venv/bin:${PATH}"
 
 # Erst die Abhängigkeiten, dann der Quelltext: so bleibt diese Schicht im
 # Zwischenspeicher, solange sich requirements.txt nicht ändert.
-COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+#
+# In zwei Schichten aufgeteilt, nicht nur eine "requirements.txt" — und
+# bewusst in dieser Reihenfolge, Modell zuerst: Docker verwirft beim Bau
+# den Zwischenspeicher jeder Schicht, sobald sich eine *vorangehende*
+# Schicht ändert, unabhängig davon, ob die eigene Eingabedatei gleich
+# geblieben ist. Stünde das Grundgerüst (requirements-core.txt, ändert
+# sich gelegentlich) vor dem Sprachmodell (requirements-model.txt, 542 MB,
+# ändert sich praktisch nie), würde jede kleine Kernabhängigkeits-Änderung
+# das Modell-Layer trotzdem verwerfen und die 542 MB erneut herunterladen
+# — genau das Gegenteil des gewünschten Effekts. In dieser Reihenfolge
+# bleibt das Modell-Layer bei einer Kern-Änderung dagegen im
+# Zwischenspeicher, nur die kleine, schnelle Schicht danach baut neu.
+COPY requirements-model.txt /tmp/requirements-model.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-model.txt
 
-# Das Sprachmodell steckt bereits als Rad-Adresse mit fester Version in
-# requirements.txt und liegt damit im Abbild. Zur Laufzeit wird nichts
+COPY requirements-core.txt /tmp/requirements-core.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-core.txt
+
+# Das Sprachmodell steckt jetzt im Abbild. Zur Laufzeit wird nichts
 # nachgeladen — der Behälter hat keinen Netzzugang.
 RUN python -c "import spacy; spacy.load('de_core_news_lg')" \
     && python -c "import fitz, docx, reportlab, pytesseract; print('Abhängigkeiten geladen')"

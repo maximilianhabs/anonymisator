@@ -78,10 +78,13 @@ Ausführlich in [README.md](README.md#einrichtung) und
 [README.md](README.md#lokal-entwickeln) beschrieben. Kurzfassung:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+./einrichten.sh
 ./start.sh
 ```
+
+`einrichten.sh` installiert in zwei angekündigten Schritten — zuerst das
+kleine Grundgerüst, dann das 542 MB grosse Sprachmodell — statt beides
+still in einem `pip install -r requirements.txt` verschwinden zu lassen.
 
 ## Vor jedem Pull Request
 

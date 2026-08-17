@@ -1,0 +1,11 @@
+# Das deutsche Sprachmodell allein — der grosse, langsame Teil der
+# Einrichtung (542 MB). Getrennt von requirements-core.txt, damit dieser
+# eine Schritt eigens angekündigt und, beim Docker-Bau, unabhängig von
+# Änderungen an den übrigen Abhängigkeiten zwischengespeichert werden
+# kann (siehe Dockerfile).
+#
+# Wird nicht über PyPI verteilt und deshalb direkt von der
+# Modell-Veröffentlichung bezogen. Ohne diese Zeile müsste es separat
+# über "python -m spacy download" geholt werden, wobei die Version
+# offenbliebe.
+de_core_news_lg @ https://github.com/explosion/spacy-models/releases/download/de_core_news_lg-3.8.0/de_core_news_lg-3.8.0-py3-none-any.whl

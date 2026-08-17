@@ -180,6 +180,35 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
     tatsächlich gegen den Goldkorpus gemessen und die Differenz beziffert
     wird, nicht als blinde Umstellung.
 
+- **Einrichtung als zweistufiger Assistent: erst Grundgerüst, dann
+  angekündigt das Sprachmodell.** ✅ Erledigt (2026-08-17).
+  `requirements.txt` in `requirements-core.txt` (Grundgerüst) und
+  `requirements-model.txt` (nur das 542-MB-Sprachmodell) aufgeteilt;
+  `requirements.txt` bindet beide für den bisherigen Ein-Schritt-Weg
+  (CI, `pip-audit`, erfahrene Nutzer) weiterhin per `-r` zusammen ein —
+  gegen `pip install --dry-run` und `pip-audit` vorab geprüft, dass die
+  Verschachtelung sauber aufgelöst wird. Neues `einrichten.sh` führt beide
+  Schritte nacheinander aus und meldet sich dazwischen klar zu Wort;
+  `start.sh` verweist bei fehlendem `.venv` jetzt darauf, README und
+  CONTRIBUTING.md ebenfalls.
+
+  **Selbst gefundener Denkfehler beim Docker-Bau, vor dem Umsetzen
+  korrigiert:** Der ursprüngliche Plan sah vor, das `Dockerfile` in zwei
+  Schichten aufzuteilen (erst Grundgerüst, dann Modell), damit eine
+  künftige Kernabhängigkeits-Änderung nicht auch das 542-MB-Modell-Layer
+  verwirft. Beim Testen mit einem echten `docker build` (Kern-Datei
+  geändert, Zwischenspeicher-Status beider Schichten geprüft) zeigte
+  sich: **Docker verwirft beim Bau den Zwischenspeicher jeder Schicht,
+  sobald eine *vorangehende* Schicht sich ändert** — unabhängig davon, ob
+  die eigene Eingabedatei gleich blieb. Mit „erst Grundgerüst, dann
+  Modell" hätte jede kleine Kern-Änderung das Modell-Layer trotzdem
+  verworfen, genau das Gegenteil des Ziels. Behoben durch **Umkehrung der
+  Reihenfolge** (Modell zuerst, Grundgerüst danach) — mit demselben
+  Testaufbau verifiziert: eine reine Kern-Änderung liess das Modell-Layer
+  danach tatsächlich `CACHED` (keine erneuten 567,8-MB-Downloads), nur die
+  kleine, schnelle Schicht danach baute neu. Siehe Kommentar direkt im
+  `Dockerfile`.
+
 - **Fundquelle im Tooltip anzeigen.** ✅ Erledigt (2026-08-14). Der Tooltip
   über einer Fundstelle zeigt jetzt Kategorie, Quelle ("Regelbasiert" /
   "Sprachmodell" / "Sprachmodell, unbelegt" / "Konsistenz-Nachlauf" /

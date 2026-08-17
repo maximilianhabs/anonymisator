@@ -5,12 +5,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 if [ ! -x .venv/bin/python ]; then
-  echo "Kein .venv gefunden. Einmalig einrichten:"
-  echo "  python3 -m venv .venv"
-  echo "  .venv/bin/pip install -r requirements.txt"
-  echo "(Das Sprachmodell steht mit fester Version in requirements.txt —"
-  echo " ein separater 'spacy download'-Aufruf ist nicht nötig und würde"
-  echo " die Version offenlassen.)"
+  echo "Kein .venv gefunden. Einmalig einrichten mit:"
+  echo "  ./einrichten.sh"
+  echo "(Zwei Schritte, mit Ansage vor dem grossen Sprachmodell-Download —"
+  echo " siehe README, Abschnitt 'Einrichtung', für Details und eine"
+  echo " Zeittabelle je nach Verbindungsgeschwindigkeit.)"
   exit 1
 fi
 

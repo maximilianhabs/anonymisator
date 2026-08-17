@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.21.1-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.22.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 [![CI](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml/badge.svg)](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml)
 
@@ -39,14 +39,16 @@ Kfz-Kennzeichen und Geldbeträge sind eigene Kategorien.
 ```bash
 git clone https://github.com/maximilianhabs/anonymisator.git
 cd anonymisator
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+./einrichten.sh
 ./start.sh
 ```
 
-Öffnet den Browser unter `http://127.0.0.1:5302`. Der `pip install`-Schritt
-lädt rund 550 MB (deutsches Sprachmodell) — je nach Verbindung dauert das
-spürbar, Details dazu unter [Einrichtung](#einrichtung). Voraussetzungen,
-OCR-Unterstützung und die getestete Umgebung stehen dort ebenfalls.
+Öffnet den Browser unter `http://127.0.0.1:5302`. `einrichten.sh` meldet
+sich dabei in zwei Schritten: zuerst das kleine Grundgerüst, dann —
+eigens angekündigt — das rund 550 MB grosse deutsche Sprachmodell. Je nach
+Verbindung dauert das spürbar, Details dazu unter [Einrichtung](#einrichtung).
+Voraussetzungen, OCR-Unterstützung und die getestete Umgebung stehen dort
+ebenfalls.
 
 ## Was mit dem Dokument geschieht
 
@@ -147,8 +149,7 @@ für die Erkennung.
 ## Lokal entwickeln
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+./einrichten.sh
 ./start.sh
 ```
 
@@ -441,15 +442,28 @@ Klarname steht, ist nicht anonymisiert.
 Einmalig:
 
 ```bash
+./einrichten.sh
+```
+
+Legt bei Bedarf `.venv` an und installiert dann in **zwei angekündigten
+Schritten** — zuerst das kleine Grundgerüst (FastAPI, PDF/DOCX-Verarbeitung
+u. a., meist unter einer Minute), danach ausdrücklich angesagt das
+deutsche Sprachmodell. Wer lieber alles auf einmal installiert (etwa in
+CI) oder manuell steuern möchte:
+
+```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-**Dieser Schritt lädt rund 550 MB herunter**, fast ausschliesslich das
-deutsche Sprachmodell (`de_core_news_lg`, 542 MB) — der Rest der
-Abhängigkeiten macht nur einen kleinen Teil davon aus. Das Repository
-selbst ist dagegen winzig (unter 2 MB) — nicht der `git clone`, sondern
-ausschliesslich dieser Installationsschritt lädt die grosse Datei.
+Beide Wege installieren dasselbe — `requirements.txt` bindet
+`requirements-core.txt` und `requirements-model.txt` nur zusammen ein.
+
+**Der grosse Download: rund 550 MB**, fast ausschliesslich das deutsche
+Sprachmodell (`de_core_news_lg`, 542 MB) — der Rest der Abhängigkeiten
+macht nur einen kleinen Teil davon aus. Das Repository selbst ist dagegen
+winzig (unter 2 MB) — nicht der `git clone`, sondern ausschliesslich
+dieser eine Schritt lädt die grosse Datei.
 
 Grobe Orientierung, wie lange das je nach Verbindung dauert:
 
@@ -464,11 +478,14 @@ Nur grobe Richtwerte für die theoretische Bandbreite, ohne
 Protokoll-Overhead oder Serverlast eingerechnet — real eher etwas länger.
 Bricht die Verbindung mitten im Download ab, beginnt `pip` von vorn statt
 fortzusetzen — bei einer sehr langsamen oder instabilen Leitung notfalls
-mehrfach neu anstossen.
+`./einrichten.sh` (oder den Einzelbefehl) einfach erneut ausführen; bereits
+installierte Teile werden dabei übersprungen, nur der unterbrochene
+Download beginnt neu.
 
-Das deutsche Sprachmodell ist in `requirements.txt` mit fester Version
-verzeichnet und wird dabei mitinstalliert — ein getrennter
-`spacy download`-Aufruf ist nicht nötig und liesse die Version offen.
+Das deutsche Sprachmodell ist mit fester Version in
+`requirements-model.txt` verzeichnet und wird dabei mitinstalliert — ein
+getrennter `spacy download`-Aufruf ist nicht nötig und liesse die Version
+offen.
 
 Für OCR gescannter PDFs zusätzlich Tesseract mit deutschem Sprachpaket:
 
