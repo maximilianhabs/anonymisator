@@ -4,6 +4,18 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.21.0 — 2026-08-17
+
+`CODE_OF_CONDUCT.md` ergänzt — der letzte offene Punkt aus GitHubs
+Community-Standards-Checkliste vor der aktiven Weitergabe des Repo-Links.
+Kurz und im Ton des übrigen Projekts, mit einem eigenen Absatz zur
+bestehenden Regel „nie echte Dokumente/Namen teilen". Dabei auch
+`CONTRIBUTING.md`/`SECURITY.md`/`CODE_OF_CONDUCT.md` gegenseitig verlinkt
+und in der README unter „Mitwirkung und Kontakt" verlinkt — bisher nur
+über GitHubs eigene Tabs auffindbar, nicht aus der README selbst. Ausserdem
+eine veraltete Zahl in `CONTRIBUTING.md` korrigiert (stand noch bei
+„neun Testdateien", sind inzwischen zehn).
+
 ## 0.20.0 — 2026-08-15
 
 Zwei Funde aus einem echten Testlauf mit einem DRG-Entgeltnachweis, vom

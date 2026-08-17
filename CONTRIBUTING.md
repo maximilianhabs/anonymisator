@@ -2,7 +2,8 @@
 
 Danke für das Interesse. Dieses Dokument beschreibt, wie ein Beitrag
 zustande kommt — von der Meldung eines Fehlers bis zum fertigen Pull
-Request.
+Request. Der Umgang miteinander dabei steht in
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Die eine Regel, die vor allen anderen steht
 
@@ -84,7 +85,7 @@ python3 -m venv .venv
 
 ## Vor jedem Pull Request
 
-Alle neun Testdateien müssen ohne Fehler durchlaufen:
+Alle zehn Testdateien müssen ohne Fehler durchlaufen:
 
 ```bash
 for t in tests/test_*.py; do

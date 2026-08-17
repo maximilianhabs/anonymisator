@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.20.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.21.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 [![CI](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml/badge.svg)](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml)
 
@@ -657,7 +657,10 @@ dort der Hinweis zu PyMuPDF, das unter der AGPL-3.0 steht.
 Betreut von [@maximilianhabs](https://github.com/maximilianhabs). Fragen,
 Fehlermeldungen und Vorschläge bitte über die
 [Issues](https://github.com/maximilianhabs/anonymisator/issues) des
-Projekts.
+Projekts — Details und Ablauf stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
+der Umgang miteinander in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Sicherheitslücken bitte nicht öffentlich melden, sondern nach
+[SECURITY.md](SECURITY.md).
 
 **Bitte niemals echte Dokumente, Textausschnitte oder Bildschirmfotos mit
 Personenbezug an ein Issue anhängen.** Zur Beschreibung eines Fehlers genügt
