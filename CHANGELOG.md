@@ -4,6 +4,23 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.21.1 — 2026-08-17
+
+Feedback aus der Community: die Einrichtung dauert für manche „ein bis
+drei Stunden". Nachgeprüft — nicht GitHub und nicht das Repository
+(unter 2 MB), sondern der `pip install`-Schritt: das deutsche
+Sprachmodell `de_core_news_lg` allein ist 542 MB gross, über 90 % des
+gesamten Downloads. In Klinik-/Praxisnetzwerken mit begrenzter
+Bandbreite oder restriktiver Firewall entsprechend spürbar, zumal `pip`
+bei einem Verbindungsabbruch von vorn beginnt statt fortzusetzen. Klare
+Grössen-/Zeitangabe in README (Schnellstart und Einrichtung) sowie
+DEPLOYMENT.md ergänzt, dazu eine Tabelle mit geschätzter Downloaddauer
+für vier Verbindungsgeschwindigkeiten (1 bis 100 Mbit/s). Bewusst keine
+Änderung am Sprachmodell selbst — das kleinere `de_core_news_md` hätte
+Erkennungsqualität gekostet, das war dem Nutzer die Downloadzeit nicht
+wert. Idee für eine schnellere/alternative Auslieferung samt offenen
+Fragen dazu ins Backlog aufgenommen.
+
 ## 0.21.0 — 2026-08-17
 
 `CODE_OF_CONDUCT.md` ergänzt — der letzte offene Punkt aus GitHubs

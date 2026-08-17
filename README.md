@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.21.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.21.1-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 [![CI](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml/badge.svg)](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml)
 
@@ -43,9 +43,10 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ./start.sh
 ```
 
-Öffnet den Browser unter `http://127.0.0.1:5302`. Voraussetzungen, OCR-
-Unterstützung und die getestete Umgebung stehen unter
-[Einrichtung](#einrichtung).
+Öffnet den Browser unter `http://127.0.0.1:5302`. Der `pip install`-Schritt
+lädt rund 550 MB (deutsches Sprachmodell) — je nach Verbindung dauert das
+spürbar, Details dazu unter [Einrichtung](#einrichtung). Voraussetzungen,
+OCR-Unterstützung und die getestete Umgebung stehen dort ebenfalls.
 
 ## Was mit dem Dokument geschieht
 
@@ -443,6 +444,27 @@ Einmalig:
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
+
+**Dieser Schritt lädt rund 550 MB herunter**, fast ausschliesslich das
+deutsche Sprachmodell (`de_core_news_lg`, 542 MB) — der Rest der
+Abhängigkeiten macht nur einen kleinen Teil davon aus. Das Repository
+selbst ist dagegen winzig (unter 2 MB) — nicht der `git clone`, sondern
+ausschliesslich dieser Installationsschritt lädt die grosse Datei.
+
+Grobe Orientierung, wie lange das je nach Verbindung dauert:
+
+| Verbindung | Beispielgeschwindigkeit | Geschätzte Dauer |
+|---|---|---|
+| Stark gedrosselt (restriktives Klinik-/Praxisnetz) | ~1 Mbit/s | rund 1,5 Stunden |
+| Einfaches DSL | ~6 Mbit/s | rund 15 Minuten |
+| Standard-Breitband (VDSL/Kabel) | ~25 Mbit/s | rund 4 Minuten |
+| Schnelles Kabel/Glasfaser | ~100 Mbit/s | unter 1 Minute |
+
+Nur grobe Richtwerte für die theoretische Bandbreite, ohne
+Protokoll-Overhead oder Serverlast eingerechnet — real eher etwas länger.
+Bricht die Verbindung mitten im Download ab, beginnt `pip` von vorn statt
+fortzusetzen — bei einer sehr langsamen oder instabilen Leitung notfalls
+mehrfach neu anstossen.
 
 Das deutsche Sprachmodell ist in `requirements.txt` mit fester Version
 verzeichnet und wird dabei mitinstalliert — ein getrennter

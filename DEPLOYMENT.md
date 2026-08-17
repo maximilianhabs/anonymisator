@@ -190,8 +190,12 @@ cd ~/anonymisator
 docker compose -f docker-compose.server.yml up -d --build
 ```
 
-Der erste Bau dauert mehrere Minuten. Warten, bis der Dienst gesund meldet —
-das Sprachmodell braucht beim Start etwa 15 Sekunden:
+Der erste Bau dauert mehrere Minuten — er lädt dabei rund 550 MB herunter,
+fast ausschliesslich das deutsche Sprachmodell (`de_core_news_lg`, 542 MB).
+Bei einer langsamen Serveranbindung entsprechend länger. Danach liegt das
+Modell im Abbild und wird bei jedem weiteren Bau aus dem Zwischenspeicher
+übernommen, nicht erneut heruntergeladen. Warten, bis der Dienst gesund
+meldet — das Sprachmodell braucht beim Start etwa 15 Sekunden:
 
 ```bash
 docker compose -f docker-compose.server.yml ps

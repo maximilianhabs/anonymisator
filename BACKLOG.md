@@ -153,6 +153,33 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 
 ## Nützlich
 
+- **Schnellere/alternative Auslieferung des Sprachmodells prüfen.**
+  (2026-08-17, Community-Feedback über lange Downloadzeiten, siehe
+  CHANGELOG 0.21.1). Noch unentschieden, nur zur Prüfung vorgemerkt — der
+  README-Hinweis mit Grössen-/Zeitangabe ist vorerst die einzige
+  Massnahme. Ideen, jede mit einer offenen Frage, die vor einer
+  Entscheidung zu klären wäre:
+  - **Eigener Mirror/eigenes ZIP des Sprachmodells**, gehostet neben dem
+    Repo oder auf einer eigenen Domain, um von GitHubs Auslieferung
+    unabhängig zu sein. Offene Frage: das `.whl`-Format ist selbst schon
+    ein Zip-Archiv, die enthaltenen Modellgewichte lassen sich kaum
+    weiter verkleinern — der Nutzen wäre allenfalls eine zuverlässigere
+    oder in restriktiven Netzen weniger geblockte Quelle, nicht eine
+    kleinere Datei. Ausserdem zu klären: erlaubt die Lizenz des Modells
+    (spaCy/Explosion) eine eigene Weiterverteilung, und wer pflegt den
+    Mirror bei künftigen Versionsständen synchron?
+  - **Vorinstalliertes Paket (venv oder Docker-Image) zum Download
+    anbieten**, statt bei jeder Einrichtung neu zu installieren. Vermeidet
+    pip-Overhead, aber plattformspezifisch (macOS/Linux/Windows getrennt
+    zu pflegen) und ein zusätzlicher Bau-/Hosting-Aufwand für ein
+    einzeln betreutes Projekt.
+  - **Kleineres Modell (`de_core_news_md`) als ausdrücklich
+    gekennzeichnete Alternative für langsame Verbindungen.** Bewusst
+    nicht umgesetzt (2026-08-17) — würde Erkennungsqualität kosten, dem
+    Nutzer war das die Downloadzeit nicht wert. Bliebe nur denkbar, wenn
+    tatsächlich gegen den Goldkorpus gemessen und die Differenz beziffert
+    wird, nicht als blinde Umstellung.
+
 - **Fundquelle im Tooltip anzeigen.** ✅ Erledigt (2026-08-14). Der Tooltip
   über einer Fundstelle zeigt jetzt Kategorie, Quelle ("Regelbasiert" /
   "Sprachmodell" / "Sprachmodell, unbelegt" / "Konsistenz-Nachlauf" /
