@@ -4,6 +4,29 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.23.0 — 2026-08-20
+
+Freistehende abgekürzte Namen in Unterschriftenblöcken erkannt — Fund aus
+einem echten Testdatensatz.
+
+- Neues Muster `regex:initialen-frei` fängt "Initiale(n) + Nachname" und
+  auch beidseitig abgekürzte Namen ("T. S.") ohne Titel oder Anrede in
+  derselben Zeile. Deutsche Briefe mit mehreren Mitzeichnenden nennen den
+  vollen Titel oft nur bei der ersten Unterschrift ("Prof. Dr. med.
+  T. Sailer, M. Richter, T. Egerter") — die bisherige, titelverankerte
+  Regel griff dann nur bei der ersten Zeile, die folgenden blieben
+  unerkannt.
+- Die einbuchstabige Nachnamen-Form ("T. S.") ist für sich genommen zu
+  unspezifisch (träfe sonst z. B. Aufzählungen "A. B."). Sie läuft deshalb
+  wie ein Sprachmodell-Fund durch den bestehenden Beleg-Check
+  (`_ist_belegt`): nur mit einem Rollen-Marker (Titel, "Chefarzt" o. Ä.)
+  in der Nähe gilt sie als bestätigt, sonst bleibt sie zur Prüfung markiert
+  — wird aber, wie jeder unbestätigte Fund, in der Standardstufe trotzdem
+  ersetzt.
+- Neue Sektion 25 in `tests/test_fehlalarme.py`: der gemeldete
+  Unterschriftenblock als Positivfall, gängige Abkürzungen ("z. B.",
+  "u. a.", "d. h.") als Gegenprobe.
+
 ## 0.22.0 — 2026-08-17
 
 Einrichtung als zweistufiger Assistent, statt den grossen

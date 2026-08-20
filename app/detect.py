@@ -1067,6 +1067,46 @@ def _ner_funde(text: str) -> Iterable[Fund]:
 
 
 # --------------------------------------------------------------------------
+# Freistehende Initialen
+# --------------------------------------------------------------------------
+
+# "M. Richter", "T. Egerter": ein bis zwei Initialen vor einem echten
+# Nachnamen, ganz ohne Titel oder Anrede davor. Häufig in
+# Unterschriftenzeilen mit mehreren Mitzeichnenden, bei denen laut
+# Konvention nur die erste Person den vollen Titel trägt
+# ("Prof. Dr. med. T. Sailer, M. Richter, T. Egerter") — die REGELN-Zeile
+# für Titel+Initialen (siehe oben, Typ ARZT) greift dann nur bei der
+# ersten, nicht bei den folgenden Zeilen.
+_INITIALEN_MIT_NAME = (
+    rf"(?:[A-ZÄÖÜ]\.[ \t]*){{1,2}}{_mehrteiliger_name(_NAMENSTEIL)}")
+
+# "T. S.": auch der Nachname nur als Initiale, wie im Beispiel
+# "Prof. Dr. med. T. S." — die kürzeste im Deutschen noch als Name lesbare
+# Form. Ohne einen einzigen ausgeschriebenen Namensteil ist dieses Muster
+# für sich genommen zu unspezifisch (träfe z. B. Aufzählungen "A. B.");
+# es wird deshalb nie automatisch vertraut, sondern unten in `_ist_belegt`
+# genau wie ein NER-Fund gegen einen Rollen-Marker in der Nähe geprüft.
+_INITIALEN_PAAR = r"(?:[A-ZÄÖÜ]\.[ \t]+){1,2}[A-ZÄÖÜ]\."
+
+_INITIALEN_FREI = re.compile(
+    rf"\b(?:{_INITIALEN_MIT_NAME}|{_INITIALEN_PAAR})")
+
+
+def _initialen_frei_funde(text: str) -> Iterable[Fund]:
+    """Freistehende Initialen-Namen ausserhalb der Titel-Kette in REGELN.
+
+    Eigene Funktion statt Eintrag in REGELN: `_regex_funde` kürzt
+    nachlaufende Satzzeichen ab (`roh.rstrip(" \\t.,;:)")`), was bei einer
+    bare Initiale wie "S." genau den Punkt kappen würde, der den Fund erst
+    ausmacht.
+    """
+    for treffer in _INITIALEN_FREI.finditer(text):
+        roh = treffer.group(0)
+        yield Fund(treffer.start(), treffer.end(), roh, "PERSON",
+                   "regex:initialen-frei")
+
+
+# --------------------------------------------------------------------------
 # Rollen-Heuristik
 # --------------------------------------------------------------------------
 
@@ -1104,13 +1144,14 @@ def _ist_belegt(text: str, fund: Fund) -> bool:
     """Steht neben dem Treffer etwas, das ihn als Eigennamen bestätigt?
 
     Eine Anrede, ein akademischer Titel oder eine Rollenbezeichnung sind
-    harte Belege. Ein Vorschlag des Sprachmodells ohne jeden solchen Beleg
-    ist die häufigste Quelle von Fehlalarmen — gerade in Befundtext, der
-    voller grossgeschriebener Fachbegriffe steckt.
+    harte Belege. Ein Vorschlag des Sprachmodells oder ein freistehendes
+    Initialen-Muster ohne jeden solchen Beleg ist die häufigste Quelle von
+    Fehlalarmen — gerade in Befundtext, der voller grossgeschriebener
+    Fachbegriffe steckt.
     """
     if fund.typ not in _UNSICHER_MOEGLICH:
         return True
-    if not fund.quelle.startswith("ner"):
+    if not fund.quelle.startswith("ner") and fund.quelle != "regex:initialen-frei":
         return True  # über Anrede oder Titel gefunden
     links = text[max(0, fund.start - 70):fund.start]
     rechts = text[fund.end:fund.end + 45]
@@ -1457,7 +1498,8 @@ def labels_vergeben(gruppen: list[Gruppe]) -> None:
 
 def analysiere(text: str) -> list[Gruppe]:
     """Vollständiger Durchlauf: erkennen, entwirren, gruppieren, benennen."""
-    funde = list(_regex_funde(text)) + list(_ner_funde(text))
+    funde = (list(_regex_funde(text)) + list(_ner_funde(text))
+             + list(_initialen_frei_funde(text)))
     funde = _entwirren(funde)
 
     for fund in funde:

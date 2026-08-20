@@ -582,6 +582,29 @@ for text in ["Gültiges Geschlecht. Nicht für Grouping verwendet.",
     treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde]
     pruefe(not treffer, f"{text!r} bleibt ohne Fehlalarm ({treffer})")
 
+print("\n=== 25. Freistehende Initialen in Unterschriftenzeilen ===")
+# Mehrere Mitzeichnende unter einem Brief, von denen nur die erste Person
+# den vollen Titel trägt -- die restlichen Zeilen sind reine
+# "Initiale(n) + Nachname"-Muster ohne jedes Auslösewort in derselben
+# Zeile. Zuvor blieben sie unerkannt: Nutzer-Fund in einem echten
+# Testdatensatz (anonymisiertes Nachstellen unten), Unterschrift eines
+# Chefarztes gefolgt von zwei weiteren Unterzeichnenden.
+unterschriftenblock = (
+    "Mit freundlichen kollegialen Grüßen\n\n"
+    "Prof. Dr. med. T. S.\nM. Richter\nT. Egerter\n\n"
+    "Chefarzt\nLeitender Oberarzt\nStationsärztin"
+)
+gefunden = {f.text for g in detect.analysiere(unterschriftenblock) for f in g.funde}
+for name in ("T. S.", "M. Richter", "T. Egerter"):
+    pruefe(name in gefunden,
+           f"{name!r} im Unterschriftenblock erkannt (gefunden: {gefunden})")
+
+# Gegenprobe: gängige deutsche Abkürzungen mit kleinem Anfangsbuchstaben
+# sehen dem Initialen-Muster ähnlich, sind aber keine Namen.
+ohne_treffer("Der Patient berichtet, z. B. beim Treppensteigen, "
+             "u. a. über Schwindel, d. h. keine Synkope.",
+             "gängige Abkürzungen (z. B., u. a., d. h.)")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")
