@@ -49,15 +49,14 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   Akkordarbeit; das rechtfertigt den Aufwand einer durchdachten
   Tastaturbedienung, aber genau deshalb muss die Fokus-Logik zuerst stehen,
   nicht die Tastenbelegung.
-- **Sichtbare Rückmeldung beim Stufenwechsel.** Der Wechsel zwischen
-  Leicht/Standard/Streng läuft rein clientseitig (siehe §9 der
-  Funktionsbeschreibung — alle Formen sind vorberechnet). Das ist der
-  Punkt, nicht sichtbar zu sein: keine Netzwerkanfrage, keine Wartezeit.
-  Genau das kann aber wie ein Ausbleiben der Reaktion wirken. Ein kurzer,
-  weicher Übergang auf den Markierungen beim Neuzeichnen (CSS-Transition
-  auf Hintergrundfarbe/Text, ~150 ms, wie an anderen Stellen der
-  Oberfläche bereits verwendet) würde die Änderung spürbar machen, ohne
-  eine Ladeanimation vorzutäuschen, die es nicht gibt.
+- **Sichtbare Rückmeldung beim Stufenwechsel.** ✅ Erledigt (0.24.0,
+  2026-08-20). Eine reine CSS-`transition` hätte nicht funktioniert:
+  `zeichneDokument()` ersetzt bei jedem Stufenwechsel das komplette
+  `innerHTML`, jede Markierung ist also ein brandneues Element ohne
+  vorherigen Zustand, von dem aus interpoliert werden könnte. Stattdessen
+  eine kurze `animation` (`weich-einblenden`, ~180 ms) auf `mark.tr`/
+  `mark.ers`, nach demselben Prinzip wie das bereits vorhandene
+  `mark.tr.blitz`.
 - **Einrichtungsname über den Zeilenumbruch.** Steht der Absender umbrochen
   im Briefkopf („BEZIRKSKLINIKUM\nMAINKOFEN"), wird nur die erste Zeile
   erfasst; der Ortsname bleibt stehen. Kein Muster greift absichtlich über
@@ -65,12 +64,20 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   Ersetzen verschluckt wurde und zwei Platzhalter aneinanderklebten. Ein
   Nachlauf, der die Folgezeile prüft, ohne den Umbruch in den Treffer zu
   ziehen, wäre der Weg.
-- **Zwei Fehlalarme des Sprachmodells.** „MRT DES SCHÄDELS" und „Zentrum
-  der Läsion" kommen als Einrichtung an. Beide bestehen seit Langem und
-  sind unabhängig von der Versalregel. Gemeinsames Merkmal ist ein
-  Artikel im Wortinneren („DES", „der") — bei echten Namen steht dort
-  „am", „an der" oder „für". Eine Regel darauf ist denkbar, muss aber
-  gegen „Universität der Bundeswehr" geprüft werden.
+- **Zwei Fehlalarme des Sprachmodells.** ✅ Erledigt (0.24.0, 2026-08-20).
+  „MRT DES SCHÄDELS"/„Zentrum der Läsion" kamen als Einrichtung an —
+  Fachbegriff mit Artikel im Wortinneren. „Schädel"/„Läsion" ergänzen
+  jetzt die Fach-Stopplisten, bestimmte Artikel die allgemeine — sicher
+  gegen „Universität der Bundeswehr" nur, weil `_ist_stoppwort` verlangt,
+  dass ALLE Wortteile Stoppwörter sind, nicht nur der Artikel. „Zentrum"
+  wurde bewusst NICHT gesperrt (Signalwort für echte Einrichtungen wie
+  „Neurozentrum Auwald"); dafür ein eng gefasstes Muster nur für „Zentrum
+  der/des <Fachbegriff>" — echte Einrichtungen heissen „Zentrum FÜR X".
+- **„Stationsärztin" kam als Ort an.** ✅ Erledigt (0.24.0, 2026-08-20).
+  Beim Testen des Unterschriftenblock-Fundes (siehe CHANGELOG 0.23.0)
+  aufgefallen: „chefarzt"/„oberarzt"/„assistenzarzt" standen bereits in
+  der Rollenwort-Stoppliste, „facharzt"/„stationsarzt" fehlten — in
+  beiden Schichten (NER-Stoppliste und Regex-Anker-Ausschluss).
 - **Impressum und Datenschutzerklärung.** Fehlen bisher vollständig. Sobald
   der Dienst wieder öffentlich erreichbar ist, sind beide Pflicht — das
   Impressum nach § 5 DDG, die Datenschutzerklärung nach Art. 13 DSGVO.
