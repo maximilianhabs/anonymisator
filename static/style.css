@@ -294,6 +294,18 @@ mark.ers {
   color: inherit; font-weight: 600; border-radius: 3px; padding: 0 3px;
 }
 
+/* Der Stufenwechsel (Leicht/Standard/Streng) läuft rein clientseitig, ohne
+   Netzwerkanfrage und ohne Wartezeit (alle Formen sind vorberechnet) — das
+   kann wie ein Ausbleiben der Reaktion wirken. Eine reine `transition`
+   hilft hier nicht: `zeichneDokument()` ersetzt bei jedem Wechsel das
+   komplette `innerHTML`, jede Markierung ist also ein brandneues Element
+   ohne vorherigen Zustand, von dem aus interpoliert werden könnte — genau
+   deshalb nutzt bereits `mark.tr.blitz` oben eine `animation`, keine
+   `transition`. Dasselbe Prinzip hier: ein kurzes Einblenden, das bei
+   jedem Neuzeichnen automatisch mit den neuen Elementen erscheint. */
+mark.tr, mark.ers { animation: weich-einblenden .18s ease-out; }
+@keyframes weich-einblenden { from { opacity: 0; } }
+
 /* -------------------------------------------------------- Seitenleiste */
 .seitenleiste {
   display: flex; flex-direction: column; min-height: 0; gap: 12px;

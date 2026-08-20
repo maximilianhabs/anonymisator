@@ -4,6 +4,36 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.24.0 — 2026-08-20
+
+Drei kleinere, selbst gefundene Punkte aus dem eigenen Backlog behoben,
+alle unabhängig von 0.23.0.
+
+- **"Stationsärztin" kam als Ort an.** `chefarzt`/`oberarzt`/
+  `assistenzarzt` standen bereits in der Stoppliste für Rollenwörter,
+  `facharzt`/`stationsarzt` fehlten — dieselbe Lücke wie in `_KEIN_NAME`
+  (Regex-Schicht), dort ebenfalls nachgezogen.
+- **"MRT DES SCHÄDELS" und "Zentrum der Läsion" kamen als Einrichtung
+  an.** Beide bestehen aus einem radiologischen/anatomischen Begriff mit
+  einem Artikel im Wortinneren. "Schädel"/"Läsion" ergänzt die Fach-
+  Stopplisten, bestimmte Artikel ("der"/"die"/"das"/"des"/"dem"/"den")
+  neu in der allgemeinen Stoppliste — durch die bestehende
+  Alle-Wortteile-müssen-Stoppwort-sein-Logik bleibt ein echter Name wie
+  "Universität der Bundeswehr" unangetastet, da "Universität"/
+  "Bundeswehr" selbst keine Stoppwörter sind. "Zentrum" wurde bewusst
+  NICHT zum Stoppwort (siehe Kommentar in `app/detect.py`) — es ist ein
+  Signalwort für echte Einrichtungsnamen ("Neurozentrum Auwald"); dafür
+  ein eng gefasstes Muster nur für "Zentrum der/des <Fachbegriff>".
+  Gegenprobe "Universität der Bundeswehr" und "Klinikum rechts der Isar"
+  bleiben erkannt.
+- **Kein sichtbares Feedback beim Stufenwechsel.** `zeichneDokument()`
+  ersetzt bei jedem Wechsel das komplette `innerHTML` — eine reine
+  `transition` hätte nichts, wovon aus zu interpolieren wäre, jede
+  Markierung ist ein brandneues Element. Stattdessen eine kurze
+  `animation` (wie bereits bei `mark.tr.blitz`), die automatisch mit
+  jedem neu gezeichneten Treffer erscheint.
+- Neue Testsektion 26 in `tests/test_fehlalarme.py`.
+
 ## 0.23.0 — 2026-08-20
 
 Freistehende abgekürzte Namen in Unterschriftenblöcken erkannt — Fund aus

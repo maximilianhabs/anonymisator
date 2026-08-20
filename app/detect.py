@@ -173,7 +173,8 @@ _DATUM = (r"(?:\d{1,2}\.\s?\d{1,2}\.\s?(?:\d{4}|\d{2})"
 _KEIN_NAME = (
     r"(?!(?:Dr|Prof|med|habil|PD|Dipl|Herrn?|Frau|Hr|Fr|Kolleg(?:e|in)|Doktor|"
     r"Professor|Patient(?:in)?|Ober(?:arzt|ärztin)|Chef(?:arzt|ärztin)|"
-    r"Assistenz(?:arzt|ärztin)|Fach(?:arzt|ärztin)|Arzt|Ärztin|Pfleger(?:in)?|"
+    r"Assistenz(?:arzt|ärztin)|Fach(?:arzt|ärztin)|Station(?:sarzt|särztin)|"
+    r"Arzt|Ärztin|Pfleger(?:in)?|"
     r"Sohn|Tochter|Ehemann|Ehefrau|Mutter|Vater|Bruder|Schwester|Eltern|"
     r"Angehörige[rn]?|Betreuer(?:in)?|Rechtsanwalt|Rechtsanwältin)\b)")
 
@@ -656,7 +657,7 @@ _STOPP_ANATOMIE = {
     "neurocranium", "neurocraniums", "neurokranium", "neurokraniums",
     "viscerocranium", "cranium", "craniums", "kranium", "schädelbasis",
     "hirnschädel", "sella", "cochlea", "vestibulum", "labyrinth", "orbita",
-    "sinus", "mastoid", "felsenbein", "keilbein", "siebbein",
+    "sinus", "mastoid", "felsenbein", "keilbein", "siebbein", "schädel",
     "herz", "lunge", "leber", "niere", "nieren", "milz", "magen", "darm",
     "pankreas", "schilddrüse", "prostata", "uterus", "ovar", "blase", "galle",
     "gallenblase", "ösophagus", "duodenum", "kolon", "rektum", "aorta",
@@ -684,7 +685,8 @@ _STOPP_MEDIZIN = {
     # feste Menge in der deutschen Radiologie, keine, die mitwachsen würde.
     "cmrt", "cct", "mra", "cta",
     "gutachten", "sachverständiger", "epilepsie", "hypertonie", "diabetes",
-    "demenz", "migräne", "apoplex", "insult", "schwindel",
+    "demenz", "migräne", "apoplex", "insult", "schwindel", "läsion",
+    "läsionen",
     # Körperregionen, wie sie hinter einer Modalität stehen ("CT
     # Hals/Thorax", "MRT Kopf") -- ergänzt "kopf"/"hals" u. a. in
     # _MED_GRUNDWOERTER, die dort nur Kompositum-Enden abdecken, nicht das
@@ -720,7 +722,8 @@ _STOPP_ALLGEMEIN = {
     "kollege", "kollegin", "fallnummer", "aktenzeichen", "versichertennummer",
     "geburtsdatum", "anschrift", "telefon", "durchwahl", "sekretariat",
     "chefarzt", "chefärztin", "oberarzt", "oberärztin", "assistenzarzt",
-    "assistenzärztin", "januar", "februar", "märz", "april", "mai", "juni",
+    "assistenzärztin", "facharzt", "fachärztin", "stationsarzt",
+    "stationsärztin", "januar", "februar", "märz", "april", "mai", "juni",
     "juli", "august", "september", "oktober", "november", "dezember",
     "montag", "dienstag", "mittwoch", "donnerstag", "freitag", "samstag",
     "sonntag", "links", "rechts", "beidseits", "temporal", "frontal",
@@ -739,6 +742,14 @@ _STOPP_ALLGEMEIN = {
     # Nicht für Grouping verwendet") und ist dadurch grossgeschrieben --
     # kam unbelegt als Person an.
     "gültig", "gültige", "gültiger", "gültiges", "gültigen",
+    # Bestimmte Artikel. "MRT DES SCHÄDELS" und "Zentrum der Läsion" kamen
+    # als Einrichtung an — ein Radiologie-/Anatomiebegriff mit einem
+    # Artikel dazwischen. Der Artikel selbst trägt keine Angabe; erst weil
+    # `_ist_stoppwort` verlangt, dass ALLE Wortteile Stoppwörter sind
+    # (nicht nur der Artikel), bleibt ein echter Name wie „Universität der
+    # Bundeswehr" unangetastet — „Universität"/„Bundeswehr" sind selbst
+    # keine Stoppwörter, „MRT"/„Schädel"/„Zentrum"/„Läsion" dagegen schon.
+    "der", "die", "das", "des", "dem", "den",
 }
 _STOPP = _STOPP_ANATOMIE | _STOPP_MEDIZIN | _STOPP_ALLGEMEIN
 
@@ -1011,6 +1022,24 @@ def _stoppwort_einzeln(wort: str) -> bool:
     return len(wort) > 1 and wort.endswith("s") and wort[:-1] in _STOPP
 
 
+# "Zentrum der Läsion" kam als Einrichtung an. "Zentrum" allein darf keine
+# Stoppwort werden — es ist absichtlich ein Signalwort für echte
+# Einrichtungsnamen (siehe _EINRICHTUNG_KERN, "Neurozentrum Auwald"). Was
+# den Fehlalarm ausmacht, ist die Kombination mit "der"/"des" und einem
+# medizinischen Begriff danach: echte Einrichtungen heissen im Deutschen
+# "Zentrum FÜR X", nie "Zentrum DER/DES X" — dieses Muster bewusst eng auf
+# genau diese Konstruktion begrenzt, statt "Zentrum" selbst zu sperren.
+_ZENTRUM_MIT_ARTIKEL = re.compile(r"^zentrum[ \t]+(?:der|des)[ \t]+(\S+)$", re.I)
+
+
+def _ist_lokalisationsphrase(wert: str) -> bool:
+    treffer = _ZENTRUM_MIT_ARTIKEL.match(wert.strip(" .,;:-"))
+    if not treffer:
+        return False
+    rest = treffer.group(1)
+    return _ist_stoppwort(rest) or _ist_fachbegriff(rest)
+
+
 def _regex_funde(text: str) -> Iterable[Fund]:
     for typ, muster, gruppe in _KOMPILIERT:
         for treffer in muster.finditer(text):
@@ -1061,6 +1090,8 @@ def _ner_funde(text: str) -> Iterable[Fund]:
         if not any(z.isupper() for z in wert):
             continue
         if _ist_stoppwort(wert) or _ist_fachbegriff(wert) or _ist_abkuerzung(wert):
+            continue
+        if _ist_lokalisationsphrase(wert):
             continue
         start = ent.start_char + (len(ent.text) - len(ent.text.lstrip()))
         yield Fund(start, start + len(wert), wert, typ, "ner")

@@ -605,6 +605,29 @@ ohne_treffer("Der Patient berichtet, z. B. beim Treppensteigen, "
              "u. a. über Schwindel, d. h. keine Synkope.",
              "gängige Abkürzungen (z. B., u. a., d. h.)")
 
+print("\n=== 26. Rollenwörter und Artikel im Wortinneren ===")
+# "Stationsärztin" kam im echten Unterschriftenblock oben als ORT an --
+# "chefarzt"/"oberarzt"/"assistenzarzt" standen schon in der Stoppliste,
+# "facharzt"/"stationsarzt" fehlten. Eigener Testfall, unabhängig vom
+# Unterschriftenblock, damit die Lücke gezielt geprüft wird.
+ohne_treffer("Stationsärztin\nStationsarzt\nFacharzt für Neurologie",
+             "Rollenbezeichnungen ohne Titel bleiben unerkannt")
+
+# "MRT DES SCHÄDELS" und "Zentrum der Läsion" kamen als Einrichtung an --
+# ein radiologischer/anatomischer Begriff mit einem Artikel im
+# Wortinneren. Echte Einrichtungsnamen haben diesen Aufbau zufällig auch
+# ("Universität der Bundeswehr") -- die Gegenprobe muss stehen bleiben.
+for text in ["Das MRT DES SCHÄDELS zeigte eine Läsion.",
+             "Im Zentrum der Läsion zeigte sich eine Nekrose."]:
+    treffer = [(g.typ, f.text) for g in detect.analysiere(text) for f in g.funde]
+    pruefe(not treffer, f"{text!r} bleibt ohne Fehlalarm ({treffer})")
+
+gegenprobe = [(g.typ, f.text) for g in detect.analysiere(
+    "Die Universität der Bundeswehr München wurde vergleichend genannt."
+) for f in g.funde]
+pruefe(("ORGANISATION", "Universität der Bundeswehr München") in gegenprobe,
+       f"Echte Einrichtung mit Artikel im Namen bleibt erkannt (gefunden: {gegenprobe})")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")
