@@ -264,7 +264,13 @@ function alleFunde(nurErsetzte) {
 function quelleKurz(fund) {
   if (fund.quelle === 'ner') return fund.sicher ? 'Sprachmodell' : 'Sprachmodell, unbelegt';
   if (fund.quelle === 'nachlauf') return 'Konsistenz-Nachlauf';
-  if ((fund.quelle || '').startsWith('regex:')) return 'Regelbasiert';
+  if (fund.quelle === 'bekannt') return 'Bekannte Person (eingetragen)';
+  if ((fund.quelle || '').startsWith('ocr-aehnlich:')) {
+    return `Ähnlich zu „${fund.quelle.slice(13)}“ — Lesefehler?${fund.sicher ? '' : ' (unbelegt)'}`;
+  }
+  if ((fund.quelle || '').startsWith('regex:')) {
+    return fund.sicher ? 'Regelbasiert' : 'Regelbasiert, unbelegt';
+  }
   if (fund.quelle === 'manuell' || (fund.quelle || '').startsWith('auswahl')) return 'Manuell markiert';
   return fund.quelle || '';
 }
@@ -319,8 +325,8 @@ function zeichneUnbelegtHinweis() {
   kasten.className = 'warnung';
   kasten.id = 'unbelegt-hinweis';
   kasten.innerHTML =
-    `<b>${unbelegt.length} Treffer ohne Beleg.</b> Nur vom Sprachmodell `
-    + 'vorgeschlagen, ohne Anrede oder Titel daneben. Sie werden ersetzt — '
+    `<b>${unbelegt.length} Treffer ohne Beleg.</b> Vom Sprachmodell oder von `
+    + 'einer Ähnlichkeitsprüfung vorgeschlagen, ohne Anrede oder Titel daneben. Sie werden ersetzt — '
     + 'hier stecken aber die meisten Fehlalarme.';
 
   const knopf = document.createElement('button');
@@ -528,7 +534,7 @@ function zeileFuer(gruppe) {
   // eines ::after-Pseudoelements, dazu stopPropagation, damit der Tap nicht
   // gleichzeitig zeigeFundstelle() über name.onclick auslöst.
   if (!gruppe.sicher) {
-    const hinweis = 'Nur vom Sprachmodell vorgeschlagen — ohne Anrede, Titel '
+    const hinweis = 'Nur vorgeschlagen (Sprachmodell, Namensähnlichkeit oder Unterschriftenmuster) — ohne Anrede, Titel '
       + 'oder sonstigen Beleg. Wird ersetzt, lohnt aber einen Blick.';
     const marke = document.createElement('button');
     marke.type = 'button';
@@ -888,6 +894,72 @@ async function begriffHinzufuegen() {
   feld.value = '';
 }
 
+/**
+ * Bekannte Personen: der Nutzer kennt den Namen, die Erkennung muss ihn nicht
+ * erraten. Der Server liefert je Person eine Gruppe mit allen Schreibweisen.
+ * Was bereits als Person, Ort oder Einrichtung erkannt war und mit einer
+ * dieser Stellen überlappt, geht in die neue Gruppe über — sonst stünde
+ * dieselbe Person unter zwei Pseudonymen.
+ */
+async function personEintragen() {
+  const nachname = $('person-nachname').value.trim();
+  const rueck = $('person-rueckmeldung');
+  if (nachname.length < 2) {
+    rueck.textContent = 'Bitte mindestens den Nachnamen eintragen.';
+    rueck.className = 'hilfe leer';
+    return;
+  }
+  const antwort = await fetch('/api/personen', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: Z.text,
+      naechste_id: Z.naechsteId,
+      personen: [{
+        vorname: $('person-vorname').value.trim(),
+        nachname,
+        geburtsname: $('person-geburtsname').value.trim(),
+        rolle: $('person-rolle').value,
+      }],
+    }),
+  });
+  if (!antwort.ok) {
+    rueck.textContent = 'Das hat nicht geklappt — bitte noch einmal versuchen.';
+    rueck.className = 'hilfe leer';
+    return;
+  }
+  const daten = await antwort.json();
+  if (!daten.gruppen.length) {
+    rueck.textContent = `„${nachname}" kommt im Text nicht vor.`;
+    rueck.className = 'hilfe leer';
+    return;
+  }
+
+  const UEBERNEHMBAR = ['PERSON', 'PATIENT', 'ARZT', 'ORT', 'ORGANISATION'];
+  const neu = daten.gruppen[0];
+  Z.naechsteId += 1;
+
+  // Erkannte Funde, die von der neuen Gruppe überdeckt werden, wandern über.
+  for (const gruppe of Z.gruppen) {
+    if (!UEBERNEHMBAR.includes(gruppe.typ)) continue;
+    gruppe.funde = gruppe.funde.filter(
+      (f) => !neu.funde.some((n) => f.start < n.ende && n.start < f.ende));
+  }
+  Z.gruppen = Z.gruppen.filter((g) => g.funde.length > 0);
+  // Stellen, die schon einer anderen Gruppe (Datum, Adresse …) gehören, bleiben dort.
+  const belegt = alleFunde(false);
+  neu.funde = neu.funde.filter(
+    (f) => !belegt.some((b) => f.start < b.ende && b.start < f.ende));
+
+  Z.gruppen.push(neu);
+  labelsVergeben();
+  zeichneAlles();
+
+  rueck.textContent = `${neu.anzeige}: ${neu.funde.length} Stellen erfasst.`;
+  rueck.className = 'hilfe treffer';
+  ['person-vorname', 'person-nachname', 'person-geburtsname'].forEach((id) => { $(id).value = ''; });
+}
+
 // ---------------------------------------------------------------- Export
 
 function ersetzungen() {
@@ -1075,6 +1147,7 @@ function start() {
   });
 
   $('knopf-begriff').onclick = begriffHinzufuegen;
+  $('knopf-person').onclick = personEintragen;
 
   // Auswahl im Text: Menü einblenden, sobald etwas markiert ist.
   document.addEventListener('selectionchange', () => {

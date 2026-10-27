@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 import secrets
+from bisect import bisect_left, bisect_right
 from datetime import date, timedelta
 
 from .detect import Gruppe
@@ -217,7 +218,8 @@ def _jahreszeit(monat: int) -> str:
     return "Winter"
 
 
-def _kontextdatum(start: int, tag: int, monat: int, voll: list[tuple[int, date]],
+def _kontextdatum(start: int, tag: int, monat: int,
+                  voll: tuple[list[int], list[date]],
                   stichtag: date | None) -> date | None:
     """Ergänzt Tag und Monat ohne Jahr um das Jahr aus der Nachbarschaft.
 
@@ -225,17 +227,22 @@ def _kontextdatum(start: int, tag: int, monat: int, voll: list[tuple[int, date]]
     folgenden vollen Datums genommen — und eines abgezogen, falls das
     ergänzte Datum sonst hinter dem Bezug läge. Nie das aktuelle Jahr:
     ein Brief von 2019 würde sonst um sieben Jahre danebenliegen.
+
+    `voll` sind die Fundstellen und Werte aller vollen Daten, nach Fundstelle
+    sortiert; gesucht wird mit Halbierung, nicht mit einem Durchlauf je Angabe
+    (bei langen Dokumenten sonst quadratisch).
     """
-    spaeter = [d for s, d in voll if s > start and s - start <= 80]
-    if spaeter:
-        bezug = spaeter[0]
+    starts, daten = voll
+    i = bisect_right(starts, start)
+    if i < len(starts) and starts[i] - start <= 80:
+        bezug = daten[i]
         kandidat = _sicher(bezug.year, monat, tag)
         if kandidat and kandidat > bezug:
             kandidat = _sicher(bezug.year - 1, monat, tag)
         return kandidat
-    frueher = [d for s, d in voll if s < start and start - s <= 200]
-    if frueher:
-        bezug = frueher[-1]
+    j = bisect_left(starts, start) - 1
+    if j >= 0 and start - starts[j] <= 200:
+        bezug = daten[j]
         kandidat = _sicher(bezug.year, monat, tag)
         if kandidat and kandidat < bezug:
             kandidat = _sicher(bezug.year + 1, monat, tag)
@@ -249,7 +256,7 @@ def _kontextdatum(start: int, tag: int, monat: int, voll: list[tuple[int, date]]
 
 
 def teildatum_verschieben(fund_text: str, start: int, versatz: timedelta,
-                          voll: list[tuple[int, date]],
+                          voll: tuple[list[int], list[date]],
                           stichtag: date | None) -> str | None:
     """Verschiebt Jahr, Monat+Jahr, Jahreszeit+Jahr und Tag+Monat.
 
@@ -397,6 +404,10 @@ def _initialen(name: str) -> str:
     return " ".join(f"{b}." for b in buchstaben) if buchstaben else ""
 
 
+# Für Gruppen, die erst nach der Analyse entstehen (bekannte Personen).
+initialen_von = _initialen
+
+
 def _bezugsdatum(gruppen: list[Gruppe]) -> date | None:
     """Spätestes Datum im Dokument — üblicherweise das Briefdatum.
 
@@ -429,12 +440,13 @@ def formen_berechnen(gruppen: list[Gruppe]) -> dict:
     stichtag = _bezugsdatum(gruppen)
     # Volle Daten (nur Typ DATUM, nicht das Geburtsdatum) mit Fundstelle: sie
     # liefern das Jahr für Angaben wie "vom 03.03. bis 12.03.2026".
-    voll = sorted(
+    voll_liste = sorted(
         (fund.start, gelesen)
         for gruppe in gruppen if gruppe.typ == "DATUM"
         for fund in gruppe.funde
         if (gelesen := datum_lesen(fund.text)) is not None
     )
+    voll = ([s for s, _ in voll_liste], [d for _, d in voll_liste])
 
     for gruppe in gruppen:
         if gruppe.typ in ("PATIENT", "ARZT", "PERSON"):

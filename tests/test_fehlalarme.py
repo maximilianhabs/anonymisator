@@ -686,6 +686,56 @@ treffer = [f.text for g in detect.analysiere("Entlassung am 03.03.2024.")
            for f in g.funde if g.typ == "DATUM"]
 pruefe(treffer == ["03.03.2024"], f"Volles Datum bleibt ungeteilt (gefunden: {treffer})")
 
+print("\n=== 29. Restprüfung mit Fehlertoleranz (OCR) ===")
+# "Hartrnann" (rn statt m) war als Grenze im README genannt. Die Prüfung
+# vergleicht noch nicht abgedeckte, grossgeschriebene Wörter mit den
+# Namensteilen erkannter Personen -- mit einer Gewichtung, die typische
+# OCR-Verwechslungen billig und beliebige Ersetzungen teuer macht.
+ocr_text = ("Frau Dr. Elisabeth Hartmann berichtet. Im Scan steht Hartrnann und "
+            "Eiisabeth.")
+ocr_gruppen = detect.analysiere(ocr_text)
+ocr_funde = {f.text: f.quelle for g in ocr_gruppen for f in g.funde}
+for wort in ("Hartrnann", "Eiisabeth"):
+    pruefe(ocr_funde.get(wort, "").startswith("ocr-aehnlich:"),
+           f"{wort!r} als mögliche Lesefehler-Variante erfasst ({ocr_funde})")
+pruefe(all(not g.sicher for g in ocr_gruppen
+           if any(f.quelle.startswith("ocr-aehnlich") for f in g.funde)),
+       "Solche Treffer gelten nie als belegt (sie sollen im Review auffallen)")
+
+# Gegenproben: ein beliebiges Wort mit einem Buchstaben Unterschied ist kein
+# Lesefehler, und zwei verschiedene, ähnliche Personen bleiben getrennt.
+gegen = detect.analysiere("Herr Peter Mayer kam. Die Mauer ist alt.")
+pruefe(not any(f.text == "Mauer" for g in gegen for f in g.funde),
+       "'Mauer' wird nicht zu 'Mayer' (y/u ist keine OCR-Verwechslung)")
+zwei = {g.anzeige for g in detect.analysiere(
+    "Herr Hans Meier und Herr Karl Meyer kamen zusammen.")}
+pruefe("Hans Meier" in zwei and "Karl Meyer" in zwei,
+       f"Meier und Meyer bleiben zwei Personen ({zwei})")
+
+print("\n=== 30. Bekannte Personen: alle Schreibweisen ===")
+varianten = detect.namensvarianten("Thomas", "Weidinger")
+for v in ("Weidinger", "Weidinger, Thomas", "Thomas Weidinger", "T. Weidinger",
+          "Weidinger, T.", "WEIDINGER", "Weidingers"):
+    pruefe(v in varianten, f"Variante {v!r} wird erzeugt")
+umlaut = detect.namensvarianten("Anna", "Müller")
+pruefe("Mueller" in umlaut and "Anna Mueller" in umlaut,
+       "Schreibweise ohne Umlaute wird miterzeugt")
+
+gruppe = detect.bekannte_person_gruppe(
+    "Weidinger, Thomas kam. T. Weidinger klagte. Thomasine Weidinger kam nicht. "
+    "Die Annahme blieb.", "Thomas", "Weidinger", "", "PATIENT", "b0")
+texte = [f.text for f in gruppe.funde] if gruppe else []
+pruefe("Weidinger, Thomas" in texte and "T. Weidinger" in texte,
+       f"Schreibweisen im Text gefunden ({texte})")
+pruefe(not any(t.startswith("Thomas") and t != "Thomas" and "Weidinger" not in t
+               for t in texte),
+       "Ein Vorname trifft nicht den Anfang eines anderen Worts ('Thomasine')")
+pruefe(gruppe is not None and gruppe.sicher and gruppe.typ == "PATIENT",
+       "Eingabe des Nutzers gilt als Beleg (sicher), Rolle bleibt erhalten")
+pruefe(detect.bekannte_person_gruppe("Nichts davon steht hier.", "Anna", "Meier",
+                                      "", "PATIENT", "b1") is None,
+       "Name, der nicht vorkommt, ergibt keine Gruppe")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

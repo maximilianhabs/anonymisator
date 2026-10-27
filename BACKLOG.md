@@ -21,6 +21,55 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   Entscheidung an einer Stelle steht und testbar ist. Der bestehende
   Hinweistext an den Nutzer ist um den Grund zu ergänzen: „Textlayer
   vorhanden, aber nicht lesbar" ist etwas anderes als „kein Textlayer".
+- **Fall-Modus: umkehrbar, mehrere Dokumente, Schlüsseldatei.**
+  (2026-10-27, Feedback aus der Gutachtenpraxis; 0.25.0/0.26.0 haben die
+  Datums- und Regel-Vorschläge daraus bereits umgesetzt.) Beschlossen, als
+  **eigener opt-in Modus** umzusetzen — damit ist die Haltung unter „Bewusst
+  nicht vorgesehen" (reversible Pseudonymisierung) für diesen einen Fall
+  präzisiert, nicht aufgehoben: abgelehnt bleibt jedes **auf dem Server
+  gespeicherte** Geheimnis; zulässig ist eine Schlüsseldatei, die nur beim
+  Nutzer liegt und nur auf Klick entsteht, genau wie die heutige CSV.
+
+  Ein Gutachten braucht das Gegenteil des Standardmodus: der KI-Entwurf
+  kommt mit Platzhaltern zurück und muss wieder Klarnamen bekommen. Dafür:
+
+  - **Stufe „Fall / umkehrbar"** neben Leicht, Standard, Streng. Bewusst
+    als **Pseudonymisierung** gekennzeichnet, mit derselben deutlichen
+    Warnung wie „Leicht" (bleibt personenbezogen). Standard und Streng
+    bleiben unverändert; der Versatz je Dokument bleibt dort Absicht.
+  - **Schlüsseldatei nur verschlüsselt.** JSON, AES-GCM-256, PBKDF2-SHA256
+    mit mindestens 600 000 Durchläufen, 16 Byte Salt, 12 Byte IV,
+    **Pflicht-Passwort mit Mindestlänge**; kein Klartext-Export, **kein
+    Originaltext in der Datei**, nur Zuordnung Platzhalter → Klartext
+    (Aliasliste, damit zusammengeführte oder umkategorisierte Gruppen alte
+    Kürzel nicht verlieren). Verschlüsselung im Browser (WebCrypto), damit
+    keine neue Python-Abhängigkeit nötig wird.
+  - **Rückübersetzung** Text oder `.docx` → Klarnamen. Für `.docx` ein
+    zustandsloser Endpunkt mit `zipfile`/`python-docx`: je Absatz alle
+    `w:t`-Knoten zusammenführen, Platzhalter ersetzen, auf die Knoten
+    zurückverteilen (Word zerlegt `[ARZT_2]` gern in `[ARZ` | `T_2]`);
+    Kopf-/Fusszeilen, Fussnoten, Kommentare mitbehandeln; `w:tab`, `w:br`
+    und Feldcodes nicht übersehen; **Metadaten wie beim Export leeren**.
+  - **Fall über mehrere Dokumente.** Gleiche Platzhalter für dieselbe
+    Person/Einrichtung in allen Dokumenten, Dokumentkürzel `[D01]`, `[D02]`
+    mit Befundart, Einrichtung, Verfasser, Datum (die Rückübersetzung
+    schreibt sie aus). Der Fallzustand lebt im Browser; die Schlüsseldatei
+    trägt ihn zwischen Sitzungen.
+  - **Ein Versatz pro Fall aus ganzen 28-Jahres-Schritten** (10 227 Tage,
+    +28 oder +56 Jahre): Tage, Monate, Wochentage und Abstände bleiben
+    exakt, und Jahr, Monat+Jahr, Tag+Monat verschieben sich ohne
+    Näherung konsistent. Verschobene Daten liegen weit in der Zukunft und
+    sind in KI-Texten nicht mit echten Jahreszahlen zu verwechseln
+    („Leitlinie 2024"). Rückübersetzung über ein **Register** verschoben →
+    original, vom Modell selbst berechnete Daten nur auf Wunsch
+    zurückrechnen und markieren. Hinweis an die KI in der Akte: „Das
+    heutige Datum entspricht in dieser Akte dem TT.MM.JJJJ."
+
+  Nicht übernehmen (am Prototyp des Kollegen aufgefallen): Schlüsseldatei
+  ohne Passwort, „Originaltext in Schlüssel", fehlende Mindestlänge,
+  Jahresversatz getrennt vom Tagesversatz gerundet (kann ein Jahr
+  danebenliegen), Jahr-Fallback „aktuelles Jahr", unveränderte
+  `docProps/core.xml` im Klartext-`.docx`.
 - **Konfidenz-Ampel im Review.** Die Oberfläche unterscheidet heute nur
   belegt und unbelegt. Die Daten für eine feinere Abstufung liegen bereits
   vor: `Fund.quelle` sagt, ob der Treffer aus einer Regex oder aus dem
@@ -235,6 +284,13 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   E-Mail), fasst eine Sammelzeile zusammen, aus den Daten selbst
   abgelesen statt `_DIREKT` in JS zu duplizieren. Die Spalte der gerade
   gewählten Stufe ist hervorgehoben. In Chrome (hell/dunkel) geprüft.
+- **Ähnlichkeitsprüfung: Orte, Einrichtungen, Zusammenführen.**
+  (Rest aus dem Gutachten-Feedback, 0.26.0 prüft vorerst nur Personennamen.)
+  Dieselbe Prüfung für verlesene Ortsnamen („Passan") und Einrichtungen —
+  dort greift sie nur in der strengen Stufe. Ausserdem ein Ein-Klick
+  „zu dieser Person zuordnen" im Prüfschritt, damit „Hartrnann" dasselbe
+  Pseudonym wie „Hartmann" bekommt (hängt an „Schreibvarianten
+  zusammenführen" oben).
 - **Eigene Begriffslisten.** Wiederkehrende Namen (Kolleginnen und Kollegen,
   Stationen, Zuweiser) einmal hinterlegen, statt sie in jedem Dokument über
   „Zusätzlich ersetzen" nachzutragen — heute wirkt das nur für das eine
@@ -390,7 +446,11 @@ bis jemand sie zum ersten Mal wieder aufwirft.
   nicht gedacht als … unbeaufsichtigte Stapelverarbeitung"). Eine
   Batch-Engine, die diesen Schritt umgeht, wäre kein Performance-Feature,
   sondern ein Sicherheitsrückschritt.
-- **Reversible Pseudonymisierung über HMAC/Secret-Key-Vault** (2026-08-14,
+- **Reversible Pseudonymisierung über HMAC/Secret-Key-Vault** (2026-08-14;
+  seit 2026-10-27 für **einen** Fall präzisiert: ein opt-in Fall-Modus mit
+  verschlüsselter, nur beim Nutzer liegender Schlüsseldatei ist beschlossen,
+  siehe „Fall-Modus" unter „Naheliegend" — abgelehnt bleibt jedes auf dem
+  Server gespeicherte Geheimnis;
   externes Feedback). Die konsistenten Platzhalter (`[PATIENT_A]`,
   `[ARZT_1]`) gibt es schon, ohne einen Schlüssel speichern zu müssen. Ein
   Secret Key, der eine Rückführung auf die echte Identität erlaubt, wäre
@@ -405,6 +465,16 @@ bis jemand sie zum ersten Mal wieder aufwirft.
   Begründung trennen und Fachfremden erlauben, Regeln zu ändern, ohne die
   in `CONTRIBUTING.md` vorgeschriebene Pflicht zu einem Positiv- und
   Negativtest je neuer Regel einzuhalten.
+- **Regelschicht als einzelne JavaScript-Datei pflegen** (2026-10-27,
+  Feedback aus der Gutachtenpraxis). Ein Kollege hat ein solches Werkzeug
+  gebaut (eine HTML-Datei, offline, mit pdf.js/JSZip/Tesseract.js und
+  Content-Security-Policy, die jede Verbindung nach aussen sperrt) — als
+  eigenes Projekt, das sich auf diesen Anonymisator beruft. Hier nicht
+  übernommen: zwei Regelwerke driften auseinander, jede Regel müsste doppelt
+  gepflegt und doppelt getestet werden, und ohne Sprachmodell fehlt genau
+  das, was freie Namen im Fliesstext findet. Für Kolleginnen und Kollegen
+  ohne Python und Docker bleibt das ein sinnvoller niedrigschwelliger
+  Einstieg; wer ihn braucht, findet ihn dort.
 - **Formale Pipeline-/Protocol-Architektur** (2026-08-14, externes
   Feedback). Für ein Solo-gepflegtes Projekt dieser Grösse (vier
   Verarbeitungsschritte: Extraktion, Erkennung, Stufen, Export) wäre eine

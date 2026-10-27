@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.25.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.26.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 [![CI](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml/badge.svg)](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml)
 
@@ -417,7 +417,10 @@ weil es vollständige Sätze sieht statt Zeilenfragmente.
 Regeln mit einem statistischen Sprachmodell; beide können Stellen übersehen:
 
 - Namen ohne Anrede und ohne Titel mitten im Fließtext
-- OCR-Lesefehler in schlechten Scans (aus „Hartmann" wird „Hartrnann")
+- OCR-Lesefehler in schlechten Scans (aus „Hartmann" wird „Hartrnann"): eine
+  Ähnlichkeitsprüfung markiert solche Reste als unbelegten Vorschlag (siehe
+  „Bekannte Personen und Ähnlichkeitsprüfung"), garantiert aber nichts —
+  stark verstümmelte Namen bleiben eine Grenze
 - ungewöhnliche Schreibweisen, Bindestrichnamen, fremdsprachige Namen
 - indirekte Identifikatoren: eine sehr seltene Diagnose, ein ungewöhnlicher
   Beruf, eine markante Zeitangabe können eine Person auch ohne Namen
@@ -636,6 +639,33 @@ Ein Brief kann Patient, Angehörige, Zuweiser sowie Haus- und Fachärzte nennen
 und damit zu Recht über jedem Grenzwert liegen. Wer dort automatisch kappt,
 lässt Klarnamen stehen. Gelenkt wird deshalb nur der Blick, nicht das
 Ergebnis.
+
+## Bekannte Personen und Ähnlichkeitsprüfung
+
+**Bekannte Person eintragen.** Wer den Namen des Patienten kennt, muss ihn
+nicht erkennen lassen. In der Seitenleiste (aufklappbar unter „Bekannte
+Person eintragen") genügen Vorname, Nachname, optional Geburtsname und die
+Rolle. Daraus entstehen alle üblichen Schreibweisen: Nachname allein,
+„Nachname, Vorname", „Vorname Nachname", Initialen („T. Weidinger",
+„Weidinger, T."), Versalien, Genitiv-s, Teile eines Doppelnamens, einzelne
+Vornamen (nur wenn sie kein Alltagswort sind) und jeweils die Schreibweise
+ohne Umlaute („Müller" und „Mueller"). Gesucht wird im ganzen Text an
+Wortgrenzen — „Thomas" trifft nicht „Thomasine". Was zuvor halb erkannt war
+(„Herr Weidinger" und „Thomas" als zwei getrennte Personen), geht in die eine
+Gruppe über und bekommt ein Pseudonym. Die Eingabe gilt als Beleg; sie wird
+nirgends gespeichert und gehört nur zu dem einen offenen Dokument.
+
+**Ähnlichkeitsprüfung gegen OCR-Fehler.** Nach der Erkennung wird jedes noch
+nicht abgedeckte, grossgeschriebene Wort mit den Namensteilen der erkannten
+Personen verglichen. Typische Verwechslungen („rn" statt „m", „I" statt „l",
+„c"/„e"/„o") kosten wenig, beliebige Ersetzungen viel: „Hartrnann" und
+„Eiisabeth" werden gefunden, „Mauer" neben „Mayer" und „Meyer" neben „Meier"
+nicht. Zugelassen ist ein Fehler ab fünf, zwei ab neun Zeichen, der erste
+Buchstabe muss stimmen. Treffer erscheinen als eigene, **stets unbelegte**
+Gruppe mit Hinweis „Ähnlich zu …", werden wie jeder unbelegte Fund ersetzt
+und lassen sich im Prüfschritt abwählen. Das Wort gleich zur Gruppe der
+richtigen Person zu schlagen ist noch nicht vorgesehen; sie bekommen ein
+eigenes Pseudonym.
 
 ## Wie belastbar ist die Erkennung?
 

@@ -4,6 +4,44 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.26.0 — 2026-10-27
+
+Zweite Runde aus dem Gutachten-Feedback (siehe 0.25.0).
+
+- **Bekannte Person eintragen.** Neues, aufklappbares Formular in der
+  Seitenleiste (Vorname, Nachname, Geburtsname, Rolle). Der Server erzeugt
+  daraus alle Schreibweisen — Nachname allein, „Nachname, Vorname",
+  Initialen, Versalien, Genitiv-s, Doppelnamen-Teile, einzelne Vornamen
+  (nur ohne Alltagswort), jeweils auch ohne Umlaute — und sucht sie an
+  Wortgrenzen im ganzen Text. Bereits halb erkannte Teile derselben Person
+  gehen in die eine Gruppe über. Neuer zustandsloser Endpunkt
+  `POST /api/personen`; nichts wird gespeichert oder protokolliert.
+- **Ähnlichkeitsprüfung gegen OCR-Fehler.** Grossgeschriebene Wörter, die
+  noch von keinem Fund abgedeckt sind, werden mit den Namensteilen erkannter
+  Personen verglichen — mit einem Abstand, der typische Verwechslungen
+  („rn"/„m", „I"/„l", „c"/„e"/„o") billig und beliebige Ersetzungen teuer
+  macht. „Hartrnann" und „Eiisabeth" werden gefunden; „Mauer"/„Mayer" und
+  „Meier"/„Meyer" bewusst nicht. Hat das Sprachmodell das verlesene Wort
+  als Ort oder Einrichtung getaggt (und damit in der Standardstufe stehen
+  gelassen), wird es zur Person. Treffer sind stets unbelegt und tragen den
+  Hinweis „Ähnlich zu …". Gegenüber dem Vorschlag (reiner Levenshtein) mit
+  einer Verbesserung: der reine Editierabstand hätte „Hartrnann" (zwei
+  Schritte) bei einer Grenze von eins nie gefunden.
+- Oberfläche: Der Hinweis „Treffer ohne Beleg" nennt jetzt alle Quellen
+  (Sprachmodell, Ähnlichkeit, Unterschriftenmuster); der Tooltip zeigt
+  „Regelbasiert, unbelegt" für unbelegte Regelfunde.
+- Laufzeit bei langen Dokumenten gemessen: die erste Fassung der
+  Ähnlichkeitsprüfung und der Jahresergänzung bei Teildaten prüfte
+  Überlappungen mit einem Durchlauf je Wort/Angabe (quadratisch) und machte
+  ein 530 000-Zeichen-Dokument um die Hälfte langsamer. Jetzt Halbierung über
+  sortierte Spannen; 133 000 Zeichen brauchen 8,0 s (vorher 7,7 s). Die
+  bestehenden quadratischen Stellen in `_entwirren` und im Nachlauf sind
+  nicht Teil dieser Änderung.
+- Neue Testsektionen 29 (Restprüfung, mit Gegenproben „Mauer"/„Meyer") und
+  30 (bekannte Personen) in `tests/test_fehlalarme.py`.
+- Hinweis zum Issue: „PLZ + Ort als eigene Ortsgruppe" (Punkt 6) war bereits
+  vorhanden (`_konsistenz_nachlauf`, Schritt 1) und braucht keine Änderung.
+
 ## 0.25.0 — 2026-10-27
 
 Erste Runde aus dem Feedback eines Kollegen, der den Anonymisator als

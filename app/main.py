@@ -19,7 +19,7 @@ import uuid
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import config, detect, export, extract, logging_setup, stufen
 
@@ -62,6 +62,19 @@ class BegriffEingabe(BaseModel):
     text: str
     begriff: str
     naechste_id: str
+
+
+class PersonEingabe(BaseModel):
+    vorname: str = Field("", max_length=120)
+    nachname: str = Field(..., max_length=120)
+    geburtsname: str = Field("", max_length=120)
+    rolle: str = "PATIENT"
+
+
+class PersonenEingabe(BaseModel):
+    text: str
+    personen: list[PersonEingabe] = Field(..., max_length=20)
+    naechste_id: int = 0
 
 
 class Ersetzung(BaseModel):
@@ -191,6 +204,22 @@ async def begriff_suchen(eingabe: BegriffEingabe):
     if gruppe is None:
         return JSONResponse({"gefunden": False, "gruppe": None})
     return {"gefunden": True, "gruppe": _gruppe_als_dict(gruppe)}
+
+
+@app.post("/api/personen")
+async def personen_suchen(eingabe: PersonenEingabe):
+    """Bekannte Personen: alle Schreibweisen im Text suchen, je Person eine Gruppe."""
+    gruppen, ohne_treffer = [], []
+    for nr, person in enumerate(eingabe.personen):
+        gruppe = detect.bekannte_person_gruppe(
+            eingabe.text, person.vorname, person.nachname, person.geburtsname,
+            person.rolle, f"b{eingabe.naechste_id + nr}")
+        if gruppe is None:
+            ohne_treffer.append(f"{person.vorname} {person.nachname}".strip())
+            continue
+        gruppe.initialen = stufen.initialen_von(gruppe.anzeige)
+        gruppen.append(_gruppe_als_dict(gruppe))
+    return {"gruppen": gruppen, "ohne_treffer": ohne_treffer}
 
 
 @app.post("/api/export")

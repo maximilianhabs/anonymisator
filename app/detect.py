@@ -53,6 +53,7 @@ Wenn ja, ist es eine unbegrenzte Menge — Muster suchen, nicht eintragen.
 from __future__ import annotations
 
 import re
+from bisect import bisect_left
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
@@ -1278,6 +1279,7 @@ _UNSICHER_MOEGLICH = {"PERSON", "PATIENT", "ARZT", "ORT", "ORGANISATION"}
 # Regelfunde ohne Anrede- oder Titelanker: strukturell plausibel, aber ohne
 # eigenen Beleg. Sie werden wie ein Sprachmodell-Fund behandelt.
 _UNBELEGTE_QUELLEN = ("regex:initialen-frei", "regex:signatur")
+# "ocr-aehnlich:<Namensteil>" trägt den ähnlichen Namensteil hinter dem Doppelpunkt.
 
 
 def _ist_belegt(text: str, fund: Fund) -> bool:
@@ -1291,6 +1293,10 @@ def _ist_belegt(text: str, fund: Fund) -> bool:
     """
     if fund.typ not in _UNSICHER_MOEGLICH:
         return True
+    if fund.quelle.startswith("ocr-aehnlich"):
+        # Ähnlichkeit zu einem Namen ist kein Beleg, auch wenn zufällig ein
+        # Rollenmarker daneben steht — der Treffer soll im Review auffallen.
+        return False
     if not (fund.quelle.startswith("ner") or fund.quelle in _UNBELEGTE_QUELLEN):
         return True  # über Anrede oder Titel gefunden
     links = text[max(0, fund.start - 70):fund.start]
@@ -1636,6 +1642,137 @@ def labels_vergeben(gruppen: list[Gruppe]) -> None:
         gruppe.label = f"[{kat['label']}_{suffix}]"
 
 
+# --------------------------------------------------------------------------
+# Restprüfung mit Fehlertoleranz (OCR)
+# --------------------------------------------------------------------------
+
+# Buchstabenpaare, die Texterkennung typischerweise verwechselt. Eine
+# Verwechslung kostet einen Schritt, jede andere Ersetzung zwei — damit
+# bleibt "Hartrnann" ein Treffer für "Hartmann", "Mauer" für "Mayer" aber
+# keiner, und "Meier"/"Meyer" (zwei verschiedene Personen) bleiben getrennt.
+_OCR_VERWECHSLUNG = {frozenset(p) for p in (
+    "il", "ij", "ce", "co", "eo", "ao", "nu", "nr", "mn", "hb", "tf", "uv", "gq")}
+
+
+def _ocr_normalisiert(wort: str) -> str:
+    """Mehrbuchstaben-Verwechslungen vorab angleichen: rn→m, vv→w, cl→d."""
+    return wort.lower().replace("rn", "m").replace("vv", "w").replace("cl", "d")
+
+
+def _ocr_abstand(a: str, b: str, grenze: int) -> int:
+    """Gewichteter Editierabstand; bricht ab, sobald `grenze` überschritten ist."""
+    a, b = _ocr_normalisiert(a), _ocr_normalisiert(b)
+    if abs(len(a) - len(b)) > grenze:
+        return grenze + 1
+    vorher = list(range(len(b) + 1))
+    for i, za in enumerate(a, 1):
+        aktuell = [i]
+        for j, zb in enumerate(b, 1):
+            if za == zb:
+                ersetzen = 0
+            elif frozenset((za, zb)) in _OCR_VERWECHSLUNG:
+                ersetzen = 1
+            else:
+                ersetzen = 2
+            aktuell.append(min(vorher[j] + 1, aktuell[j - 1] + 1,
+                               vorher[j - 1] + ersetzen))
+        if min(aktuell) > grenze:
+            return grenze + 1
+        vorher = aktuell
+    return vorher[-1]
+
+
+def _ocr_aehnliche_gruppen(text: str, gruppen: list[Gruppe]) -> list[Gruppe]:
+    """Findet Reste, die einem erkannten Namen bis auf Lesefehler gleichen.
+
+    Aus "Hartmann" wird im Scan gern "Hartrnann" (rn statt m). Weder die
+    Regeln noch das Sprachmodell erkennen das als Name, und der exakte
+    Nachlauf findet es nicht. Verglichen wird jedes grossgeschriebene Wort,
+    das noch von keinem Fund abgedeckt ist, mit den Namensteilen der bereits
+    erkannten Personen: höchstens ein Fehler ab fünf Zeichen, zwei ab neun.
+    Der gleiche Anfangsbuchstabe ist Pflicht — OCR verwechselt Wortmitten,
+    selten den ersten Buchstaben.
+
+    Die Treffer kommen als eigene, unbelegte Gruppe (nicht in die Gruppe der
+    Person hinein, damit sie im Review sichtbar bleiben) und werden wie jeder
+    unbelegte Fund ersetzt: ein Name, der stehen bleibt, ist der teurere
+    Fehler als ein zu viel ersetztes Wort. Ähnliche, aber verschiedene
+    Personen ("Meier"/"Meyer") sind nur dann betroffen, wenn eine von ihnen
+    nirgends als Name erkannt wurde.
+    """
+    namensteile: set[str] = set()
+    bekannt: set[str] = set()
+    for gruppe in gruppen:
+        if gruppe.typ not in ("PERSON", "PATIENT", "ARZT"):
+            continue
+        for variante in gruppe.varianten:
+            for teil in re.split(r"[\s,\-]+", variante):
+                teil = teil.strip(".")
+                if len(teil) >= 5 and teil[0].isupper() and not (
+                        _ist_stoppwort(teil) or _ist_fachbegriff(teil)):
+                    namensteile.add(teil)
+                if len(teil) >= 2:
+                    bekannt.add(teil.lower())
+    if not namensteile:
+        return []
+
+    # Hat das Sprachmodell das verlesene Wort schon als Ort oder Einrichtung
+    # getaggt ("Weidlnger" als ORT), bleibt es in der Standardstufe stehen —
+    # genau der Rest, den diese Prüfung finden soll. Dann wird es zur Person.
+    for gruppe in gruppen:
+        if (gruppe.typ in ("ORT", "ORGANISATION") and len(gruppe.funde) >= 1
+                and all(f.quelle == "ner" for f in gruppe.funde)
+                and re.fullmatch(r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß]{4,}", gruppe.anzeige)
+                and gruppe.anzeige.lower() not in bekannt):
+            for teil in namensteile:
+                grenze = 2 if min(len(gruppe.anzeige), len(teil)) >= 9 else 1
+                if (teil[0].lower() == gruppe.anzeige[0].lower()
+                        and _ocr_abstand(gruppe.anzeige, teil, grenze) <= grenze):
+                    gruppe.typ = "PERSON"
+                    for fund in gruppe.funde:
+                        fund.typ = "PERSON"
+                        fund.quelle = f"ocr-aehnlich:{teil}"
+                    break
+
+    # Überlappungsprüfung über sortierte Spannen und den bisherigen Höchstwert
+    # der Enden: logarithmisch je Wort statt ein Durchlauf über alle Funde
+    # (bei langen Dokumenten sonst quadratisch).
+    spannen = sorted((f.start, f.end) for g in gruppen for f in g.funde)
+    starts = [a for a, _ in spannen]
+    hoechstes_ende: list[int] = []
+    for _, e in spannen:
+        hoechstes_ende.append(max(e, hoechstes_ende[-1]) if hoechstes_ende else e)
+
+    def abgedeckt(a: int, b: int) -> bool:
+        i = bisect_left(starts, b) - 1
+        return i >= 0 and hoechstes_ende[i] > a
+
+    je_wort: dict[str, list[Fund]] = {}
+    for treffer in re.finditer(r"(?<![\wÄÖÜäöüß])[A-ZÄÖÜ][A-Za-zÄÖÜäöüß]{4,}(?![\wÄÖÜäöüß])", text):
+        wort = treffer.group(0)
+        if wort.lower() in bekannt:
+            continue  # exakter Treffer: Sache des Nachlaufs, nicht dieser Prüfung
+        if abgedeckt(treffer.start(), treffer.end()):
+            continue
+        if _ist_stoppwort(wort) or _ist_fachbegriff(wort) or _ist_abkuerzung(wort):
+            continue
+        for teil in namensteile:
+            if teil[0].lower() != wort[0].lower():
+                continue
+            grenze = 2 if min(len(wort), len(teil)) >= 9 else 1
+            if _ocr_abstand(wort, teil, grenze) <= grenze:
+                je_wort.setdefault(wort.lower(), []).append(
+                    Fund(treffer.start(), treffer.end(), wort, "PERSON",
+                         f"ocr-aehnlich:{teil}"))
+                break
+
+    return [
+        Gruppe(id=f"o{n}", typ="PERSON", anzeige=funde[0].text,
+               schluessel=schluessel, funde=funde)
+        for n, (schluessel, funde) in enumerate(je_wort.items())
+    ]
+
+
 def analysiere(text: str) -> list[Gruppe]:
     """Vollständiger Durchlauf: erkennen, entwirren, gruppieren, benennen."""
     funde = (list(_regex_funde(text)) + list(_ner_funde(text))
@@ -1725,6 +1862,7 @@ def analysiere(text: str) -> list[Gruppe]:
         nach_schluessel[name.lower()] = neue_gruppe
 
     liste = _konsistenz_nachlauf(text, liste)
+    liste = liste + _ocr_aehnliche_gruppen(text, liste)
     for gruppe in liste:
         gruppe.anzeige = max(gruppe.varianten, key=len)
         # Eine Gruppe gilt als belegt, sobald eine ihrer Fundstellen belegt
@@ -1734,6 +1872,105 @@ def analysiere(text: str) -> list[Gruppe]:
     liste.sort(key=lambda g: g.funde[0].start if g.funde else 0)
     labels_vergeben(liste)
     return liste
+
+
+# --------------------------------------------------------------------------
+# Bekannte Personen
+# --------------------------------------------------------------------------
+
+_UMLAUTE = (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss"),
+            ("Ä", "Ae"), ("Ö", "Oe"), ("Ü", "Ue"))
+_KLEINE_PARTIKEL = {"von", "van", "de", "der", "den", "zu", "zur", "ter", "ten",
+                    "di", "da", "la", "le", "dos"}
+
+
+def _name_normalisieren(name: str) -> str:
+    """Grossschreibung ergänzen: "weidinger" wird "Weidinger", "von" bleibt."""
+    teile = []
+    for t in name.split():
+        if t.islower() and t not in _KLEINE_PARTIKEL:
+            t = "-".join(x[:1].upper() + x[1:] for x in t.split("-"))
+        teile.append(t)
+    return " ".join(teile)
+
+
+def namensvarianten(vorname: str, nachname: str, geburtsname: str = "") -> list[str]:
+    """Alle üblichen Schreibweisen einer dem Nutzer bekannten Person.
+
+    Zuverlässiger als jede Erkennung und zehn Sekunden Arbeit: Wer den Namen
+    des Patienten kennt, trägt ihn ein, statt zu hoffen, dass jede Fundstelle
+    erkannt wird. Erzeugt: Nachname allein, "Nachname, Vorname", "Vorname
+    Nachname", Initialen ("T. Weidinger", "Weidinger, T."), Versalien,
+    Genitiv-s, Teile eines Doppelnamens, einzelne Vornamen und jeweils die
+    Schreibweise ohne Umlaute (ä/ae, ß/ss), wie OCR und Gutachtenvorlagen sie
+    liefern.
+    """
+    vorname = _name_normalisieren(vorname.strip())
+    nachnamen = [n for n in (_name_normalisieren(nachname.strip()),
+                             _name_normalisieren(geburtsname.strip())) if n]
+    vornamen = vorname.split()
+    out: set[str] = set()
+
+    for nach in nachnamen:
+        out |= {nach, nach.upper()}
+        if not nach.endswith(("s", "ß", "x", "z")):
+            out.add(nach + "s")
+        if "-" in nach:
+            out |= {t for t in nach.split("-") if len(t) >= 4}
+        for vor in ([vorname] if vorname else []) + (vornamen if len(vornamen) > 1 else []):
+            out |= {f"{vor} {nach}", f"{nach}, {vor}", f"{nach} {vor}",
+                    f"{vor.upper()} {nach.upper()}", f"{nach.upper()}, {vor.upper()}"}
+        if vornamen:
+            kurz = " ".join(f"{v[0]}." for v in vornamen)
+            for ini in {kurz, kurz.replace(" ", ""), f"{vornamen[0][0]}."}:
+                out |= {f"{ini} {nach}", f"{ini}{nach}", f"{nach}, {ini}"}
+
+    # Ein einzelner Vorname nur, wenn er kein Alltagswort ist ("Rosa", "Mark").
+    for vor in vornamen:
+        if len(vor) >= 3 and not (_ist_stoppwort(vor) or _ist_fachbegriff(vor)):
+            out |= {vor, vor.upper()}
+            if not vor.endswith(("s", "ß", "x", "z")):
+                out.add(vor + "s")
+
+    for v in list(out):
+        ohne = v
+        for alt, neu in _UMLAUTE:
+            ohne = ohne.replace(alt, neu)
+        if ohne != v:
+            out.add(ohne)
+    return sorted((v for v in out if len(v) >= 2), key=len, reverse=True)
+
+
+def bekannte_person_gruppe(text: str, vorname: str, nachname: str, geburtsname: str,
+                           rolle: str, gruppen_id: str) -> Gruppe | None:
+    """Sucht alle Schreibweisen einer bekannten Person im Text, als eine Gruppe.
+
+    Rolle ist PATIENT, ARZT oder PERSON. Eine Eingabe des Nutzers ist selbst
+    der Beleg: die Gruppe gilt als sicher. Längere Schreibweisen gehen vor
+    ("Anna Meier" vor "Meier"), damit sich keine zwei Funde überlappen.
+    """
+    if rolle not in ("PATIENT", "ARZT", "PERSON") or len(nachname.strip()) < 2:
+        return None
+    belegt: list[tuple[int, int]] = []
+    funde: list[Fund] = []
+    for variante in namensvarianten(vorname, nachname, geburtsname):
+        grenze = r"(?<![\wÄÖÜäöüß]){}(?![\wÄÖÜäöüß])"
+        if re.search(r"[\s,.]", variante):
+            muster = re.compile(
+                grenze.format(re.escape(variante).replace(r"\ ", r"[ \t]+")), re.I)
+        else:
+            muster = re.compile(grenze.format(re.escape(variante)))
+        for t in muster.finditer(text):
+            if any(t.start() < e and s < t.end() for s, e in belegt):
+                continue
+            belegt.append((t.start(), t.end()))
+            funde.append(Fund(t.start(), t.end(), t.group(0), rolle, "bekannt"))
+    if not funde:
+        return None
+    funde.sort(key=lambda f: f.start)
+    anzeige = f"{_name_normalisieren(vorname.strip())} {_name_normalisieren(nachname.strip())}".strip()
+    return Gruppe(id=gruppen_id, typ=rolle, anzeige=anzeige, schluessel=anzeige.lower(),
+                  funde=funde, sicher=True)
 
 
 def manuelle_gruppe(text: str, begriff: str, gruppen_id: str) -> Gruppe | None:

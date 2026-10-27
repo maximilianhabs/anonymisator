@@ -267,6 +267,24 @@
       <p class="hilfe" id="begriff-rueckmeldung">Findet den Begriff im gesamten Text, unabhängig von Groß-/Kleinschreibung.</p>
     </div>
 
+    <details class="werkzeug personen">
+      <summary>Bekannte Person eintragen</summary>
+      <p class="hilfe">Wer den Namen kennt, muss ihn nicht erkennen lassen: alle üblichen Schreibweisen
+        (Nachname, „Nachname, Vorname", Initialen, Versalien, Genitiv, ohne Umlaute) werden im ganzen Text gesucht.</p>
+      <div class="personen-felder">
+        <input type="text" id="person-vorname" placeholder="Vorname(n)" autocomplete="off">
+        <input type="text" id="person-nachname" placeholder="Nachname" autocomplete="off">
+        <input type="text" id="person-geburtsname" placeholder="Geburtsname (optional)" autocomplete="off">
+        <select id="person-rolle" aria-label="Rolle">
+          <option value="PATIENT">Patient/in</option>
+          <option value="ARZT">Behandler/in</option>
+          <option value="PERSON">Weitere Person</option>
+        </select>
+        <button type="button" class="knopf klein" id="knopf-person">Eintragen</button>
+      </div>
+      <p class="hilfe" id="person-rueckmeldung"></p>
+    </details>
+
     <div class="gruppen" id="gruppen"></div>
 
     <div class="export">
