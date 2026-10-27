@@ -1,5 +1,5 @@
 {
-  "beschreibung": "Zweispaltiger Briefkopf in Versalien (Anschrift links, Ansprechpartnerin/Durchwahl rechts, durch eine grosse Lücke getrennt statt durch einen Zeilenumbruch -- wie beim Kopieren aus einer mehrspaltigen PDF-Seite). Prüft, dass Einrichtungsname und Strassenname trotz Versalschreibung erkannt werden, ohne die rechte Spalte mit hineinzuziehen.",
+  "beschreibung": "Zweispaltiger Briefkopf in Versalien (Anschrift links, Ansprechpartnerin/Durchwahl rechts, durch eine grosse Lücke getrennt statt durch einen Zeilenumbruch -- wie beim Kopieren aus einer mehrspaltigen PDF-Seite). Prüft, dass Einrichtungsname und Strassenname trotz Versalschreibung erkannt werden, ohne die rechte Spalte mit hineinzuziehen. Die Ansprechpartnerin in Versalien ('FRAU HUBER') gehört seit 0.25.0 zur Erwartung: sie blieb vorher unerkannt und fehlte deshalb auch in dieser Liste.",
   "funde": [
     {"typ": "ORGANISATION", "text": "KLINIK AM AUWALD"},
     {"typ": "TELEFON", "text": "0851 4409-233"},
@@ -11,6 +11,7 @@
     {"typ": "ADRESSE", "text": "Further Straße 21"},
     {"typ": "GESCHLECHT", "text": "männlich"},
     {"typ": "DIAGNOSECODE", "text": "G61.0"},
-    {"typ": "ARZT", "text": "Katharina Sailer"}
+    {"typ": "ARZT", "text": "Katharina Sailer"},
+    {"typ": "PERSON", "text": "HUBER"}
   ]
 }

@@ -88,7 +88,7 @@ still in einem `pip install -r requirements.txt` verschwinden zu lassen.
 
 ## Vor jedem Pull Request
 
-Alle zehn Testdateien müssen ohne Fehler durchlaufen:
+Alle elf Testdateien müssen ohne Fehler durchlaufen:
 
 ```bash
 for t in tests/test_*.py; do

@@ -176,17 +176,26 @@ _KEIN_NAME = (
     r"Assistenz(?:arzt|ärztin)|Fach(?:arzt|ärztin)|Station(?:sarzt|särztin)|"
     r"Arzt|Ärztin|Pfleger(?:in)?|"
     r"Sohn|Tochter|Ehemann|Ehefrau|Mutter|Vater|Bruder|Schwester|Eltern|"
-    r"Angehörige[rn]?|Betreuer(?:in)?|Rechtsanwalt|Rechtsanwältin)\b)")
+    r"Angehörige[rn]?|Betreuer(?:in)?|Rechtsanwalt|Rechtsanwältin|"
+    r"Notar(?:in)?|Steuerberater(?:in)?)\b)")
+
+# Dieselbe Sperre für Namen in Grossschreibung ("FRAU KOLLEGIN"), die der
+# fallsensitive Lookahead oben nicht träfe.
+_KEIN_NAME_I = _KEIN_NAME.replace("(?!(?:", "(?!(?i:", 1)
 
 # Mindestens zwei Kleinbuchstaben — schliesst "Dr" aus, lässt "Utz" zu.
-_NAMENSTEIL = _KEIN_NAME + r"[A-ZÄÖÜ][a-zäöüß]{2,}(?:-[A-ZÄÖÜ][a-zäöüß]{2,})?"
+# "IIse" (grosses I statt kleinem l) ist die häufigste OCR-Verwechslung bei
+# Vornamen mit I am Anfang; deshalb als zweite Form zugelassen.
+_NAMENSTEIL = (_KEIN_NAME + r"(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]I[a-zäöüß]{2,})"
+               r"(?:-[A-ZÄÖÜ][a-zäöüß]{2,})?")
 
 # Nach einem akademischen Titel darf der Name auch durchgehend gross
 # geschrieben sein: "PROF. DR. MED. WEISSBACH" ist in Briefköpfen und
 # Unterschriftenzeilen die Regel. Diese Form nur hier zuzulassen und nicht
 # überall ist Absicht — freistehend würde sie jede Abkürzung fangen, von
 # EEG bis MRT. Der vorangehende Titel ist der Beleg, der sie rechtfertigt.
-_NAME_GROSS = _KEIN_NAME + r"(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]{3,})"
+_NAME_GROSS = (_KEIN_NAME
+               + r"(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]I[a-zäöüß]{2,}|[A-ZÄÖÜ]{3,})")
 _NAMENSTEIL_NACH_TITEL = (
     _NAME_GROSS + r"(?:-(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]{2,}))?")
 
@@ -221,8 +230,9 @@ _TITELKETTE = (
 
 # Titel und Anreden, die zwischen Anrede und Namen stehen dürfen und
 # mitkonsumiert, aber nicht als Name gewertet werden.
-_TITEL = (r"(?:(?:Dr|Prof|PD|med|habil|Dipl\.-?\s?(?:Med|Psych)|Kolleg(?:e|in)|"
-          r"Doktor|Professor)\.?\s+)*")
+_TITEL = (r"(?:(?:Dr|Prof|PD|med|habil|Dipl\.-?\s?[A-Za-z]{2,}|Kolleg(?:e|in)|"
+          r"Doktor|Professor|Rechtsanwalt|Rechtsanwältin|Notar(?:in)?|"
+          r"Steuerberater(?:in)?)\.?\s+)*")
 
 # --------------------------------------------------------------------------
 # Physikalische Einheiten
@@ -530,6 +540,40 @@ REGELN: list[tuple[str, str, int]] = [
      rf"(?i:dr|prof|oa|oä|ca|cha)\.?[ \t]+{_TITELKETTE}"
      rf"((?:[A-ZÄÖÜ]\.[ \t]*){{1,3}}{_mehrteiliger_name(_NAMENSTEIL_NACH_TITEL)})", 1),
 
+
+    # --- Personen: Berufsbezeichnung, Feldname, Versalien -------------------
+    # Rechtsanwalt, Notar und Steuerberater tragen im Gutachtenwesen dieselbe
+    # Beleg-Funktion wie ein akademischer Titel. "RA" bewusst nicht: die
+    # Abkürzung ist ebenso die rheumatoide Arthritis ("RA Faktor").
+    ("PERSON",
+     rf"(?:Rechtsanwalt|Rechtsanwältin|Notar|Notarin|Steuerberater|"
+     rf"Steuerberaterin)[ \t]+{_TITELKETTE}({_mehrteiliger_name(_NAMENSTEIL)})", 1),
+    # "Dipl.-Ing." und verwandte Titel (Gutachter, Sachverständige) — als
+    # ARZT geführt, wie jede Titelzeile. Ohne diese Regel zog das
+    # Sprachmodell Büro- und Firmenwörter vor dem Titel mit in den Namen.
+    ("ARZT",
+     rf"Dipl\.-?[ \t]?[A-Za-z]{{2,}}\.?[ \t]+{_TITELKETTE}"
+     rf"({_mehrteiliger_name(_NAMENSTEIL_NACH_TITEL)})", 1),
+    # Feldname mit "Vorname Nachname" statt "Nachname, Vorname". Zwei
+    # Namensteile sind Pflicht — ein einzelnes grossgeschriebenes Wort nach
+    # "Patient:" ist ebenso oft ein Feldwert ("Patient: Verlauf").
+    ("PERSON",
+     rf"(?:Kläger(?:in)?|Beklagte[rn]?|Antragsteller(?:in)?|"
+     rf"Antragsgegner(?:in)?|Versicherte[rn]?|Proband(?:in)?|Patient(?:in)?|"
+     rf"Geschädigte[rn]?|Betroffene[rn]?)[ \t]*:[ \t]*"
+     rf"({_NAMENSTEIL}[ \t]+{_mehrteiliger_name(_NAMENSTEIL)})", 1),
+    # "unseren Patienten Elias Vogt" — ohne Anrede, aber mit Artikel davor und
+    # zwei Namensteilen danach.
+    ("PERSON",
+     rf"(?:unsere[nrm]?|Ihre[nrm]?|der|die|den|dem|ein(?:en|e)?)[ \t]+"
+     rf"Patient(?:in|en)?[ \t]+({_NAMENSTEIL}[ \t]+{_mehrteiliger_name(_NAMENSTEIL)})", 1),
+    # Briefkopf-Zeilen wie "ANSPRECHPARTNERIN: FRAU HUBER" stehen durchgehend
+    # in Versalien; die Anrede davor ist der Beleg.
+    ("PERSON",
+     rf"\b(?:HERR|HERRN|FRAU)[ \t]+{_TITELKETTE}"
+     rf"(?!(?:UND|ODER|DER|DIE|DAS|DEM|DEN|FÜR|MIT|VON|SEHR|GEEHRTE[RNS]?)\b)"
+     rf"({_KEIN_NAME_I}[A-ZÄÖÜ]{{3,}}(?:-[A-ZÄÖÜ]{{3,}})?)\b", 1),
+
     # --- Freistehende Zahlen ------------------------------------------------
     # Der Grundsatz: Eine Zahl mit physikalischer Einheit ist ein Messwert und
     # trägt medizinische Aussage — sie bleibt. Eine Zahl ohne Einheit ist eine
@@ -575,9 +619,7 @@ REGELN: list[tuple[str, str, int]] = [
     ("GESCHLECHT", r"(?:Geschlecht|Sex)[ \t]*:?[ \t]*([mwd])\b", 1),
     ("ZEITSPANNE",
      r"(?:seit|vor|über|innerhalb\s+von|nach)\s+(?:etwa\s+|ca\.\s+|rund\s+)?"
-     r"\d{1,3}\s*(?:Jahren|Jahre|Monaten|Monate|Wochen|Tagen|Tage)"
-     r"|(?:seit|im|ab)\s+(?:dem\s+)?(?:Frühjahr|Frühling|Sommer|Herbst|Winter)"
-     r"\s+(?:19|20)\d{2}", 0),
+     r"\d{1,3}\s*(?:Jahren|Jahre|Monaten|Monate|Wochen|Tagen|Tage)", 0),
 
     # --- Geldbeträge --------------------------------------------------------
     # Kein Identifikator für sich, aber in Rechnungen und Gutachten der
@@ -600,6 +642,27 @@ REGELN: list[tuple[str, str, int]] = [
 
     # --- Datum zuletzt: generischer als Geburtsdatum ------------------------
     ("DATUM", _DATUM, 0),
+    # Unvollständige Daten. Sie standen früher als nackte Jahreszahl oder
+    # Ziffernfolge unverschoben neben verschobenen vollen Daten — wer
+    # "vom 03.03. bis 12.03.2026" las, hatte mit dem unverschobenen "03.03."
+    # den Versatz in der Hand.
+    #
+    # Monatsname + Jahr ("März 2024"), Jahreszeit + Jahr ("Frühjahr 2019")
+    # und Monat/Jahr in Ziffern ("03/2024"). Der Rückblick bei der
+    # Ziffernform schützt "03.03.2024", dessen Rest "03.2024" sonst für sich
+    # träfe.
+    ("DATUM", rf"\b(?:{_MONATE})\s+(?:19|20)\d{{2}}\b", 0),
+    ("DATUM", r"\b(?:Frühjahr|Frühling|Sommer|Herbst|Winter)\s+(?:19|20)\d{2}\b", 0),
+    ("DATUM", r"(?<![\d./])(?:0[1-9]|1[0-2])[/.](?:19|20)\d{2}\b", 0),
+    # Tag + Monat ohne Jahr — nur hinter einem Signalwort. Gliederungspunkte
+    # wie "3.2." stehen ohne ein solches Wort und würden sonst mitgetroffen.
+    ("DATUM",
+     r"\b(?i:am|vom|bis|seit|ab|zum|den|und|sowie|Stand|bzw\.)[ \t]+"
+     r"((?:0?[1-9]|[12]\d|3[01])\.[ \t]?(?:0?[1-9]|1[0-2])\.)(?![ \t]?\d)", 1),
+    # "Jahrgang 1971" ist ein Geburtsdatum in Kurzform und gehört in dieselbe
+    # Kategorie wie "geb. 22.07.1971" — sonst blieb das Geburtsjahr in der
+    # Standardstufe stehen, obwohl das Geburtsdatum zur Dekade vergröbert wird.
+    ("GEBURTSDATUM", r"\b(?:Jahrgang|Jg\.)[ \t]*(?:19|20)\d{2}\b", 0),
     # Nackte Jahreszahl ganz zum Schluss und mit der niedrigsten Priorität:
     # sie darf niemals einem vollständigen Datum vorgehen.
     ("JAHRESZAHL", r"\b(?:19|20)\d{2}\b", 0),
@@ -742,6 +805,8 @@ _STOPP_ALLGEMEIN = {
     # Nicht für Grouping verwendet") und ist dadurch grossgeschrieben --
     # kam unbelegt als Person an.
     "gültig", "gültige", "gültiger", "gültiges", "gültigen",
+    # Anrede in Briefköpfen ("SEHR GEEHRTE FRAU KOLLEGIN").
+    "geehrte", "geehrter", "geehrten", "geehrtes", "liebe", "lieber",
     # Bestimmte Artikel. "MRT DES SCHÄDELS" und "Zentrum der Läsion" kamen
     # als Einrichtung an — ein Radiologie-/Anatomiebegriff mit einem
     # Artikel dazwischen. Der Artikel selbst trägt keine Angabe; erst weil
@@ -1138,6 +1203,46 @@ def _initialen_frei_funde(text: str) -> Iterable[Fund]:
 
 
 # --------------------------------------------------------------------------
+# Namen hinter der Grussformel
+# --------------------------------------------------------------------------
+
+# Nach "Mit freundlichen Grüßen" oder "gez." folgt in Briefen und Gutachten
+# der Name des Unterzeichnenden — auch ohne Titel und ohne Rollenzeile.
+# Die OCR liefert die Formel oft ohne Umlaute ("Grussen", "Gruessen").
+_GRUSS = (r"(?i:(?:Mit[ \t]+)?(?:(?:freundlichen|kollegialen|herzlichen|besten|"
+          r"vorzüglichen|hochachtungsvollen)[ \t]+)+Gr(?:ü|ue|u)(?:ß|ss)en"
+          r"|Hochachtungsvoll)")
+_UNTERSCHRIFT_KURZ = r"(?:gez\.|i\.[ \t]?[VA]\.)"
+_SIGNATUR_NAME = (
+    rf"((?:(?:[A-ZÄÖÜ]\.[ \t]*){{1,3}}{_NAMENSTEIL}"
+    rf"|{_NAMENSTEIL}(?:[ \t]+(?:{_NAMENSPARTIKEL}[ \t]+)?{_NAMENSTEIL}){{1,3}}))"
+    r"(?=[ \t]*(?:\r?\n|$))")
+_SIGNATUR = re.compile(
+    rf"(?:{_GRUSS}[ \t,.;:!]*\r?\n(?:[ \t]*\r?\n){{0,3}}[ \t]*"
+    rf"|{_UNTERSCHRIFT_KURZ}[ \t]+){_SIGNATUR_NAME}")
+
+
+def _signatur_funde(text: str) -> Iterable[Fund]:
+    """Der Name hinter der Grussformel, nie automatisch vertraut.
+
+    Eine Einrichtung oder Abteilung steht hinter der Formel genauso häufig
+    ("Ihr Praxisteam", "Klinikum Passau") — deshalb scheiden Treffer aus,
+    deren Wörter Stoppwörter, Fachbegriffe oder Einrichtungswörter sind. Was
+    übrig bleibt, läuft wie ein Sprachmodell-Fund durch `_ist_belegt`: ohne
+    Rollenmarker in der Nähe bleibt er markiert, wird aber ersetzt.
+    """
+    for treffer in _SIGNATUR.finditer(text):
+        name = treffer.group(1)
+        woerter = [w.strip(".") for w in re.split(r"[ \t]+", name) if w.strip(".")]
+        if any(_ist_stoppwort(w) or _ist_fachbegriff(w) or _ist_abkuerzung(w)
+               or w.lower() in _EINRICHTUNGSWORT
+               or any(k in w.lower() for k in _EINRICHTUNG_KERN)
+               for w in woerter if len(w) > 1):
+            continue
+        yield Fund(treffer.start(1), treffer.end(1), name, "PERSON", "regex:signatur")
+
+
+# --------------------------------------------------------------------------
 # Rollen-Heuristik
 # --------------------------------------------------------------------------
 
@@ -1170,6 +1275,10 @@ def _markerabstand(muster: re.Pattern, links: str, rechts: str) -> int | None:
 # IBAN ist dagegen aus sich heraus eindeutig.
 _UNSICHER_MOEGLICH = {"PERSON", "PATIENT", "ARZT", "ORT", "ORGANISATION"}
 
+# Regelfunde ohne Anrede- oder Titelanker: strukturell plausibel, aber ohne
+# eigenen Beleg. Sie werden wie ein Sprachmodell-Fund behandelt.
+_UNBELEGTE_QUELLEN = ("regex:initialen-frei", "regex:signatur")
+
 
 def _ist_belegt(text: str, fund: Fund) -> bool:
     """Steht neben dem Treffer etwas, das ihn als Eigennamen bestätigt?
@@ -1182,7 +1291,7 @@ def _ist_belegt(text: str, fund: Fund) -> bool:
     """
     if fund.typ not in _UNSICHER_MOEGLICH:
         return True
-    if not fund.quelle.startswith("ner") and fund.quelle != "regex:initialen-frei":
+    if not (fund.quelle.startswith("ner") or fund.quelle in _UNBELEGTE_QUELLEN):
         return True  # über Anrede oder Titel gefunden
     links = text[max(0, fund.start - 70):fund.start]
     rechts = text[fund.end:fund.end + 45]
@@ -1530,7 +1639,7 @@ def labels_vergeben(gruppen: list[Gruppe]) -> None:
 def analysiere(text: str) -> list[Gruppe]:
     """Vollständiger Durchlauf: erkennen, entwirren, gruppieren, benennen."""
     funde = (list(_regex_funde(text)) + list(_ner_funde(text))
-             + list(_initialen_frei_funde(text)))
+             + list(_initialen_frei_funde(text)) + list(_signatur_funde(text)))
     funde = _entwirren(funde)
 
     for fund in funde:

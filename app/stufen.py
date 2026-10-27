@@ -117,7 +117,11 @@ STUFEN: dict[str, dict[str, str]] = {
         # Bewusst ebenfalls vergröbert: eine ausgeschriebene Altersangabe im
         # Text würde das zur Dekade vergröberte Geburtsdatum sonst aushebeln.
         "ALTER": "dekade",
-        "ZEITSPANNE": "behalten", "JAHRESZAHL": "behalten",
+        # Relative Zeitspannen ("seit 3 Jahren") bleiben. Eine nackte
+        # Jahreszahl wird dagegen mit demselben Versatz verschoben wie die
+        # vollen Daten: "seit 2019" neben einem verschobenen Datum 2024
+        # liesse sonst den Abstand und damit den Versatz erkennen.
+        "ZEITSPANNE": "behalten", "JAHRESZAHL": "verschoben",
         # Gerundet statt ersetzt: eine Rechnung ohne jede Grössenordnung ist
         # wertlos, eine centgenaue Summe zu einem Datum dagegen wiedererkennbar.
         "BETRAG": "gerundet",
@@ -191,6 +195,115 @@ def _sicher(jahr: int, monat: int, tag: int) -> date | None:
         return date(jahr, monat, tag)
     except ValueError:
         return None
+
+
+# --------------------------------------------------------------------------
+# Unvollständige Daten verschieben
+# --------------------------------------------------------------------------
+
+_MONATSNAMEN = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+                "August", "September", "Oktober", "November", "Dezember"]
+_JAHRESZEIT_MONAT = {"frühjahr": 4, "frühling": 4, "sommer": 7, "herbst": 10,
+                     "winter": 1}
+
+
+def _jahreszeit(monat: int) -> str:
+    if 3 <= monat <= 5:
+        return "Frühjahr"
+    if 6 <= monat <= 8:
+        return "Sommer"
+    if 9 <= monat <= 11:
+        return "Herbst"
+    return "Winter"
+
+
+def _kontextdatum(start: int, tag: int, monat: int, voll: list[tuple[int, date]],
+                  stichtag: date | None) -> date | None:
+    """Ergänzt Tag und Monat ohne Jahr um das Jahr aus der Nachbarschaft.
+
+    Aus "vom 03.03. bis 12.03.2026" wird für das erste Datum das Jahr des
+    folgenden vollen Datums genommen — und eines abgezogen, falls das
+    ergänzte Datum sonst hinter dem Bezug läge. Nie das aktuelle Jahr:
+    ein Brief von 2019 würde sonst um sieben Jahre danebenliegen.
+    """
+    spaeter = [d for s, d in voll if s > start and s - start <= 80]
+    if spaeter:
+        bezug = spaeter[0]
+        kandidat = _sicher(bezug.year, monat, tag)
+        if kandidat and kandidat > bezug:
+            kandidat = _sicher(bezug.year - 1, monat, tag)
+        return kandidat
+    frueher = [d for s, d in voll if s < start and start - s <= 200]
+    if frueher:
+        bezug = frueher[-1]
+        kandidat = _sicher(bezug.year, monat, tag)
+        if kandidat and kandidat < bezug:
+            kandidat = _sicher(bezug.year + 1, monat, tag)
+        return kandidat
+    if stichtag is not None:
+        kandidat = _sicher(stichtag.year, monat, tag)
+        if kandidat and kandidat > stichtag:
+            kandidat = _sicher(stichtag.year - 1, monat, tag)
+        return kandidat
+    return None
+
+
+def teildatum_verschieben(fund_text: str, start: int, versatz: timedelta,
+                          voll: list[tuple[int, date]],
+                          stichtag: date | None) -> str | None:
+    """Verschiebt Jahr, Monat+Jahr, Jahreszeit+Jahr und Tag+Monat.
+
+    Bei grober Angabe zählt die Mitte des Zeitraums (15. des Monats, 1. Juli
+    für ein ganzes Jahr). Das ist eine Näherung: bei einem Versatz von
+    weniger als einem Jahr kann eine reine Jahreszahl um ein Jahr von dem
+    abweichen, was die vollen Daten im selben Dokument nahelegen. Die
+    Reihenfolge bleibt in aller Regel erhalten, der Abstand auf den Tag
+    genau nur bei vollständigen Daten.
+    """
+    text = fund_text.strip()
+
+    treffer = re.fullmatch(r"([A-Za-zÄÖÜäöüß]+)\s+((?:19|20)\d{2})", text)
+    if treffer:
+        name, jahr = treffer.group(1).lower(), int(treffer.group(2))
+        if name in _MONATE:
+            mitte = _sicher(jahr, _MONATE[name], 15)
+            if mitte is None:
+                return None
+            neu = mitte + versatz
+            return f"{_MONATSNAMEN[neu.month - 1]} {neu.year}"
+        if name in _JAHRESZEIT_MONAT:
+            mitte = _sicher(jahr, _JAHRESZEIT_MONAT[name], 15)
+            if mitte is None:
+                return None
+            neu = mitte + versatz
+            return f"{_jahreszeit(neu.month)} {neu.year}"
+        return None
+
+    treffer = re.fullmatch(r"(0[1-9]|1[0-2])([/.])((?:19|20)\d{2})", text)
+    if treffer:
+        mitte = _sicher(int(treffer.group(3)), int(treffer.group(1)), 15)
+        if mitte is None:
+            return None
+        neu = mitte + versatz
+        return f"{neu.month:02d}{treffer.group(2)}{neu.year}"
+
+    treffer = re.fullmatch(r"(?:19|20)\d{2}", text)
+    if treffer:
+        return str((date(int(text), 7, 1) + versatz).year)
+
+    treffer = re.fullmatch(r"(\d{1,2})\.\s?(\d{1,2})\.?", text)
+    if treffer:
+        tag_text, monat_text = treffer.group(1), treffer.group(2)
+        gesamt = _kontextdatum(start, int(tag_text), int(monat_text), voll, stichtag)
+        if gesamt is None:
+            return None
+        neu = gesamt + versatz
+        tag = f"{neu.day:02d}" if len(tag_text) == 2 else str(neu.day)
+        monat = f"{neu.month:02d}" if len(monat_text) == 2 else str(neu.month)
+        return f"{tag}.{monat}"
+
+    return None
+
 
 
 def _dekade_grenzen(alter: int) -> tuple[int, int]:
@@ -314,6 +427,14 @@ def formen_berechnen(gruppen: list[Gruppe]) -> dict:
     versatz_tage = secrets.choice((-1, 1)) * (120 + secrets.randbelow(281))
     versatz = timedelta(days=versatz_tage)
     stichtag = _bezugsdatum(gruppen)
+    # Volle Daten (nur Typ DATUM, nicht das Geburtsdatum) mit Fundstelle: sie
+    # liefern das Jahr für Angaben wie "vom 03.03. bis 12.03.2026".
+    voll = sorted(
+        (fund.start, gelesen)
+        for gruppe in gruppen if gruppe.typ == "DATUM"
+        for fund in gruppe.funde
+        if (gelesen := datum_lesen(fund.text)) is not None
+    )
 
     for gruppe in gruppen:
         if gruppe.typ in ("PATIENT", "ARZT", "PERSON"):
@@ -330,6 +451,21 @@ def formen_berechnen(gruppen: list[Gruppe]) -> dict:
                     alter = _alter_am(gelesen, stichtag)
                     if 0 <= alter <= 120:
                         formen["dekade"] = _dekade(alter)
+
+            if gruppe.typ == "GEBURTSDATUM":
+                kurz = re.search(r"(?:Jahrgang|Jg\.)[ \t]*((?:19|20)\d{2})", fund.text)
+                if kurz:
+                    formen["jahrgang"] = f"Jahrgang {kurz.group(1)}"
+                    if stichtag is not None:
+                        alter = stichtag.year - int(kurz.group(1))
+                        if 0 <= alter <= 120:
+                            formen["dekade"] = _dekade(alter)
+
+            if gruppe.typ in ("DATUM", "JAHRESZAHL") and gelesen is None:
+                teil = teildatum_verschieben(fund.text, fund.start, versatz,
+                                             voll, stichtag)
+                if teil is not None:
+                    formen["verschoben"] = teil
 
             if gruppe.typ == "ALTER":
                 zahl = re.search(r"\d{1,3}", fund.text)

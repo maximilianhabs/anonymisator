@@ -628,6 +628,64 @@ gegenprobe = [(g.typ, f.text) for g in detect.analysiere(
 pruefe(("ORGANISATION", "Universität der Bundeswehr München") in gegenprobe,
        f"Echte Einrichtung mit Artikel im Namen bleibt erkannt (gefunden: {gegenprobe})")
 
+print("\n=== 27. Regel-Ergänzungen aus der Gutachtenpraxis (Issue-Feedback) ===")
+# Ein Kollege hat die Regelschicht einzeln, ohne Sprachmodell, geprüft und
+# sechs Sätze gefunden, die sie nicht fing. Das Sprachmodell fängt vieles
+# davon im Normalbetrieb ohnehin — die Regelschicht soll es aber auch allein
+# können (Absicherung, und für jeden, der ohne Modell arbeitet). Deshalb
+# wird hier bewusst `_regex_funde` geprüft, nicht `analysiere`.
+for text, muss in [
+    ("Herrn Rechtsanwalt Jens Probst", "Jens Probst"),
+    ("Sachverständigenbüro Dipl.-Ing. Cornelia Wenzel", "Cornelia Wenzel"),
+    ("Kläger: Thomas Weidinger", "Thomas Weidinger"),
+    ("unseren Patienten Elias Vogt, geboren am 03.03.1971", "Elias Vogt"),
+    ("ANSPRECHPARTNERIN: FRAU HUBER", "HUBER"),
+    ("Dr. med. IIse Brandt", "IIse Brandt"),
+]:
+    treffer = [f.text for f in detect._regex_funde(text)]
+    pruefe(muss in treffer, f"{muss!r} schon von der Regelschicht allein erfasst "
+           f"(gefunden: {treffer})")
+
+# Name hinter der Grussformel, auch mit OCR-Schreibweise ohne Umlaute.
+for text in ["Mit freundlichen Grüßen\nIlse Brandt", "Mit freundlichen Grussen\n\nIlse Brandt",
+             "gez. Hans Peter Weissbach\n"]:
+    treffer = [f.text for g in detect.analysiere(text) for f in g.funde]
+    pruefe(any("Brandt" in t or "Weissbach" in t for t in treffer),
+           f"Unterzeichnende hinter {text.splitlines()[0]!r} erfasst (gefunden: {treffer})")
+
+# Gegenproben: dieselben Muster dürfen keine Einrichtung, kein Feldwert und
+# keine Krankheitsabkürzung als Person nehmen.
+for text, was in [
+    ("RA Faktor positiv.", "'RA' ist die rheumatoide Arthritis, kein Rechtsanwalt"),
+    ("Patient: Verlauf unauffällig.", "Feldwert nach 'Patient:' ist kein Name"),
+    ("SEHR GEEHRTE FRAU KOLLEGIN", "Versal-Anrede ohne Namen"),
+    ("Gliederung 3.2. Befund.", "Gliederungspunkt ist kein Datum"),
+]:
+    treffer = [(g.typ, g.anzeige) for g in detect.analysiere(text) if g.typ != "ZAHL"]
+    pruefe(not treffer, f"{was} — ohne Fehlalarm ({treffer})")
+
+treffer = [(g.typ, g.anzeige) for g in detect.analysiere("Mit freundlichen Grüßen\nKlinikum Passau")
+           if g.typ in ("PERSON", "ARZT", "PATIENT")]
+pruefe(not treffer, f"Einrichtung hinter der Grussformel wird keine Person ({treffer})")
+
+print("\n=== 28. Unvollständige Datumsangaben werden als Datum erkannt ===")
+# Bis 0.24.0 blieben sie als nackte Jahreszahl oder Ziffernfolge unverschoben
+# stehen — siehe tests/test_datumsverschiebung.py für die Verschiebung selbst.
+for text, typ, muss in [
+    ("Im März 2024 erfolgte die Aufnahme.", "DATUM", "März 2024"),
+    ("MRT 03/2024 ohne Befund.", "DATUM", "03/2024"),
+    ("Seit Frühjahr 2019 Beschwerden.", "DATUM", "Frühjahr 2019"),
+    ("Aufenthalt vom 03.03. bis 12.03.2026.", "DATUM", "03.03"),
+    ("Jahrgang 1971, Migräne.", "GEBURTSDATUM", "Jahrgang 1971"),
+]:
+    treffer = [f.text for g in detect.analysiere(text) for f in g.funde if g.typ == typ]
+    pruefe(muss in treffer, f"{muss!r} als {typ} erfasst (gefunden: {treffer})")
+
+# Ein volles Datum bleibt ein Fund, es zerfällt nicht in Teilangaben.
+treffer = [f.text for g in detect.analysiere("Entlassung am 03.03.2024.")
+           for f in g.funde if g.typ == "DATUM"]
+pruefe(treffer == ["03.03.2024"], f"Volles Datum bleibt ungeteilt (gefunden: {treffer})")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

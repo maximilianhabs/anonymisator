@@ -1,7 +1,7 @@
 # Anonymisator
 
 [![Lizenz: Apache 2.0](https://img.shields.io/badge/Lizenz-Apache%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.24.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.25.0-informational.svg)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](#einrichtung)
 [![CI](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml/badge.svg)](https://github.com/maximilianhabs/anonymisator/actions/workflows/ci.yml)
 
@@ -233,9 +233,10 @@ im Vergleich" — bevor man sich für eine Stufe entscheidet.
 | Anschrift | Ort bleibt, Strasse raus | `[ADRESSE_1]` | `[ADRESSE_1]` |
 | Ort | bleibt | bleibt | `[ORT_1]` |
 | Geburtsdatum | `Jahrgang 1958` | `60–69 J.` | `[GEBDAT_1]` |
-| Datum | bleibt | einheitlich verschoben | `[DATUM_1]` |
+| Datum (auch Monat+Jahr, Tag+Monat, Jahreszeit) | bleibt | einheitlich verschoben | `[DATUM_1]` |
 | Altersangabe im Text | bleibt | `60–69-jährige` | `[ALTER_1]` |
-| Jahreszahl, Zeitraum | bleibt | bleibt | `[JAHR_1]`, `[ZEITRAUM_1]` |
+| Jahreszahl | bleibt | einheitlich verschoben | `[JAHR_1]` |
+| Zeitraum ("seit 3 Jahren") | bleibt | bleibt | `[ZEITRAUM_1]` |
 | Geldbetrag | `2.108,68 €` | `rund 2.100 €` | `[BETRAG_1]` |
 | Geschlecht, Diagnosecode | bleibt | `[GESCHL_1]`, `[DIAGCODE_1]` | `[GESCHL_1]`, `[DIAGCODE_1]` |
 | Alle Kennnummern | ersetzt | ersetzt | ersetzt |
@@ -267,6 +268,24 @@ einem Aufenthalt vom 03.03. bis 12.03. wird einer vom 06.11. bis 15.11. —
 dieselben neun Tage. Für Verlauf, Latenz und Aufenthaltsdauer bleibt das
 Dokument damit auswertbar.
 
+Das gilt auch für unvollständige Angaben, die sonst neben den verschobenen
+Daten den Versatz verraten würden: **Tag und Monat ohne Jahr** („vom 03.03.
+bis 12.03.2026", nur hinter Signalwörtern wie am/vom/bis/seit, damit
+Gliederungspunkte wie „3.2." nicht getroffen werden), **Monat und Jahr**
+(„März 2024", „03/2024"), **Jahreszeit und Jahr** („Frühjahr 2019") und
+**nackte Jahreszahlen** („seit 2019"). Das Jahr einer Angabe ohne Jahr
+stammt aus dem nächsten vollständigen Datum im Dokument, nie aus dem
+aktuellen Jahr. „Jahrgang 1971" zählt als Geburtsdatum und wird wie dieses
+zur Dekade vergröbert.
+
+**Grenze:** Bei groben Angaben zählt die Mitte des Zeitraums (15. des
+Monats, 1. Juli für ein ganzes Jahr). Bei einem Versatz unter einem Jahr kann
+eine reine Jahreszahl deshalb um ein Jahr von dem abweichen, was die vollen
+Daten nahelegen; die Reihenfolge bleibt in aller Regel erhalten, der Abstand
+auf den Tag genau nur bei vollständigen Daten. Verweise wie „Leitlinie 2019"
+werden ebenfalls verschoben — einzelne Gruppen lassen sich im Prüfschritt
+abwählen.
+
 Der Versatz wird bei jeder Analyse neu gezogen. Zwei Dokumente derselben
 Person, getrennt anonymisiert, lassen sich deshalb nicht über die Daten
 zusammenführen — was gewollt ist, aber verhindert, dass man einen Verlauf
@@ -282,8 +301,8 @@ zusammenführen — was gewollt ist, aber verhindert, dass man einen Verlauf
 | Einrichtung / Firma | Klinik am Auwald, Metallbau GmbH, Amtsgericht Passau | `[ORG_1]` |
 | Anschrift | Ludwigstraße 47, 94032 Passau | `[ADRESSE_1]` |
 | Ort | Passau | `[ORT_1]` |
-| Geburtsdatum | geb. 22.07.1958 | `[GEBDAT_1]` |
-| Datum | 14.03.2026 | `[DATUM_1]` |
+| Geburtsdatum | geb. 22.07.1958, Jahrgang 1958 | `[GEBDAT_1]` |
+| Datum | 14.03.2026, März 2024, vom 03.03. | `[DATUM_1]` |
 | Versichertennummer | M123456789 | `[VERSNR_1]` |
 | Fall-/Patientennummer | 2026-KA-88213 | `[FALLNR_1]` |
 | Altersangabe | 67-jährige Patientin | `[ALTER_1]` |

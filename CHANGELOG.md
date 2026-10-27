@@ -4,6 +4,51 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## 0.25.0 — 2026-10-27
+
+Erste Runde aus dem Feedback eines Kollegen, der den Anonymisator als
+Grundlage für ein Werkzeug für neurologische Gutachten genutzt hat (GitHub-
+Issue „Vorschläge aus der Gutachtenpraxis"). Geprüft wurde jeder Vorschlag
+einzeln gegen den echten Code; hier steht, was sich als berechtigt
+herausstellte.
+
+- **Datenschutzlücke bei Datumsangaben geschlossen.** In der Standardstufe
+  wurden nur vollständige Daten verschoben. „vom 03.03. bis 12.03.2026"
+  ergab ein verschobenes zweites Datum neben dem unverschobenen „03.03." —
+  aus dem bekannten Abstand liess sich der Versatz ablesen. Jetzt werden
+  auch **Tag und Monat ohne Jahr** (nur hinter Signalwörtern, damit
+  Gliederungspunkte wie „3.2." unberührt bleiben), **Monat und Jahr**
+  („März 2024", „03/2024"), **Jahreszeit und Jahr** („Frühjahr 2019") und
+  **nackte Jahreszahlen** („seit 2019") mit demselben Versatz verschoben.
+  Das Jahr einer Angabe ohne Jahr kommt aus dem nächsten vollständigen
+  Datum, nie aus dem aktuellen Jahr. Näherung bei groben Angaben im
+  README („Datumsverschiebung") offen benannt.
+- **„Jahrgang 1971" zählt als Geburtsdatum** und wird in der
+  Standardstufe wie dieses zur Dekade vergröbert; vorher blieb das
+  Geburtsjahr stehen, obwohl das Geburtsdatum selbst vergröbert wurde.
+- **Regelschicht allein erfasst jetzt**, was bisher nur das Sprachmodell
+  fing: Rechtsanwalt/Notar/Steuerberater als Titel, `Dipl.-X` allgemein
+  (Gutachter), Feldname mit „Vorname Nachname" („Kläger: Thomas Weidinger"),
+  „unseren Patienten Elias Vogt" ohne Anrede, Versal-Anreden („ANSPRECHPARTNERIN:
+  FRAU HUBER" — vorher auch mit Sprachmodell gar nicht gefunden) und die
+  OCR-Schreibweise „IIse". Die Abkürzung „RA" bewusst nicht (rheumatoide
+  Arthritis).
+- **Name hinter der Grussformel** („Mit freundlichen Grüßen" bis
+  „Grussen", „gez.", „i. V.") wird auch ohne Titel und Rollenzeile erfasst.
+  Läuft wie ein Sprachmodell-Fund durch den Beleg-Check: ohne Rollenmarker
+  markiert, aber ersetzt. Einrichtungen hinter der Formel („Klinikum
+  Passau") werden nicht zur Person.
+- **Goldkorpus:** die dokumentierte Doppelerfassung der Sachverständigen in
+  `kfz_unfallgutachten` ist behoben (Präzision 88 % → 94 %); die Ansprechpartnerin
+  in `versalsatz_mehrspaltig` steht jetzt in der Erwartung. Stand bewusst
+  neu geschrieben.
+- Neue Tests: Sektionen 27 und 28 in `tests/test_fehlalarme.py`,
+  neue Datei `tests/test_datumsverschiebung.py` (Versatz fest, jede
+  Datumsform geprüft). Damit elf Testdateien.
+- Nicht übernommen: die Regelschicht als einzelne JavaScript-Datei zu
+  pflegen (zwei Regelwerke driften auseinander, kein Sprachmodell). Das
+  Werkzeug des Kollegen ist ein eigenes Projekt; siehe BACKLOG.md.
+
 ## 0.24.0 — 2026-08-20
 
 Drei kleinere, selbst gefundene Punkte aus dem eigenen Backlog behoben,

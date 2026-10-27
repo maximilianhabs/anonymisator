@@ -16,7 +16,7 @@
     "recall": 1.0
   },
   "kfz_unfallgutachten": {
-    "praezision": 0.8823529411764706,
+    "praezision": 0.9375,
     "recall": 1.0
   },
   "nichtdeutscher_name_fachbegriff": {

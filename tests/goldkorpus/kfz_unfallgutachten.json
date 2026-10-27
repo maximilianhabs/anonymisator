@@ -1,7 +1,7 @@
 {
-  "beschreibung": "Kfz-Unfallgutachten -- ein Nicht-Arztbrief-Dokument, prüft Aktenzeichen, Kfz-Kennzeichen, Versicherungspolice und Geldbeträge. Zwei bekannte, bewusst nicht behobene Einschränkungen, beide ohne Privatsphäre-Risiko (beide Funde werden trotzdem ersetzt): (1) die Sachverständige (Titel 'Dipl.-Ing.', kein von der ARZT-Regel erkannter Titel) kommt zweimal getrennt an -- einmal als überdehnte NER-Spanne inklusive 'Sachverständigenbüro', einmal als blosse Unterschrift 'Cornelia Wenzel'; nur die zweite geht als Erwartung ein. (2) das Feldlabel 'Versicherung:' vor 'HUK-Coburg Versicherung' wird zusätzlich für sich allein als eigene, inhaltsleere Organisation erkannt (die Nachsatz-Regel erlaubt null Vorsatzwörter).",
+  "beschreibung": "Kfz-Unfallgutachten -- ein Nicht-Arztbrief-Dokument, prüft Aktenzeichen, Kfz-Kennzeichen, Versicherungspolice und Geldbeträge. Eine bekannte, bewusst nicht behobene Einschränkung, ohne Privatsphäre-Risiko (der Fund wird trotzdem ersetzt): das Feldlabel 'Versicherung:' vor 'HUK-Coburg Versicherung' wird zusätzlich für sich allein als eigene, inhaltsleere Organisation erkannt (die Nachsatz-Regel erlaubt null Vorsatzwörter). Die Sachverständige (Titel 'Dipl.-Ing.') kam bis 0.24.0 doppelt getrennt an (überdehnte NER-Spanne inklusive 'Sachverständigenbüro' plus blosse Unterschrift) — seit 0.25.0 trägt die Regel für Dipl.-X-Titel sie einmalig und als ARZT, wie jede andere titeltragende Unterzeichnende.",
   "funde": [
-    {"typ": "PERSON", "text": "Cornelia Wenzel"},
+    {"typ": "ARZT", "text": "Cornelia Wenzel"},
     {"typ": "ADRESSE", "text": "Further Straße 55"},
     {"typ": "ADRESSE", "text": "94032 Passau"},
     {"typ": "ORGANISATION", "text": "Amtsgericht Passau"},
