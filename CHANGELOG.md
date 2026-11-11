@@ -6,6 +6,10 @@ zwischen Nebenversionen ändern.
 
 ## Unveröffentlicht
 
+- **Dokumentation.** Neue Beschreibung `docs/ORDNER-MODUS.md` (Ablauf,
+  Endkontrolle, Protokoll, Grenzen); der Etappenplan für die Pipeline steht
+  im Backlog („Pipeline-Ausbau“), dort auch neue offene Punkte und der
+  Eintrag zum Versand an externe Dienste unter „Bewusst nicht vorgesehen“.
 - **Doppelname nach Titel mit Leerzeichen am Bindestrich.** Aus der Praxis:
   im gesperrt gesetzten Briefkopf lieferte die PDF-Extraktion
   „NACHNAME- ZWEITNAME"; die Arzt-Regel endete am Bindestrich, der zweite

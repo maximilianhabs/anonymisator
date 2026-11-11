@@ -218,7 +218,10 @@ anonymisiert ergibt verschiedene Datumsangaben.
 2. **Prüfen** — alle Fundstellen sind farbig markiert. In der Seitenleiste steht
    jede Gruppe mit Pseudonym; per Klick auf eine Markierung oder die Checkbox
    wird sie ab- oder wieder angewählt. Die Kategorie lässt sich korrigieren.
-3. **Exportieren** — als PDF, Word oder Text. Immer ohne Metadaten.
+3. **Exportieren** — als PDF, Word oder Text. Immer ohne Metadaten. Der
+   Download heisst immer `dokument_anonymisiert.<endung>`; der Name der
+   hochgeladenen Datei wird nie übernommen, weil er den Patientennamen
+   enthalten kann.
 
 ## Stufen
 
@@ -454,12 +457,13 @@ gar nicht erst erzeugen.
 ## Ordner-Modus (opt-in)
 
 Für den Fall, dass Dateien ohne Rückfrage anonymisiert werden sollen: Datei in
-einen Eingangsordner legen, das Ergebnis erscheint in einem Ausgangsordner.
-Das Web-Werkzeug bleibt unverändert; dieser Modus ist ein zusätzlicher Weg und
-startet nur auf ausdrücklichen Aufruf.
+einen Eingangsordner legen, das Ergebnis erscheint als Textdatei in einem
+Ausgangsordner. Das Web-Werkzeug bleibt unverändert; dieser Modus ist ein
+zusätzlicher Weg und startet nur auf ausdrücklichen Aufruf. Ausführlich:
+[`docs/ORDNER-MODUS.md`](docs/ORDNER-MODUS.md).
 
 ```bash
-./pipeline.sh --eingang ~/Anonymisieren/eingang --ausgang ~/Anonymisieren/ausgang
+./pipeline.sh --eingang ~/"Inbox Anonymize" --ausgang ~/"Outbox Anonymize"
 # oder ohne Skript: .venv/bin/python -m app.ordner --eingang … --ausgang …
 ```
 
@@ -470,7 +474,9 @@ Umgebungsvariable (`ANON_EINGANG`, `ANON_AUSGANG`, `ANON_ORDNER_STUFE`).
 
 **Was automatisch geschieht.** Aus `.pdf`, `.docx` und `.txt` direkt im Eingang
 wird der Text gelesen, erkannt und auf der gewählten Stufe ersetzt — alle
-Gruppen, auch die unbelegten, weil niemand mitliest. Danach läuft eine
+Gruppen, auch die unbelegten, weil niemand mitliest. Ein Wort, das an einer
+Stelle als Person erkannt wurde, wird auch an allen übrigen Stellen ersetzt
+(einmal Person, überall Person). Danach läuft eine
 Endkontrolle: Steht ein ersetzter Name oder eine Anschrift noch im Text? Findet
 die Erkennung im Ergebnis noch direkte Kennungen? Wurde überhaupt ein Patient
 gefunden? Wer besteht, landet als `dokument_NNNN.txt` im Ausgang, das Original
@@ -584,7 +590,7 @@ funktionieren, sofern Tesseract mit deutschem Sprachpaket vorliegt.
 | `app/stufen.py` | Stufenmatrix, Datumsverschiebung, Initialen, Altersdekaden |
 | `app/export.py` | Ersetzung anwenden, TXT/DOCX/PDF schreiben |
 | `app/main.py` | HTTP-Endpunkte |
-| `app/ordner.py`, `pipeline.sh` | Ordner-Modus (opt-in): Eingang, Endkontrolle, Ausgang |
+| `app/ordner.py`, `pipeline.sh` | Ordner-Modus (opt-in): Eingang, Endkontrolle, Ausgang; Beschreibung in `docs/ORDNER-MODUS.md` |
 | `app/config.py` | Laufzeiteinstellungen, ausschliesslich aus der Umgebung |
 | `app/logging_setup.py` | strukturierte Protokollierung ohne Dokumentinhalte |
 | `static/` | Oberfläche (eine Seite, kein Framework) |

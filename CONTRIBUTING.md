@@ -116,6 +116,11 @@ eine Gegenprobe für das, was weiterhin nicht fälschlich gefunden werden
 darf. Die Datei ist voller Beispiele für dieses Muster — eine neue
 Sektion im selben Stil anhängen.
 
+**Änderungen am Ordner-Modus** (`app/ordner.py`) erweitern
+`tests/test_ordner.py`. Protokoll und Konsole dürfen nie Dateinamen,
+Klartext oder Ausnahmemeldungen tragen; der Test prüft das mit erfundenen
+Namen und muss es weiter tun.
+
 ## Lizenz
 
 Beiträge fallen unter die Apache License 2.0 dieses Projekts (siehe

@@ -2,6 +2,25 @@
 
 Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 
+## Pipeline-Ausbau (Etappen)
+
+Ziel ist eine Pipeline für patientensensitive Daten, die sicher anonymisiert
+oder pseudonymisiert, ohne den Review als Kern aufzugeben. Reihenfolge nach
+Risiko: erst Lücken schliessen, dann messen, dann bequemer machen.
+
+| Etappe | Inhalt | Stand |
+|---|---|---|
+| 0 Härtung | seitenweise OCR, Lesbarkeitsprüfung des Textlayers, neutraler Exportname | ✅ erledigt |
+| 1 Endkontrolle | Prüfung jeder Ausgabe auf Reste und fehlenden Patienten | ✅ im Ordner-Modus; im Web-Export noch offen (Warnung vor dem Download) |
+| Ordner-Modus | Eingang, Ausgang, Zurückhalten, Protokoll ohne Namen, siehe `docs/ORDNER-MODUS.md` | ✅ erledigt |
+| 2 Fall-Modus | Schlüsseldatei beim Nutzer, siehe „Fall-Modus“ unter „Naheliegend“; zusätzlich offen: Fall-Modus im Ordner-Betrieb, gleiche Platzhalter über mehrere Dokumente eines Eingangs | offen |
+| 3 Review im Akkord | Konfidenz-Ampel und weitere Hilfen für den Prüfenden, siehe „Nützlich“; der Review bleibt Pflicht | offen |
+| 4 Freigabepaket mit Manifest | je Datei SHA-256, Stufe, Programmversion, Ergebnis der Endkontrolle; kein Klartext, keine Namen | offen |
+| 5 Messen | Goldkorpus mit 20 bis 30 erfundenen Briefen, ein erfundener Mehrdokument-Fall, ein lokales Sprachmodell abgeschottet im Schattenlauf; Übernahme nur bei gemessenem Recall-Gewinn | offen |
+
+Etappe 5 steht bewusst am Ende: Ohne Messung bleibt jede Aussage über die
+Güte eine Einzelbeobachtung (siehe `docs/ORDNER-MODUS.md`, „Praxisbefund“).
+
 ## Naheliegend
 
 - **OCR-Auslöser: Lesbarkeit statt nur Zeichenzahl.** ✅ Erledigt
@@ -209,6 +228,38 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
   Absender aus Spalte eins kann dann neben einem Patientennamen aus Spalte
   zwei landen. Der Fehler ist also nicht bloss unschön, er verfälscht
   Zuordnungen.
+- **Fachadjektiv als Namensteil.** Ein Wort wie „Neurologischer“ wurde als
+  Namensteil geführt; die Ähnlichkeitsprüfung (0.26.0) zieht dann verwandte
+  Formen als PERSON nach. Das führt nur zu Über-Ersetzung, gehört aber als
+  Muster (Endung und Umgebung, nicht Wortliste) behoben. Eine Gegenprobe
+  gegen Nachnamen auf „-ischer“/„-ische“ ist nötig.
+- **Zweiter Nachname hinter dem Zeilenumbruch.** „Huber-\nLindner“ nach
+  einem Titel wird nur bis zum Bindestrich erfasst; kein Muster greift über
+  das Zeilenende. Ein Nachlauf wie beim Einrichtungsnamen ist denkbar.
+- **Bild auf einer Textseite.** Eine Seite mit ausreichendem Textlayer und
+  zusätzlich eingefügtem Scan-Bild wird nicht per OCR gelesen und nicht
+  gemeldet. Ein Hinweis bei grossflächigen Bildern (Flächenanteil) wäre
+  nötig, ohne bei jedem Logo anzuschlagen.
+- **Zeichensalat-Pfad nur als Einzelfunktion getestet.**
+  `_textlayer_brauchbar` ist getestet, die Verdrahtung „Textlayer
+  vorhanden, aber unlesbar“ in `aus_pdf` dagegen nicht mit einem echten PDF
+  (es bräuchte eine eingebettete Schrift).
+- **Persistenztest: Laufzeit und Temp-Verzeichnis.**
+  `test_keine_persistenz.py` dauert rund 30 Minuten und durchsucht das
+  Temp-Verzeichnis des Testprozesses, das nicht das des Servers sein muss;
+  fremde Dateien dort erzeugen Fehlalarme. Das Temp-Verzeichnis des Servers
+  gezielt übergeben und die Suche eingrenzen.
+- **Server blockiert während einer langen Analyse.** Die Analyse läuft
+  synchron im Ereignisschleifen-Thread; solange antwortet auch `/health`
+  nicht (über 60 s gemessen). In einen Thread auslagern.
+- **Versionsangabe in `pyproject.toml` veraltet.** Sie führt 0.10.0,
+  `CITATION.cff` 0.26.0. Eine Quelle festlegen.
+- **Ordner-Modus: doppelte Ausgabe bei Ablagefehler.** Schlägt das
+  Verschieben des Originals nach geschriebener Ausgabe fehl, wird die Datei
+  beim nächsten Durchlauf erneut ausgegeben.
+- **Ordner-Modus: Ausgabeformate und Haltequote.** Derzeit nur `.txt`. Die
+  Haltequote nach den ersten realen Läufen im Protokoll ansehen, bevor
+  Schwellen geändert werden.
 
 ## Nützlich
 
@@ -490,3 +541,12 @@ bis jemand sie zum ersten Mal wieder aufwirft.
   Feedback). Für ein Solo-gepflegtes Projekt dieser Grösse (vier
   Verarbeitungsschritte: Extraktion, Erkennung, Stufen, Export) wäre eine
   generische Plugin-Architektur eine Abstraktion ohne aktuellen Bedarf.
+- **Versand an externe Dienste aus dem Werkzeug heraus** (2026-11-11,
+  externer Konzeptvorschlag: Ordnerdienst mit API-Versandprozess und
+  SQLite-Auftragsdatenbank, klinische Merkmalsextraktion). Der Anonymisator
+  endet am lokalen Ausgangsordner. Ein Versandprozess und eine
+  Auftragsdatenbank widersprechen „nichts verlässt den Rechner“ und
+  „zustandslos“; klinische Auswertung ist ein anderes Werkzeug, das höchstens
+  den Ausgang liest. Übernommen wurden aus dem Vorschlag die zwei belegten
+  Befunde (Seitenverlust bei gemischten PDFs, Klarname im
+  Exportdateinamen) und die Idee einer Endkontrolle.
