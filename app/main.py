@@ -12,7 +12,6 @@ Proxy — ohne sie kann jeder, der die Adresse kennt, Dokumente hochladen.
 
 from __future__ import annotations
 
-import re
 import time
 import uuid
 
@@ -87,6 +86,9 @@ class ExportEingabe(BaseModel):
     text: str
     ersetzungen: list[Ersetzung]
     format: str
+    # Wird angenommen, aber ignoriert: Dateinamen von Arztbriefen tragen oft den
+    # Patientennamen, der dann im Namen der anonymisierten Datei landen würde.
+    # Das Feld bleibt, damit ältere Clients nicht an der Validierung scheitern.
     dateiname: str = "dokument"
     mit_kopfzeile: bool = True
     stufe: str = "standard"
@@ -236,10 +238,9 @@ async def exportieren(eingabe: ExportEingabe):
     erzeuger, mimetyp, endung = export.FORMATE[eingabe.format]
     daten = erzeuger(ergebnis, eingabe.mit_kopfzeile, eingabe.stufe)
 
-    # Der übergebene Dateiname landet im Content-Disposition-Header und wird
-    # deshalb auf harmlose Zeichen reduziert.
-    basis = re.sub(r"[^\w\-. ]", "_", eingabe.dateiname).strip() or "dokument"
-    name = f"{basis}_anonymisiert.{endung}"
+    # Fester, neutraler Name: der Originalname kann personenbezogen sein
+    # (siehe ExportEingabe.dateiname) und gehört nicht in den Download.
+    name = f"dokument_anonymisiert.{endung}"
 
     return Response(
         content=daten,

@@ -197,8 +197,17 @@ _NAMENSTEIL = (_KEIN_NAME + r"(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]I[a-zä
 # EEG bis MRT. Der vorangehende Titel ist der Beleg, der sie rechtfertigt.
 _NAME_GROSS = (_KEIN_NAME
                + r"(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]I[a-zäöüß]{2,}|[A-ZÄÖÜ]{3,})")
+# Der Bindestrich eines Doppelnamens steht in PDFs oft mit einem Leerzeichen
+# auf EINER Seite ("SCHNEIDER- LINDNER"): Briefköpfe sind gesperrt gesetzt,
+# und die Extraktion liefert die Lücke mit. Ohne diese Form endete der Fund
+# am Bindestrich, der zweite Nachname blieb im Klartext stehen. Beidseitig
+# freigestellt ("Huber - Oberarzt") ist dagegen ein Gedankenstrich und bleibt
+# ausgeschlossen, ebenso der Ergänzungsstrich vor "und"/"oder". Kein Umbruch:
+# kein Namensmuster greift über das Zeilenende.
+_DOPPELNAME_STRICH = r"(?:-[ \t]?|[ \t]-)(?!(?i:und|oder|bzw|sowie)\b)"
 _NAMENSTEIL_NACH_TITEL = (
-    _NAME_GROSS + r"(?:-(?:[A-ZÄÖÜ][a-zäöüß]{2,}|[A-ZÄÖÜ]{2,}))?")
+    _NAME_GROSS
+    + rf"(?:{_DOPPELNAME_STRICH}(?:[A-ZÄÖÜ][a-zäöüß]{{2,}}|[A-ZÄÖÜ]{{2,}}))?")
 
 # Niederländische/italienische Namenspartikel: stehen zwischen Vor- und
 # Nachname, sind selbst kleingeschrieben und würden ohne diese Liste die

@@ -118,7 +118,10 @@ async function analysiere(anfrage, ladeText) {
 }
 
 function dateiAnalysieren(datei) {
-  Z.dateiname = datei.name.replace(/\.[^.]+$/, '');
+  // Der Originalname bleibt unberücksichtigt: Dateinamen von Arztbriefen
+  // enthalten oft den Patientennamen und dürften nicht in Export und
+  // Zuordnungstabelle auftauchen.
+  Z.dateiname = 'dokument';
   // Die Browser-API kennt die Originalgrösse der Datei bereits, bevor sie
   // gesendet wird — der Server muss sie dafür nicht extra zurückmelden.
   Z.dateigroesseBytes = datei.size;
@@ -163,6 +166,7 @@ function uebernehmen(daten) {
   const beschreibung = {
     'pdf-textlayer': `PDF, ${daten.seiten} Seite(n), Textlayer`,
     'pdf-ocr': `PDF, ${daten.seiten} Seite(n), per OCR gelesen`,
+    'pdf-gemischt': `PDF, ${daten.seiten} Seite(n), teils per OCR gelesen`,
     docx: 'Word-Dokument',
     paste: 'Eingefügter Text',
   }[daten.quelle] || daten.quelle;

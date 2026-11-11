@@ -4,6 +4,49 @@ Dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Hauptversion 0 ist, können sich Schnittstellen und Kürzel
 zwischen Nebenversionen ändern.
 
+## Unveröffentlicht
+
+- **Doppelname nach Titel mit Leerzeichen am Bindestrich.** Aus der Praxis:
+  im gesperrt gesetzten Briefkopf lieferte die PDF-Extraktion
+  „NACHNAME- ZWEITNAME"; die Arzt-Regel endete am Bindestrich, der zweite
+  Nachname blieb im Klartext stehen. Nach einem Titel darf jetzt auf einer
+  Seite des Bindestrichs ein Leerzeichen stehen. Ein beidseitig
+  freigestellter Strich („Huber - Oberarzt") und der Ergänzungsstrich vor
+  „und"/„oder" bleiben ausgeschlossen. Testsektion 31 in
+  `test_fehlalarme.py`.
+- **Ordner-Modus: Namens-Nachlauf.** Ein Wort, das an einer Stelle als
+  Person erkannt wurde, wird im Ordner-Modus an allen übrigen Stellen
+  ebenfalls ersetzt (einmal Person, überall Person). Die Endkontrolle hält
+  eine Titelzeile vor einem Platzhalter („PROF. DR. MED. [ARZT_1]") nicht
+  mehr für einen Rest.
+- **Ordner-Modus (opt-in).** Neues Modul `app/ordner.py` mit Startskript
+  `pipeline.sh`: Datei in den Eingang legen, anonymisiertes Ergebnis im
+  Ausgang, ohne Rückfrage und ohne Review. Alle Gruppen werden ersetzt; eine
+  Endkontrolle (Klartextrest, erneute Erkennung, kein Patient, kurzer Text,
+  Seite ohne Text, OCR, Lesefehler) entscheidet. Was nicht besteht, wird mit
+  dem Original nach `Zurueckgehalten/` gelegt, nie ausgegeben. Der Zustand
+  ist der Ordner; Protokoll `protokoll.csv` ohne Dateiname und Inhalt. Neue
+  Funktion `stufen.ersetzungen_fuer` baut die Ersetzungsliste wie der Browser.
+  Neue Einstellungen `ANON_EINGANG`, `ANON_AUSGANG`, `ANON_ORDNER_STUFE`.
+  Ersetzt den Review nicht. Neue Testdatei `tests/test_ordner.py`, damit
+  dreizehn.
+- **OCR-Entscheidung je Seite, Lesbarkeitsprüfung des Textlayers.** Bisher
+  entschied ein Schnitt über das ganze Dokument (unter 100 Zeichen pro
+  Seite), ob per OCR gelesen wird. Ein gemischtes PDF — Brief als Text,
+  Befund als Scan — verlor dadurch die Scanseite ohne Hinweis. Jetzt prüft
+  `aus_pdf` jede Seite einzeln: Neue Funktion `_textlayer_brauchbar` misst
+  Zeichenzahl, Anteil plausibler Zeichen und Anteil von Fremdschrift, sodass
+  auch ein Textlayer aus Zeichensalat (defekte `ToUnicode`-Tabelle) auf OCR
+  fällt. Gemischte PDFs liefern die neue Quelle `pdf-gemischt`; der Hinweis
+  nennt die Seitennummern und den Grund. Eine OCR-Seite ohne Ergebnis meldet
+  „kein Text gewonnen". Kurze Textseiten ohne Bild (Grussformel) bleiben
+  Textlayer. Neue Testdatei `tests/test_extraktion_seiten.py`, damit zwölf.
+- **Neutraler Exportdateiname.** Der Name der hochgeladenen Datei enthält bei
+  Arztbriefen oft den Patientennamen und landete im Namen der anonymisierten
+  Datei. Der Download heisst jetzt immer `dokument_anonymisiert.<endung>`,
+  die Zuordnungstabelle `dokument_ZUORDNUNG_VERTRAULICH.csv`. Der Server
+  ignoriert das Feld `dateiname` der Anfrage.
+
 ## 0.26.0 — 2026-10-27
 
 Zweite Runde aus dem Gutachten-Feedback (siehe 0.25.0).

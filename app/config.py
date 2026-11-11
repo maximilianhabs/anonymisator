@@ -67,3 +67,25 @@ LOG_JSON = _schalter("ANON_LOG_JSON", True)
 # Modell beim Start laden statt beim ersten Aufruf. Der Healthcheck meldet
 # den Dienst damit erst als bereit, wenn er tatsächlich antworten kann.
 MODELL_VORLADEN = _schalter("ANON_MODELL_VORLADEN", True)
+
+# --------------------------------------------------------------------------
+# Ordner-Modus (opt-in, app/ordner.py)
+# --------------------------------------------------------------------------
+# Der Server liest nichts davon. Eingang und Ausgang haben bewusst keinen
+# Standardpfad im Quelltext: ein vorgegebener Ordner würde dazu einladen, ihn
+# anzulegen, ohne über Synchronisierung oder Ablageort nachzudenken. Leer
+# heisst "nicht gesetzt"; die Kommandozeile überschreibt die Umgebung.
+ORDNER_EINGANG = os.environ.get("ANON_EINGANG", "").strip()
+ORDNER_AUSGANG = os.environ.get("ANON_AUSGANG", "").strip()
+
+# Stufe für unbeaufsichtigte Läufe. Streng als Standard, weil ohne Review
+# nichts Übersehenes durch das Auge des Nutzers aufgefangen wird.
+ORDNER_STUFE = os.environ.get("ANON_ORDNER_STUFE", "streng").strip().lower() or "streng"
+
+# Abstand der Abfragen im Dauerbetrieb. Zugleich der Mindestabstand, über den
+# eine Datei unverändert bleiben muss, bevor sie gelesen wird.
+ORDNER_ABFRAGE_SEKUNDEN = _zahl("ANON_ORDNER_ABFRAGE_SEKUNDEN", 5)
+
+# Unter dieser Textlänge gilt ein Dokument als nicht gelesen. Ein Arztbrief ist
+# länger; ein kürzerer Text ist meist ein leerer Scan oder ein Lesefehler.
+ORDNER_MIN_ZEICHEN = _zahl("ANON_ORDNER_MIN_ZEICHEN", 200)

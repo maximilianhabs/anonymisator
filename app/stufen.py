@@ -16,7 +16,7 @@ import secrets
 from bisect import bisect_left, bisect_right
 from datetime import date, timedelta
 
-from .detect import Gruppe
+from .detect import KATEGORIEN, Gruppe
 
 # --------------------------------------------------------------------------
 # Behandlungen
@@ -519,3 +519,59 @@ def _initialen_entdoppeln(gruppen: list[Gruppe]) -> None:
         vergeben[gruppe.initialen] = anzahl + 1
         if anzahl:
             gruppe.initialen = f"{gruppe.initialen} {anzahl + 1}"
+
+
+# --------------------------------------------------------------------------
+# Ersetzungsliste für eine Stufe
+# --------------------------------------------------------------------------
+
+def _label_suffix(stil: str, n: int) -> str:
+    """Zählt wie `labelsVergeben` in static/app.js: A…Z, AA, AB … bzw. 1, 2 …"""
+    if stil != "letter":
+        return str(n + 1)
+    buchstaben = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    if n < 26:
+        return buchstaben[n]
+    return buchstaben[n // 26 - 1] + buchstaben[n % 26]
+
+
+def behandlung_von(stufe: str, typ: str) -> str:
+    """Behandlung einer Kategorie auf einer Stufe; Unbekanntes wird ersetzt."""
+    return STUFEN[stufe].get(typ, "ersetzen")
+
+
+def ersetzungen_fuer(gruppen: list[Gruppe], stufe: str,
+                     nur_aktive: bool = True) -> list[dict]:
+    """Baut die Ersetzungsliste, die der Browser für dieselbe Stufe sendet.
+
+    Gespiegelt aus `labelsVergeben`/`ersatzFuer` in static/app.js: Pseudonyme
+    zählen je Typ in Reihenfolge des ersten Auftretens, und zwar nur über
+    Gruppen, die tatsächlich ersetzt werden ("behalten" verbraucht keine
+    Nummer). Setzt `gruppe.label` entsprechend, wie es auch der Browser tut.
+
+    `nur_aktive=False` ersetzt auch abgewählte Gruppen — für die
+    unbeaufsichtigte Ordner-Pipeline, in der es keinen Review gibt und im
+    Zweifel ersetzt wird. Der Browser kennt diese Option nicht.
+    """
+    zaehler: dict[str, int] = {}
+    ersetzungen: list[dict] = []
+    for gruppe in sorted(gruppen, key=lambda g: g.funde[0].start if g.funde else 0):
+        art = behandlung_von(stufe, gruppe.typ)
+        if art == "behalten" or (nur_aktive and not gruppe.aktiv):
+            gruppe.label = ""
+            continue
+        kat = KATEGORIEN[gruppe.typ]
+        n = zaehler.get(gruppe.typ, 0)
+        zaehler[gruppe.typ] = n + 1
+        gruppe.label = f"[{kat['label']}_{_label_suffix(kat['stil'], n)}]"
+
+        for fund in gruppe.funde:
+            if art == "initialen":
+                ersatz = gruppe.initialen or gruppe.label
+            elif art == "ersetzen":
+                ersatz = gruppe.label
+            else:
+                ersatz = fund.formen.get(art, gruppe.label)
+            ersetzungen.append(
+                {"start": fund.start, "ende": fund.end, "label": ersatz})
+    return ersetzungen

@@ -212,7 +212,9 @@ anonymisiert ergibt verschiedene Datumsangaben.
 ## Ablauf
 
 1. **Einlesen** — PDF hineinziehen, Word-`.docx` hineinziehen oder Text einfügen.
-   Bei PDFs ohne Textlayer wird automatisch per OCR gelesen (Tesseract, deutsch).
+   Seiten ohne lesbaren Textlayer werden automatisch per OCR gelesen
+   (Tesseract, deutsch); die Entscheidung fällt je Seite, gemischte PDFs
+   werden mit Seitenhinweis gelesen.
 2. **Prüfen** — alle Fundstellen sind farbig markiert. In der Seitenleiste steht
    jede Gruppe mit Pseudonym; per Klick auf eine Markierung oder die Checkbox
    wird sie ab- oder wieder angewählt. Die Kategorie lässt sich korrigieren.
@@ -449,6 +451,46 @@ Wer diese Datei neben dem anonymisierten Dokument ablegt, hebt die
 Anonymisierung faktisch auf. Getrennt und geschützt aufbewahren — oder
 gar nicht erst erzeugen.
 
+## Ordner-Modus (opt-in)
+
+Für den Fall, dass Dateien ohne Rückfrage anonymisiert werden sollen: Datei in
+einen Eingangsordner legen, das Ergebnis erscheint in einem Ausgangsordner.
+Das Web-Werkzeug bleibt unverändert; dieser Modus ist ein zusätzlicher Weg und
+startet nur auf ausdrücklichen Aufruf.
+
+```bash
+./pipeline.sh --eingang ~/Anonymisieren/eingang --ausgang ~/Anonymisieren/ausgang
+# oder ohne Skript: .venv/bin/python -m app.ordner --eingang … --ausgang …
+```
+
+Eingang und Ausgang sind Pflicht und haben keinen Standardpfad. Weitere
+Angaben: `--stufe` (Standard `streng`), `--einmal` (einmal durchlaufen statt
+alle 5 Sekunden nachzusehen), `--ocr-freigeben`. Alles gibt es auch als
+Umgebungsvariable (`ANON_EINGANG`, `ANON_AUSGANG`, `ANON_ORDNER_STUFE`).
+
+**Was automatisch geschieht.** Aus `.pdf`, `.docx` und `.txt` direkt im Eingang
+wird der Text gelesen, erkannt und auf der gewählten Stufe ersetzt — alle
+Gruppen, auch die unbelegten, weil niemand mitliest. Danach läuft eine
+Endkontrolle: Steht ein ersetzter Name oder eine Anschrift noch im Text? Findet
+die Erkennung im Ergebnis noch direkte Kennungen? Wurde überhaupt ein Patient
+gefunden? Wer besteht, landet als `dokument_NNNN.txt` im Ausgang, das Original
+wandert nach `Erledigt/`.
+
+**Wann zurückgehalten wird.** Besteht ein Dokument die Endkontrolle nicht, ist
+der Text sehr kurz, hat eine Seite keinen Text ergeben, ließ sich die Datei
+nicht lesen oder musste per OCR gelesen werden (außer mit `--ocr-freigeben`),
+entsteht keine Ausgabe. Das Original liegt dann in `Zurueckgehalten/` und wird
+von Hand im Web-Werkzeug bearbeitet. Es wird nie etwas gelöscht. Das Protokoll
+`protokoll.csv` im Eingang nennt je Datei nur Zahlen und Gründe als Kürzel,
+niemals Dateiname oder Inhalt.
+
+**Das ersetzt den Review nicht.** Ohne Review bleibt ein Restrisiko übersehener
+Angaben: Die Endkontrolle fängt nur, was die Erkennung selbst noch sieht. Ein
+Name, den sie nie erkannt hat, geht durch. Ausgaben deshalb vor jeder
+Weitergabe stichprobenartig lesen. Den Eingang nicht in einen Ordner legen, den
+die iCloud synchronisiert (`~/Desktop`, `~/Documents`); das Programm warnt dann.
+Ein Pfad im Repo-Verzeichnis wird abgelehnt.
+
 ## Datenfluss
 
 Der Server ist zustandslos. Es gibt kein Upload-Verzeichnis, keine Session und
@@ -542,6 +584,7 @@ funktionieren, sofern Tesseract mit deutschem Sprachpaket vorliegt.
 | `app/stufen.py` | Stufenmatrix, Datumsverschiebung, Initialen, Altersdekaden |
 | `app/export.py` | Ersetzung anwenden, TXT/DOCX/PDF schreiben |
 | `app/main.py` | HTTP-Endpunkte |
+| `app/ordner.py`, `pipeline.sh` | Ordner-Modus (opt-in): Eingang, Endkontrolle, Ausgang |
 | `app/config.py` | Laufzeiteinstellungen, ausschliesslich aus der Umgebung |
 | `app/logging_setup.py` | strukturierte Protokollierung ohne Dokumentinhalte |
 | `static/` | Oberfläche (eine Seite, kein Framework) |
@@ -582,6 +625,15 @@ bleiben erhalten, Anschriftenblöcke und Aufzählungen behalten ihre Zeilen,
 und das Ersetzen verändert die Zeilenstruktur nicht.
 
 ```bash
+.venv/bin/python tests/test_ordner.py
+```
+
+Prüft den Ordner-Modus in temporären Verzeichnissen: Ablage und laufende
+Nummern, Zurückhalten bei fehlendem Patienten, kurzem Text und kaputten
+Dateien, die Endkontrolle sowie die Startprüfungen. Protokoll und Konsole
+dürfen weder Dateinamen noch Klarnamen enthalten.
+
+```bash
 .venv/bin/python tests/test_fehlalarme.py
 ```
 
@@ -597,6 +649,14 @@ gefunden wird — eine Erkennung, die alles markiert, besteht jeden davon.
 Prüft eine Rechnung und ein Unfallgutachten: Kennnummern müssen auf jeder
 Stufe verschwinden, Geldbeträge stufengerecht behandelt werden, Firmen und
 Gerichte als Organisation erkannt sein.
+
+```bash
+.venv/bin/python tests/test_extraktion_seiten.py
+```
+
+Läuft ohne Server: gemischtes PDF (Text plus Scan), Textlayer mit kurzer
+Schlussseite, reiner Scan, Lesbarkeitsprüfung des Textlayers und neutraler
+Exportdateiname.
 
 ```bash
 .venv/bin/python tests/test_e2e.py

@@ -736,6 +736,31 @@ pruefe(detect.bekannte_person_gruppe("Nichts davon steht hier.", "Anna", "Meier"
                                       "", "PATIENT", "b1") is None,
        "Name, der nicht vorkommt, ergibt keine Gruppe")
 
+print("\n=== 31. Doppelname nach Titel mit Leerzeichen am Bindestrich ===")
+# Aus der Praxis: im gesperrt gesetzten Briefkopf lieferte die PDF-Extraktion
+# "NACHNAME- ZWEITNAME"; der Fund endete am Bindestrich, der zweite Nachname
+# blieb stehen.
+for brief in ("PROF. DR. MED. KONRAD HUBER- LINDNER\nChefarzt der Klinik",
+              "Prof. Dr. med. Konrad Huber- Lindner\nChefarzt der Klinik",
+              "PROF. DR. MED. KONRAD HUBER -LINDNER\nChefarzt der Klinik",
+              "PROF. DR. MED. KONRAD HUBER-LINDNER\nChefarzt der Klinik"):
+    funde = [f.text for g in detect.analysiere(brief) for f in g.funde]
+    pruefe(any("LINDNER" in t.upper() and "HUBER" in t.upper() for t in funde),
+           f"Zweiter Nachname gehört zum Fund ({brief.splitlines()[0]!r} -> {funde})")
+# Gegenproben: Gedankenstrich und Ergänzungsstrich ziehen nichts in den Namen.
+funde = [f.text for g in detect.analysiere(
+    "Dr. med. Konrad Huber - Oberarzt der Neurologie") for f in g.funde]
+pruefe(not any("Oberarzt" in t for t in funde),
+       f"Beidseitig freigestellter Strich ist kein Doppelname ({funde})")
+funde = [f.text for g in detect.analysiere(
+    "Herr Dr. Huber- und Frau Dr. Lang waren anwesend. "
+    "DR. HUBER- UND DR. LANG") for f in g.funde]
+pruefe(not any("und" in t.lower().split() for t in funde),
+       f"Ergänzungsstrich vor 'und' verlängert den Namen nicht ({funde})")
+funde = [f.text for g in detect.analysiere(
+    "Dr. med. Konrad Huber- MRT des Schädels unauffällig.") for f in g.funde]
+print("   (zur Ansicht) 'Huber- MRT':", funde)
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")

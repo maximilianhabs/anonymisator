@@ -4,7 +4,10 @@ Offene Punkte, nach Nutzen sortiert. Erledigtes wandert ins `CHANGELOG.md`.
 
 ## Naheliegend
 
-- **OCR-Auslöser: Lesbarkeit statt nur Zeichenzahl.** Heute entscheidet
+- **OCR-Auslöser: Lesbarkeit statt nur Zeichenzahl.** ✅ Erledigt
+  (2026-11-11). Umgesetzt mit `_textlayer_brauchbar`; die Entscheidung fällt
+  seitenweise, sodass gemischte PDFs (`pdf-gemischt`) keine Seite mehr still
+  verlieren. Ursprünglicher Befund: Heute entscheidet
   allein `len(text)/Seiten < 100`, ob auf OCR umgeschaltet wird. Ein PDF mit
   defekter `ToUnicode`-Tabelle oder kaputtem CID-Mapping liefert aber
   *reichlich* Text — nur besteht der aus Zeichensalat. Der Schwellenwert
@@ -437,6 +440,14 @@ bis jemand sie zum ersten Mal wieder aufwirft.
   nur an 127.0.0.1 und bleibt zustandslos.
 - **Automatischer Export ohne Review.** Keine Erkennung erreicht hundert
   Prozent Trefferquote. Der Prüfschritt ist kein Komfort, sondern der Kern.
+  **Seit 2026-11-11 für einen Fall präzisiert:** ein opt-in Ordner-Modus
+  (`app/ordner.py`, lokaler Eingangs- und Ausgangsordner) arbeitet ohne
+  Review. Er gleicht das nicht aus, sondern begrenzt es: Standardstufe
+  „streng“, auch unbelegte Treffer werden ersetzt, eine Endkontrolle prüft
+  jede Ausgabe, und was sie nicht besteht — ebenso jeder Scan — wird
+  zurückgehalten statt ausgegeben. Das Web-Werkzeug bleibt unverändert:
+  dort gibt es weiterhin keinen Export ohne Prüfschritt. Das Restrisiko
+  eines gar nicht erkannten Namens bleibt und steht so im README.
 - **Zuordnungstabelle automatisch speichern.** Sie hebt die Anonymisierung
   auf und wird deshalb nur auf ausdrückliche Bestätigung erzeugt.
 - **Multi-Core-Batchverarbeitung für grosse Dokumentmengen** (2026-08-14,

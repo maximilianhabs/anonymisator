@@ -20,6 +20,29 @@ from . import config
 # keinen brauchbaren Textlayer hat und gescannt wurde.
 MIN_ZEICHEN_PRO_SEITE = 100
 
+# Ein Textlayer kann reichlich Zeichen liefern und trotzdem Müll sein: eine
+# defekte ToUnicode-Tabelle oder ein kaputtes CID-Mapping erzeugt Zeichensalat.
+# Die Zeichenzahl allein merkt das nicht, die Erkennung fände danach nichts,
+# und ein leeres Ergebnis sähe aus wie ein sauberes.
+#
+# Normaler deutscher Fliesstext besteht fast nur aus Buchstaben, Ziffern,
+# Leerraum und Satzzeichen; 0,85 lässt Luft für Tabellen mit vielen Strichen
+# und Sonderzeichen, Laborwerte und Aufzählungen.
+MIN_ANTEIL_PLAUSIBEL = 0.85
+# Zeichen jenseits von Latin-1/Latin-Extended-A (Kyrillisch, CJK, Symbolsalat)
+# kommen in deutschen Briefen praktisch nicht vor. Einzelne Ausreisser sind
+# möglich (Pfeile, Griechisch bei Formeln), daher eine Grenze statt Null.
+MAX_ANTEIL_FREMDSCHRIFT = 0.15
+
+# Typografische Zeichen ausserhalb von Latin-1, die in Arztbriefen üblich sind:
+# sie zählen weder als unplausibel noch als Fremdschrift.
+_TYPOGRAFISCH = "–—„“”‚‘’€§°•·…µ±≥≤→↑↓™"
+_SATZZEICHEN = "".join(chr(i) for i in range(33, 127) if not chr(i).isalnum())
+_PLAUSIBEL_SONDER = frozenset(
+    _SATZZEICHEN + _TYPOGRAFISCH + "¡¿«»‹›©®¶†‡‰¦×÷¼½¾¹²³ªº¬"
+)
+_LATIN_ENDE = 0x17F  # Ende von Latin-Extended-A
+
 # 300 dpi ist der übliche Kompromiss: darunter leidet die OCR-Qualität bei
 # kleinen Serifenschriften spürbar, darüber wird es nur noch langsamer.
 OCR_DPI = config.OCR_DPI
@@ -28,7 +51,7 @@ OCR_DPI = config.OCR_DPI
 @dataclass
 class Extraktion:
     text: str
-    quelle: str  # "pdf-textlayer" | "pdf-ocr" | "docx" | "paste"
+    quelle: str  # "pdf-textlayer" | "pdf-ocr" | "pdf-gemischt" | "docx" | "paste"
     seiten: int = 0
     hinweise: list[str] = field(default_factory=list)
 
@@ -233,8 +256,8 @@ def _rechter_rand(zeilen: list[dict], zeichenbreite: float,
     return kanten[int(len(kanten) * 0.95)] if len(kanten) > 8 else kanten[-1]
 
 
-def _pdf_absaetze(doc) -> str:
-    """Baut aus den Zeilen einer Seite wieder Absätze.
+def _seite_absaetze(seite) -> list[str]:
+    """Baut aus den Zeilen EINER Seite wieder Absätze.
 
     Ein PDF speichert keine Absätze, sondern Zeichen an Koordinaten. Die
     Absatzgrenze steckt allein im senkrechten Abstand, der weiche Zeilenumbruch
@@ -250,81 +273,131 @@ def _pdf_absaetze(doc) -> str:
     """
     absaetze: list[str] = []
 
-    for seite in doc:
-        bloecke = [b for b in seite.get_text("dict")["blocks"]
-                   if b.get("type", 0) == 0 and b.get("lines")]
-        if not bloecke:
+    bloecke = [b for b in seite.get_text("dict")["blocks"]
+               if b.get("type", 0) == 0 and b.get("lines")]
+    if not bloecke:
+        return []
+    # Lesereihenfolge: erst von oben nach unten, bei gleicher Höhe von
+    # links nach rechts. Blockweise vorzugehen ist der Kern — steht neben
+    # dem Anschriftenfeld ein zweiter Block mit Durchwahl und Datum, würde
+    # eine seitenweite Sortierung nach Höhe beide Spalten Zeile für Zeile
+    # ineinander verschränken und den Text zerreissen.
+    bloecke.sort(key=lambda b: (round(b["bbox"][1], 1), b["bbox"][0]))
+
+    alle = [z for b in bloecke for z in _blockzeilen(b)]
+    if not alle:
+        return []
+
+    zeichenbreite = _mittlere_zeichenbreite(alle)
+    haupt_x0 = _hauptspalte(alle, zeichenbreite)
+    rand = _rechter_rand(alle, zeichenbreite, haupt_x0)
+
+    abstaende = sorted(
+        b["y0"] - a["y0"] for a, b in pairwise(alle)
+        if 0 < b["y0"] - a["y0"] < 200
+    )
+    schritt = abstaende[len(abstaende) // 2] if abstaende else 14.0
+
+    for block in bloecke:
+        zeilen = _blockzeilen(block)
+        if not zeilen:
             continue
-        # Lesereihenfolge: erst von oben nach unten, bei gleicher Höhe von
-        # links nach rechts. Blockweise vorzugehen ist der Kern — steht neben
-        # dem Anschriftenfeld ein zweiter Block mit Durchwahl und Datum, würde
-        # eine seitenweite Sortierung nach Höhe beide Spalten Zeile für Zeile
-        # ineinander verschränken und den Text zerreissen.
-        bloecke.sort(key=lambda b: (round(b["bbox"][1], 1), b["bbox"][0]))
 
-        alle = [z for b in bloecke for z in _blockzeilen(b)]
-        if not alle:
-            continue
+        laufend = zeilen[0]["text"].strip()
+        vorige = zeilen[0]
 
-        zeichenbreite = _mittlere_zeichenbreite(alle)
-        haupt_x0 = _hauptspalte(alle, zeichenbreite)
-        rand = _rechter_rand(alle, zeichenbreite, haupt_x0)
+        for zeile in zeilen[1:]:
+            text = zeile["text"].strip()
+            abstand = zeile["y0"] - vorige["y0"]
+            erstes_wort = text.split(" ", 1)[0]
 
-        abstaende = sorted(
-            b["y0"] - a["y0"] for a, b in pairwise(alle)
-            if 0 < b["y0"] - a["y0"] < 200
-        )
-        schritt = abstaende[len(abstaende) // 2] if abstaende else 14.0
+            # Der Satzrand gilt nur für die Hauptspalte. Ein Nebenblock —
+            # Ansprechpartner und Durchwahl neben dem Anschriftenfeld,
+            # eine Fusszeile — steht ausserhalb und reicht oft weiter nach
+            # rechts. Dort jede Zeile am fremden Rand zu messen, hiesse sie
+            # ausnahmslos für umbrochen zu halten und zusammenzuziehen.
+            in_hauptspalte = (
+                abs(vorige["x0"] - haupt_x0) <= zeichenbreite * 4
+                and abs(zeile["x0"] - haupt_x0) <= zeichenbreite * 4
+            )
 
-        for block in bloecke:
-            zeilen = _blockzeilen(block)
-            if not zeilen:
-                continue
+            # Passte das erste Wort der Folgezeile hier noch aufs Papier?
+            platz_frei = rand - vorige["x1"]
+            passte_noch = platz_frei >= (len(erstes_wort) + 1) * zeichenbreite
 
-            laufend = zeilen[0]["text"].strip()
-            vorige = zeilen[0]
+            neuer_absatz = abstand > schritt * 1.45
+            einzug_wechsel = abs(zeile["x0"] - vorige["x0"]) > zeichenbreite * 2.5
 
-            for zeile in zeilen[1:]:
-                text = zeile["text"].strip()
-                abstand = zeile["y0"] - vorige["y0"]
-                erstes_wort = text.split(" ", 1)[0]
+            if neuer_absatz:
+                absaetze.append(laufend)
+                laufend = text
+            elif (not in_hauptspalte or passte_noch
+                    or vorige["spaltig"] or zeile["spaltig"]
+                    or einzug_wechsel or _AUFZAEHLUNG.match(zeile["text"])):
+                # Umbruch war gewollt: Anschrift, Liste, Tabelle, Unterschrift
+                laufend += "\n" + text
+            else:
+                laufend += " " + text
 
-                # Der Satzrand gilt nur für die Hauptspalte. Ein Nebenblock —
-                # Ansprechpartner und Durchwahl neben dem Anschriftenfeld,
-                # eine Fusszeile — steht ausserhalb und reicht oft weiter nach
-                # rechts. Dort jede Zeile am fremden Rand zu messen, hiesse sie
-                # ausnahmslos für umbrochen zu halten und zusammenzuziehen.
-                in_hauptspalte = (
-                    abs(vorige["x0"] - haupt_x0) <= zeichenbreite * 4
-                    and abs(zeile["x0"] - haupt_x0) <= zeichenbreite * 4
-                )
+            vorige = zeile
 
-                # Passte das erste Wort der Folgezeile hier noch aufs Papier?
-                platz_frei = rand - vorige["x1"]
-                passte_noch = platz_frei >= (len(erstes_wort) + 1) * zeichenbreite
+        absaetze.append(laufend)
 
-                neuer_absatz = abstand > schritt * 1.45
-                einzug_wechsel = abs(zeile["x0"] - vorige["x0"]) > zeichenbreite * 2.5
+    return [a for a in absaetze if a.strip()]
 
-                if neuer_absatz:
-                    absaetze.append(laufend)
-                    laufend = text
-                elif (not in_hauptspalte or passte_noch
-                        or vorige["spaltig"] or zeile["spaltig"]
-                        or einzug_wechsel or _AUFZAEHLUNG.match(zeile["text"])):
-                    # Umbruch war gewollt: Anschrift, Liste, Tabelle, Unterschrift
-                    laufend += "\n" + text
-                else:
-                    laufend += " " + text
 
-                vorige = zeile
+def _pdf_absaetze(doc) -> str:
+    """Absätze aller Seiten, durch Leerzeilen getrennt."""
+    return "\n\n".join(
+        a for seite in doc for a in _seite_absaetze(seite))
 
-            absaetze.append(laufend)
 
-    return "\n\n".join(a for a in absaetze if a.strip())
+def _textlayer_brauchbar(text: str) -> bool:
+    """Entscheidet, ob der Textlayer einer Seite lesbar genug für die Erkennung ist.
+
+    Drei Bedingungen, alle müssen erfüllt sein: genug Zeichen, ein hoher Anteil
+    plausibler Zeichen und wenig Fremdschrift. Die Entscheidung steht bewusst
+    an einer Stelle, damit sie testbar bleibt.
+    """
+    kern = text.strip()
+    if len(kern) < MIN_ZEICHEN_PRO_SEITE:
+        return False
+    gesamt = len(text)
+    plausibel = sum(
+        1 for c in text
+        if c.isalnum() or c.isspace() or c in _PLAUSIBEL_SONDER
+    )
+    # U+FFFD und Private-Use-Zeichen sind weder alnum noch Sonderzeichen und
+    # zählen damit automatisch als unplausibel.
+    fremd = sum(
+        1 for c in text
+        if ord(c) > _LATIN_ENDE and c not in _TYPOGRAFISCH
+    )
+    return (plausibel / gesamt >= MIN_ANTEIL_PLAUSIBEL
+            and fremd / gesamt <= MAX_ANTEIL_FREMDSCHRIFT)
+
+
+def _ocr_seite(seite) -> str:
+    pix = seite.get_pixmap(dpi=OCR_DPI)
+    # Das Bild bleibt im Speicher; pytesseract legt daraus zwar eine
+    # temporäre Datei an, räumt sie aber selbst wieder ab. TMPDIR zeigt
+    # im Container auf ein tmpfs, das nichts auf Platte schreibt.
+    with Image.open(io.BytesIO(pix.tobytes("png"))) as bild:
+        return pytesseract.image_to_string(bild, lang=config.OCR_SPRACHE)
+
+
+def _seitenliste(nummern: list[int]) -> str:
+    return ", ".join(str(n) for n in nummern)
 
 
 def aus_pdf(daten: bytes) -> Extraktion:
+    """Liest ein PDF; ob OCR nötig ist, wird je Seite entschieden.
+
+    Ein gemischtes PDF (etwa ein Brief mit eingescanntem Befund als Anlage)
+    darf keine Seite still verlieren: Ein Dokumentschnitt über alle Seiten
+    liesse die Scanseite unter den Tisch fallen, sobald die übrigen Seiten
+    genug Text liefern.
+    """
     hinweise: list[str] = []
     with fitz.open(stream=daten, filetype="pdf") as doc:
         seiten = doc.page_count
@@ -334,45 +407,98 @@ def aus_pdf(daten: bytes) -> Extraktion:
                 f"höchstens {config.MAX_SEITEN}. Sehr grosse Dokumente "
                 "sprengen den Arbeitsspeicher — bitte in Abschnitte teilen."
             )
-        text = _pdf_absaetze(doc)
 
-        zeichen_pro_seite = len(text.strip()) / max(seiten, 1)
-        if zeichen_pro_seite >= MIN_ZEICHEN_PRO_SEITE:
-            meta_treffer = _pdf_metadaten_pruefen(doc)
-            if meta_treffer:
-                hinweise.append(
-                    "PDF-Metadaten enthalten Angaben (" + ", ".join(meta_treffer)
-                    + "). Sie werden beim Export nicht übernommen."
-                )
-            # Kein _reflow: die Absätze stehen bereits, sie wurden aus der
-            # Seitengeometrie gewonnen statt aus Zeichenlängen geraten.
-            return Extraktion(_normalisiere(text),
-                              "pdf-textlayer", seiten, hinweise)
-
-        # Kein oder zu wenig Textlayer -> gescanntes Dokument, OCR nötig.
-        if seiten > config.MAX_OCR_SEITEN:
-            raise ValueError(
-                f"Das Dokument hat {seiten} Seiten ohne Textlayer; per OCR "
-                f"werden höchstens {config.MAX_OCR_SEITEN} gelesen. Bitte in "
-                "kleinere Abschnitte teilen."
+        meta_treffer = _pdf_metadaten_pruefen(doc)
+        if meta_treffer:
+            hinweise.append(
+                "PDF-Metadaten enthalten Angaben (" + ", ".join(meta_treffer)
+                + "). Sie werden beim Export nicht übernommen."
             )
 
+        absaetze = [_seite_absaetze(seite) for seite in doc]
+        layer = ["\n\n".join(a) for a in absaetze]
+        zeichen_pro_seite = sum(len(t.strip()) for t in layer) / max(seiten, 1)
+        # Reiner Scan nach altem Massstab: dann gilt jede unbrauchbare Seite
+        # als OCR-Fall, auch ohne erkennbares Bild.
+        dokument_ohne_text = zeichen_pro_seite < MIN_ZEICHEN_PRO_SEITE
+
+        # Seitennummer (0-basiert) -> Grund
+        ocr_faelle: dict[int, str] = {}
+        for i, seite in enumerate(doc):
+            if _textlayer_brauchbar(layer[i]):
+                continue
+            if len(layer[i].strip()) >= MIN_ZEICHEN_PRO_SEITE:
+                ocr_faelle[i] = "unlesbar"        # Zeichensalat
+            elif seite.get_images() or dokument_ohne_text:
+                ocr_faelle[i] = "kein_layer"
+            # sonst: kurze Textseite ohne Bild (Grussformel) -> Textlayer
+
+        if len(ocr_faelle) > config.MAX_OCR_SEITEN:
+            raise ValueError(
+                f"Das Dokument hat {len(ocr_faelle)} Seiten ohne lesbaren "
+                f"Textlayer; per OCR werden höchstens {config.MAX_OCR_SEITEN} "
+                "gelesen. Bitte in kleinere Abschnitte teilen."
+            )
+
+        ocr_text: dict[int, str] = {}
+        ohne_text: list[int] = []
+        for i in ocr_faelle:
+            roh = _ocr_seite(doc[i])
+            if (ocr_faelle[i] == "kein_layer" and layer[i].strip()
+                    and len(roh.strip()) <= len(layer[i].strip())):
+                # Seite mit Bild und kurzem Textlayer (Logo, Stempel): die OCR
+                # hat nichts Besseres geliefert, der Layer bleibt.
+                continue
+            if not roh.strip():
+                ohne_text.append(i + 1)
+            ocr_text[i] = roh
+
+        # Eine Seite ohne Ergebnis darf nicht still verschwinden: ein leeres
+        # Ergebnis sähe sonst aus wie eine saubere Seite.
+        leer_hinweise = [
+            f"Seite {n}: kein Text gewonnen — bitte mit dem Original vergleichen."
+            for n in ohne_text
+        ]
+
+        if not ocr_text:
+            # Kein _reflow: die Absätze stehen bereits, sie wurden aus der
+            # Seitengeometrie gewonnen statt aus Zeichenlängen geraten.
+            return Extraktion(_normalisiere("\n\n".join(t for t in layer if t.strip())),
+                              "pdf-textlayer", seiten, hinweise + leer_hinweise)
+
+        if len(ocr_text) == seiten:
+            hinweise.append(
+                f"Kein verwertbarer Textlayer ({zeichen_pro_seite:.0f} Zeichen/Seite). "
+                f"{seiten} Seite(n) wurden per OCR gelesen — Lesefehler sind möglich, "
+                "bitte den Text im Review gegenlesen."
+            )
+            return Extraktion(
+                _reflow(_normalisiere("\n\n".join(ocr_text[i] for i in range(seiten)))),
+                "pdf-ocr", seiten, hinweise + leer_hinweise)
+
+        # Gemischt: Seiten in Originalreihenfolge, Textlayer über Geometrie,
+        # OCR-Seiten je einzeln geglättet.
+        teile = []
+        for i in range(seiten):
+            if i in ocr_text:
+                teile.append(_reflow(_normalisiere(ocr_text[i])))
+            else:
+                teile.append(_normalisiere(layer[i]))
+
+        kein = [i + 1 for i in ocr_text if ocr_faelle[i] == "kein_layer"]
+        salat = [i + 1 for i in ocr_text if ocr_faelle[i] == "unlesbar"]
+        gruende = []
+        if kein:
+            gruende.append(f"Seite {_seitenliste(kein)}: kein Textlayer")
+        if salat:
+            gruende.append(
+                f"Seite {_seitenliste(salat)}: Textlayer vorhanden, aber nicht lesbar")
         hinweise.append(
-            f"Kein verwertbarer Textlayer ({zeichen_pro_seite:.0f} Zeichen/Seite). "
-            f"{seiten} Seite(n) wurden per OCR gelesen — Lesefehler sind möglich, "
-            "bitte den Text im Review gegenlesen."
+            "Dieses PDF wurde teils per OCR gelesen (" + "; ".join(gruende)
+            + "). Lesefehler sind möglich, bitte im Review gegenlesen."
         )
-        ocr_teile = []
-        for seite in doc:
-            pix = seite.get_pixmap(dpi=OCR_DPI)
-            # Das Bild bleibt im Speicher; pytesseract legt daraus zwar eine
-            # temporäre Datei an, räumt sie aber selbst wieder ab. TMPDIR zeigt
-            # im Container auf ein tmpfs, das nichts auf Platte schreibt.
-            with Image.open(io.BytesIO(pix.tobytes("png"))) as bild:
-                ocr_teile.append(
-                    pytesseract.image_to_string(bild, lang=config.OCR_SPRACHE))
-        return Extraktion(_reflow(_normalisiere("\n\n".join(ocr_teile))),
-                          "pdf-ocr", seiten, hinweise)
+        return Extraktion("\n\n".join(t for t in teile if t.strip()),
+                          "pdf-gemischt", seiten, hinweise + leer_hinweise)
 
 
 def _pdf_metadaten_pruefen(doc) -> list[str]:
