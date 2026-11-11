@@ -244,11 +244,14 @@ Güte eine Einzelbeobachtung (siehe `docs/ORDNER-MODUS.md`, „Praxisbefund“).
   `_textlayer_brauchbar` ist getestet, die Verdrahtung „Textlayer
   vorhanden, aber unlesbar“ in `aus_pdf` dagegen nicht mit einem echten PDF
   (es bräuchte eine eingebettete Schrift).
-- **Persistenztest: Laufzeit und Temp-Verzeichnis.**
-  `test_keine_persistenz.py` dauert rund 30 Minuten und durchsucht das
-  Temp-Verzeichnis des Testprozesses, das nicht das des Servers sein muss;
-  fremde Dateien dort erzeugen Fehlalarme. Das Temp-Verzeichnis des Servers
-  gezielt übergeben und die Suche eingrenzen.
+- **Persistenztest: Laufzeit und Temp-Verzeichnis.** ✅ Erledigt
+  (2026-11-11). Der Test startet den Dienst selbst mit leerem TMPDIR und
+  leerem Arbeitsverzeichnis, durchsucht nur diese und das Protokoll; die
+  grosse Testdatei ist ein PDF mit eingebetteter Zufallsanlage statt
+  24000 Zeilen Text (Laufzeit von rund 30 Minuten auf wenige Sekunden).
+  Ursprünglicher Befund: `test_keine_persistenz.py` dauerte rund 30 Minuten
+  und durchsuchte das Temp-Verzeichnis des Testprozesses, das nicht das des
+  Servers sein muss; fremde Dateien dort erzeugten Fehlalarme.
 - **Server blockiert während einer langen Analyse.** Die Analyse läuft
   synchron im Ereignisschleifen-Thread; solange antwortet auch `/health`
   nicht (über 60 s gemessen). In einen Thread auslagern.

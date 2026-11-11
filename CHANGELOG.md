@@ -6,6 +6,12 @@ zwischen Nebenversionen ändern.
 
 ## Unveröffentlicht
 
+- **Persistenztest startet den Dienst selbst.** `tests/test_keine_persistenz.py`
+  läuft mit eigenem leerem TMPDIR und Arbeitsverzeichnis, durchsucht nur diese
+  und das Protokoll des Dienstes (keine Fehlalarme durch fremde Dateien) und
+  braucht statt rund 30 Minuten wenige Sekunden: die grosse Testdatei ist ein
+  PDF mit eingebetteter Anlage statt Megabytes an Text. Gegen einen fremden
+  Dienst nur mit `ANON_TEST_URL` und `ANON_TEST_TMPDIR`.
 - **Dokumentation.** Neue Beschreibung `docs/ORDNER-MODUS.md` (Ablauf,
   Endkontrolle, Protokoll, Grenzen); der Etappenplan für die Pipeline steht
   im Backlog („Pipeline-Ausbau“), dort auch neue offene Punkte und der
