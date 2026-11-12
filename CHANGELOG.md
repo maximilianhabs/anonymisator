@@ -6,6 +6,16 @@ zwischen Nebenversionen ändern.
 
 ## Unveröffentlicht
 
+- **Anschrift ohne Gattungswort.** „Oberndorf 12" oder „HINTERBERG A 3"
+  unmittelbar vor PLZ und Ort gilt jetzt als Adresse. In der Standardstufe
+  blieb der Ortsteil samt Hausnummer bisher stehen, weil ORT dort behalten
+  wird; die Endkontrolle des Ordner-Modus hat den Brief deshalb zu Recht
+  zurückgehalten. Testsektion 32.
+- **Telefonnummer mit kurzer Durchwahl.** „09931/87-0" (Vorwahl, kurzer
+  Anschluss, einstellige Durchwahl) wurde von keiner Regel erfasst und blieb
+  in der Standardstufe stehen. Eigene Regel mit dem Schrägstrich nach der
+  Vorwahl als Beleg; Blutdruck („120/80") und Monatsangaben („03/2024")
+  bleiben unberührt. Testsektion 33.
 - **Persistenztest startet den Dienst selbst.** `tests/test_keine_persistenz.py`
   läuft mit eigenem leerem TMPDIR und Arbeitsverzeichnis, durchsucht nur diese
   und das Protokoll des Dienstes (keine Fehlalarme durch fremde Dateien) und

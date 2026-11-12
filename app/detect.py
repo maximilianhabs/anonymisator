@@ -463,6 +463,14 @@ REGELN: list[tuple[str, str, int]] = [
     # Ersetzen — im Ergebnis kleben dann zwei Platzhalter aneinander.
     ("TELEFON", r"\+49[ \t\-/]?\(?\d{1,5}\)?[ \t\-/]?\d[\d \t\-/]{4,}\d", 0),
     ("TELEFON", r"\b0\d{2,4}[ \t\-/]\d{2,}[\d \t\-/]{2,}\d\b", 0),
+    # Vorwahl/Anschluss mit kurzer Durchwahl ("09931/87-0", "0991/380"):
+    # Zentralen von Kliniken haben oft nur zwei bis drei Ziffern Anschluss
+    # und eine einstellige Durchwahl. Die Regel darüber verlangt mehr Ziffern
+    # und liess solche Nummern stehen (aus der Praxis, Standardstufe). Der
+    # Schrägstrich nach einer Vorwahl mit führender Null ist der Beleg;
+    # "120/80" (Blutdruck) und "03/2024" beginnen nicht so.
+    ("TELEFON",
+     r"\b0\d{2,5}[ \t]?/[ \t]?\d{2,}(?:[ \t]?-[ \t]?\d{1,5})?\b", 0),
 
     # --- Anschriften --------------------------------------------------------
     # Zusammengeschrieben ("Ludwigstraße 47", "Kirchweg 4") — das
@@ -500,6 +508,17 @@ REGELN: list[tuple[str, str, int]] = [
     ("ADRESSE",
      r"\b\d{5}[ \t]+[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ]{2,}(?:[ \-][A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ]+)*", 0),
     ("ADRESSE", r"(?:Postfach)[ \t]*:?[ \t]*\d[\d \t]{2,12}", 0),
+    # Anschrift ohne Gattungswort ("Oberndorf 12", "HINTERBERG A 3"): in
+    # Dörfern und auf Klinikgeländen heisst die Anschrift wie der Ortsteil,
+    # ein "-straße" gibt es nicht. Allein wäre "Wort + Zahl" viel zu weit
+    # (jeder Laborwert); der Beleg ist die Position — unmittelbar davor,
+    # nur durch Komma oder Zeilenende getrennt, steht PLZ + Ort. Der Blick
+    # nach vorn nimmt die PLZ nicht in den Treffer: kein Fund greift über
+    # das Zeilenende. Aus der Praxis: in der Standardstufe blieb der
+    # Ortsteil samt Hausnummer stehen, weil ORT dort behalten wird.
+    ("ADRESSE",
+     r"\b[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ.\-]{2,}(?:[ \t]+[A-Z])?[ \t]+\d{1,4}[ \t]*[a-zA-Z]?"
+     r"(?=[ \t]*(?:,|\r?\n)[ \t]*(?:D-)?\d{5}[ \t]+[A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ]{2,})", 0),
 
     # --- Einrichtungen ------------------------------------------------------
     # Die NER erkennt Klinik- und Praxisnamen unzuverlässig; ein Briefkopf

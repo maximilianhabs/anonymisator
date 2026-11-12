@@ -761,6 +761,33 @@ funde = [f.text for g in detect.analysiere(
     "Dr. med. Konrad Huber- MRT des Schädels unauffällig.") for f in g.funde]
 print("   (zur Ansicht) 'Huber- MRT':", funde)
 
+print("\n=== 32. Anschrift ohne Gattungswort vor PLZ und Ort ===")
+for brief, soll in (("Frau Elisabeth Hartmann, wh. Oberndorf 12, 94469 Deggendorf, kam.",
+                     "Oberndorf 12"),
+                    ("KLINIK AM AUWALD\nHINTERBERG A 3\n94469 DEGGENDORF\n", "HINTERBERG A 3"),
+                    ("wohnhaft Unterholzen 4a\n94032 Passau", "Unterholzen 4a")):
+    funde = [(g.typ, f.text) for g in detect.analysiere(brief) for f in g.funde]
+    pruefe(("ADRESSE", soll) in funde, f"{soll!r} wird als Adresse erkannt ({funde})")
+for brief in ("Leukozyten 12, Thrombozyten 250, CRP 3", "Auf Station 12 der Klinik behandelt.",
+              "Dosis 20000 IE täglich, Kalium 4\nNatrium 140",
+              "Punkt 12, siehe Anlage 3"):
+    funde = [(g.typ, f.text) for g in detect.analysiere(brief) for f in g.funde]
+    pruefe(not any(t == "ADRESSE" for t, _ in funde),
+           f"Kein Adress-Fehlalarm ohne PLZ danach ({brief!r} -> {funde})")
+
+print("\n=== 33. Telefonnummer mit kurzer Durchwahl ===")
+for brief, soll in (("Zentrale 09931/87-0 erreichbar.", "09931/87-0"),
+                    ("Tel. 0991/380 oder Fax 0991/380-199", "0991/380"),
+                    ("Rückfragen unter 09931 / 87 - 0", "09931 / 87 - 0")):
+    funde = [(g.typ, f.text) for g in detect.analysiere(brief) for f in g.funde]
+    pruefe(any(t == "TELEFON" and soll in x for t, x in funde),
+           f"{soll!r} wird als Telefonnummer erkannt ({funde})")
+for brief in ("RR 120/80 mmHg, Puls 72/min.", "Kontrolle 03/2024 und 11/2025 empfohlen.",
+              "Visus 0,8/1,0; Station 3/4."):
+    funde = [(g.typ, f.text) for g in detect.analysiere(brief) for f in g.funde]
+    pruefe(not any(t == "TELEFON" for t, _ in funde),
+           f"Kein Telefon-Fehlalarm ({brief!r} -> {funde})")
+
 print("\n" + "=" * 60)
 if fehler:
     print(f"{len(fehler)} FEHLER:")
